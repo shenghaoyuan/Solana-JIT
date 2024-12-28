@@ -2,7 +2,7 @@
 
 .PHONY: open generator micro-test clean macro-test code clean
 
-DEFAULT_FILE = $(CURDIR)/theory/JIT_abs.thy
+DEFAULT_FILE = $(CURDIR)/theory/JIT.thy
 
 open:
 	isabelle jedit -d . $(DEFAULT_FILE)

@@ -4,9 +4,10 @@ theory JIT_abs
 imports
   Main
   rBPFCommType rBPFSyntax
-  vm x86CommType Interpreter x64Semantics x64Disassembler  x64Assembler
-  StepSem
+  x64Syntax
+  StepSem JIT_def
 begin
+
 
 record JitProgram =
 page_size     :: usize
@@ -85,6 +86,7 @@ lemma bpf_to_x64_reg_corr[simp]:" r1 \<noteq> r2 \<longrightarrow> bpf_to_x64_re
   apply(cases r2, simp_all)
     apply(cases r2, simp_all)
   done
+
 
 definition per_jit_add_reg64_1 :: "bpf_ireg \<Rightarrow> bpf_ireg \<Rightarrow> x64_bin option" where
 "per_jit_add_reg64_1 dst src = (
@@ -187,7 +189,7 @@ fun jit :: "ebpf_asm \<Rightarrow> jit_state \<Rightarrow> jit_state option" whe
 
 (**r star of ebpf *)
 datatype sbpf_state =
-  SBPF_OK u64 reg_map mem stack_state SBPFV func_map u64 u64 | (**r normal state *)
+  SBPF_OK u64 reg_map mem (* stack_state SBPFV func_map u64 u64 *) | (**r normal state *)
   SBPF_Success u64
 
 (*inductive sbpf_step :: "ebpf_asm * sbpf_state \<Rightarrow> ebpf_asm * sbpf_state \<Rightarrow> bool" (infix "\<rightarrow>s" 55)
@@ -204,18 +206,31 @@ B_EXIT: " st = SBPF_OK pc rs m stk sv fm cur_cu remain_cu \<Longrightarrow>
           call_depth stk = 0 \<Longrightarrow>
             (l, st) \<rightarrow>s (l, SBPF_Success (rs BR0))"
 *)
+
+fun eval_snd_op_u64 :: "snd_op \<Rightarrow> reg_map \<Rightarrow> u64" where
+"eval_snd_op_u64 (SOImm i) _ = scast i" |
+"eval_snd_op_u64 (SOReg r) rs = rs r"
+
+definition eval_alu :: "binop \<Rightarrow> dst_ty \<Rightarrow> snd_op \<Rightarrow> reg_map \<Rightarrow> bool \<Rightarrow> reg_map option" where
+"eval_alu bop dst sop rs is_v1 = (
+  let dv :: u64 = eval_reg dst rs in (
+  let sv :: u64 = eval_snd_op_u64 sop rs in (
+  case bop of
+  BPF_ADD   \<Rightarrow> Some (rs#dst <-- (dv+sv)) |
+  _ \<Rightarrow> None
+)))"
+
 inductive sbpf_step :: "ebpf_asm * sbpf_state \<Rightarrow> ebpf_asm * sbpf_state \<Rightarrow> bool" (infix "\<rightarrow>s" 55)
   where
-B_ADD64: "st = SBPF_OK pc rs m stk sv fm cur_cu remain_cu \<Longrightarrow>
+B_ADD64: "st = SBPF_OK pc rs m \<Longrightarrow>  \<comment>\<open> m stk sv fm cur_cu remain_cu \<close>
           BPF_ALU64 bop d sop = l!(unat pc) \<Longrightarrow>
           bop = BPF_ADD \<Longrightarrow>
-          OKS rs' = eval_alu32 bop d sop rs is_v1 \<Longrightarrow>
-          st' = SBPF_OK (pc+1) rs' m stk sv fm (cur_cu+1) remain_cu \<Longrightarrow>
+          Some rs' = eval_alu bop d sop rs is_v1 \<Longrightarrow>
+          st' = SBPF_OK (pc+1) rs' m \<Longrightarrow>  \<comment>\<open> m stk sv fm (cur_cu+1) remain_cu \<close>
             (l, st) \<rightarrow>s (l, st')" |
-B_EXIT: " st = SBPF_OK pc rs m stk sv fm cur_cu remain_cu \<Longrightarrow>
+B_EXIT: " st = SBPF_OK pc rs m \<Longrightarrow> \<comment>\<open> m stk sv fm cur_cu remain_cu \<close>
           BPF_EXIT = l!(unat pc) \<Longrightarrow>
             (l, st) \<rightarrow>s (l, SBPF_Success (rs BR0))"
-
 
 lemma success_is_final:"\<nexists> cs. (l,SBPF_Success n) \<rightarrow>s cs"
   apply(induction n) apply auto 
@@ -239,20 +254,21 @@ abbreviation sbpf_sem::"ebpf_asm * sbpf_state \<Rightarrow> ebpf_asm * sbpf_stat
   a1:"st = SBPF_OK 0 rs m stk sv fm cur_cu remain_cu" and 
   a2:"l = [BPF_ALU64 BPF_ADD d sop]"
 shows" x = (l, SBPF_OK 1 rs' m stk sv fm (cur_cu+1) remain_cu)"*)
+(*
 lemma success_is_final2:"\<lbrakk> (l,st) \<rightarrow>s x;
-  st = SBPF_OK pc rs m stk sv fm cur_cu remain_cu ;
+  st = SBPF_OK pc rs;
   unat pc = 0 ;
   l = [BPF_ALU64 BPF_ADD d sop] \<rbrakk>
-  \<Longrightarrow> x = (l, SBPF_OK (pc+1) rs' m stk sv fm (cur_cu+1) remain_cu)"
+  \<Longrightarrow> x = (l, SBPF_OK (pc+1) rs')"
 proof (induction rule: sbpf_step.induct)
-  case (B_ADD64 st pc rs m stk sv fm cur_cu remain_cu bop d sop l rs' is_v1 st')
-  fix st pc rs m stk sv fm cur_cu remain_cu bop d sop l rs' is_v1 st'
+  case (B_ADD64 st pc rs bop d sop l rs' is_v1 st')
+  fix st pc rs bop d sop l rs' is_v1 st'
   have "unat pc = 0" 
   then show ?case sorry
 next
   case (B_EXIT st pc rs m stk sv fm cur_cu remain_cu l)
   then show ?case apply(intro: small_steps.intros, simp_all)
-qed
+qed*)
 
 
 (*
@@ -262,14 +278,37 @@ lemma success_is_final2:"(l,st) \<rightarrow>s x \<Longrightarrow>
  apply blast
   subgoal for a l*)
 
-
+(*
 lemma success_is_final2:"(l,st) \<rightarrow>*s (l,st') \<Longrightarrow>
-  st = SBPF_OK 0 rs m stk sv fm cur_cu remain_cu \<Longrightarrow> l = [BPF_ALU64 BPF_ADD d sop, BPF_EXIT] 
+  st = SBPF_OK 0 rs \<Longrightarrow> l = [BPF_ALU64 BPF_ADD d sop, BPF_EXIT] 
   \<Longrightarrow> st' = SBPF_Success n"
-  apply simp_all
-  apply (drule star.step)
-   apply (rule star.refl)
- 
+  apply simp
+  apply (induction sbpf_step)
+  subgoal
+  apply (sim  star.step)
+  apply (drule_tac
+        s1= "([BPF_ALU64 BPF_ADD d sop, BPF_EXIT], SBPF_OK 0 rs)" and
+        y= "([BPF_ALU64 BPF_ADD d sop, BPF_EXIT], SBPF_OK 1 _)" and
+        z= "([BPF_ALU64 BPF_ADD d sop, BPF_EXIT], st')" and
+        r="sbpf_step"
+        in star_left)
+  subgoal
+    apply (drule B_ADD64)
+      apply (rule star.refl)
+
+ [of sbpf_sem
+        "([BPF_ALU64 BPF_ADD d sop, BPF_EXIT], SBPF_OK 0 rs)"
+        "([BPF_ALU64 BPF_ADD d sop, BPF_EXIT], st')"
+        "([BPF_ALU64 BPF_ADD d sop, BPF_EXIT], SBPF_OK 1 _) *)
+
+(**r
+lemma success_is_final2:"
+  st = SBPF_OK 0 rs \<Longrightarrow> l = [BPF_ALU64 BPF_ADD d sop, BPF_EXIT] 
+  \<Longrightarrow> (l,st) \<rightarrow>*s (l, SBPF_Success n)"
+  apply simp
+  apply (rule star.step)
+
+*)
 
 (**r star of x64 *)
 datatype x64_state =
@@ -284,18 +323,45 @@ abbreviation x64_sem::"u8 list * x64_state \<Rightarrow> u8 list * x64_state \<R
 definition match_state :: "sbpf_state \<Rightarrow> x64_state \<Rightarrow> usize list \<Rightarrow> bool" where
 "match_state bst xst pc_map = (
   case bst of
-  SBPF_OK pc rs m stk sv fm cur_cu remain_cu \<Rightarrow> (
+  SBPF_OK pc rs m \<Rightarrow> (
     case xst of
     Bin_OK xpc xrs xm \<Rightarrow>
-    (\<forall> r. Vlong (rs r) = xrs (IR (bpf_to_x64_reg r))) \<and> \<comment>\<open> for ALU + MEM + Call \<close>
+    (\<forall> r. (rs r) = xrs (IR (bpf_to_x64_reg r))) \<and> \<comment>\<open> for ALU + MEM + Call \<close>
     pc_map!(unat pc) = xpc \<and>  \<comment>\<open> for Jump \<close>
     m = xm  \<comment>\<open> for MEM + Call \<close>
   ) |
   SBPF_Success v \<Rightarrow>(
     case xst of
-    Bin_OK xpc xrs xm \<Rightarrow> Vlong v = xrs (IR (bpf_to_x64_reg BR0)) \<comment>\<open> for EXIT \<close>
+    Bin_OK xpc xrs xm \<Rightarrow> v = xrs (IR (bpf_to_x64_reg BR0)) \<comment>\<open> for EXIT \<close>
   )
 )"
+
+lemma "\<nexists>bst'. sbpf_step ([], bst) ([], bst')"
+  apply (cases bst)
+  subgoal for x1 x2 x3
+    apply simp 
+  apply (cases bst')
+  subgoal for y1 y2 y3
+    apply simp
+    apply (drule B_ADD64)
+
+theorem jit_correct:
+ "jit2 prog = Some (x64_prog, pc_map) \<Longrightarrow>
+  match_state bst xst pc_map \<Longrightarrow>
+  sbpf_step (prog, bst) (prog, bst') \<Longrightarrow>
+  \<exists> xst'.
+      x64_sem (x64_prog, xst) (x64_prog, xst') \<and>
+      match_state bst' xst' pc_map"
+  apply (induction prog)
+  subgoal
+    apply (simp add: match_state_def)
+    apply (cases bst)
+    subgoal for x1 x2 x3
+      apply simp
+      apply (cases xst)
+      subgoal for y1 y2 y3
+        apply simp
+    apply (erule exE)
 
 
 theorem jit_correct:
