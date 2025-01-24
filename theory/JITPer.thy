@@ -1,26 +1,44 @@
-section \<open> A collection of common type of JIT \<close>
+section \<open> JIT-Per: translate SBPF assembly to IR1 \<close>
 
-theory JIT
+text\<open> IR1 is a list-list binary code:
+- each SBPF assembly is mapped a list of binary code
+    where SBPF_JUMP ofs is set to 0 in the target binary 
+- SBPF assembly and IR1 have the same pc value because JIT-Per is one-by-one 
+
+SBPF: 0: BPF_ADD; 1: BPF_SUB; 2: BPF_EXIT
+
+x64:  0:[add...]; 1:[sub...]; 2: [ret...]
+ \<close>
+
+theory JITPer
 imports
   Main
   rBPFCommType rBPFSyntax rBPFSem
   x64Syntax x64Semantics x64Assembler Proof1
   JITState
+
 begin
 
-definition per_jit_add_reg64_1 :: "bpf_ireg \<Rightarrow> bpf_ireg \<Rightarrow> x64_bin option" where
+
+subsection \<open> JIT rule \<close>
+
+text \<open> return 
+  - the number of jited x64 assembly code
+  - the offset pointing to next pc
+  - the jited x64 binary code \<close>
+definition per_jit_add_reg64_1 :: "bpf_ireg \<Rightarrow> bpf_ireg \<Rightarrow> (nat \<times> u64 \<times> x64_bin) option" where
 "per_jit_add_reg64_1 dst src = (
   let ins = Paddq_rr (bpf_to_x64_reg dst) (bpf_to_x64_reg src) in
-    x64_encode ins
+    map_option (\<lambda> l. (1, 1, l)) (x64_encode ins)
 )"
 
-definition per_jit_exit :: "x64_bin option " where
+definition per_jit_exit :: "(nat \<times> u64 \<times> x64_bin) option" where
 "per_jit_exit = (
   let ins = Pret in
-    x64_encode ins
+    map_option (\<lambda> l. (1, 1, l)) (x64_encode ins)
 )"
 
-fun per_jit_ins ::" bpf_instruction \<Rightarrow> x64_bin option"where
+fun per_jit_ins ::" bpf_instruction \<Rightarrow> (nat \<times> u64 \<times> x64_bin) option" where
 "per_jit_ins bins = (
   case bins of
   BPF_ALU64 BPF_ADD dst (SOReg src) \<Rightarrow> (per_jit_add_reg64_1 dst src) |
@@ -28,130 +46,35 @@ fun per_jit_ins ::" bpf_instruction \<Rightarrow> x64_bin option"where
   _ \<Rightarrow> None
 )"
 
-(*fun jit1 :: "ebpf_asm \<Rightarrow> u8 list \<Rightarrow> usize list \<Rightarrow> (u8 list * usize list) option" where
-"jit1 [] l_bin l_pc = Some (l_bin, l_pc)" |
-"jit1 (h#t) l_bin l_pc = (
-  case per_jit_ins h of
-  None \<Rightarrow> None |
-  Some ins \<Rightarrow> (
-    jit1 t (l_bin @ ins) (l_pc @ [of_nat (length l_bin)])
-  )
-)"*)
-
-(*fun jit :: "ebpf_asm \<Rightarrow> (u8 list * usize list) option" where
-"jit [] = Some ([], [])" |
-"jit (h#t) = (
-  case jit t of
-  None \<Rightarrow> None |
-  Some (l_bin, l_pc) \<Rightarrow> (
-    case per_jit_ins h of
-    None \<Rightarrow> None |
-    Some ins \<Rightarrow> Some (ins @l_bin, 0#(map (\<lambda> i. i + (of_nat (length ins))) l_pc))
-  )
-)"
-*)
-
-(*
-fun jit :: "ebpf_asm \<Rightarrow> (nat \<times> u64 \<times> x64_bin) list option" where
-"jit [] = Some []" |
-"jit (h#t) = (
-  case jit t of
-  None \<Rightarrow> None |
-  Some l_bin \<Rightarrow> (
-    case per_jit_ins h of
-    None \<Rightarrow> None |
-    Some ins \<Rightarrow> Some ((1,1,ins) #l_bin)
-  )
-)"
-*)
-
-
-fun jit :: "ebpf_asm \<Rightarrow> (nat \<times> u64 \<times> x64_bin) list option" where
-  "jit [] = Some []" |
-  "jit (h#xs) = (case per_jit_ins h of 
+fun jitper :: "ebpf_asm \<Rightarrow> (nat \<times> u64 \<times> x64_bin) list option" where
+  "jitper [] = Some []" |
+  "jitper (h#xs) = (case per_jit_ins h of 
                    None \<Rightarrow> None 
-                 | Some x \<Rightarrow> 
-                     (case jit xs of 
+                 | Some (n, off, x) \<Rightarrow> 
+                     (case jitper xs of 
                         None \<Rightarrow> None 
-                      | Some res \<Rightarrow> Some ((1,1,x) # res)))"
-
-(*
-fun jit :: "ebpf_asm \<Rightarrow> (nat \<times> u64 \<times> x64_bin) list option" where
-"jit [] = Some []" |
-"jit (h#xs) = (case per_jit_ins h of None \<Rightarrow> None | Some x \<Rightarrow> Some ((1,1,x) # the (jit xs)))"
-*)
-
-
-definition jit1 :: "ebpf_asm \<Rightarrow> x64_bin list option" where
-"jit1 ls \<equiv> if \<exists> s \<in> set ls. per_jit_ins s = None then None else 
-  Some ((map the (map per_jit_ins ls)))"
-
-
-(*definition jit :: "ebpf_asm \<Rightarrow> (nat \<times> u64 \<times> x64_bin) list option" where
-"jit ls \<equiv> if \<exists> s \<in> set ls. per_jit_ins s = None then None else 
-  let x = 
-  in Some ((map the (map per_jit_ins ls)))"
-*)
-
-(*definition jit :: "ebpf_asm \<Rightarrow> u8 list list option" where
-"jit ls \<equiv> if \<exists> s \<in> set ls. per_jit_ins s = None then None else Some ((map the (map per_jit_ins ls)))"
-*)                               
-(*
-fun jit :: "ebpf_asm \<Rightarrow> u8 list option" where
-"jit [] = Some []" |
-"jit (h#t) = (
-    case per_jit_ins h of
-    None \<Rightarrow> None |
-    Some ins \<Rightarrow> Some (ins @the (jit t))
-)"
-*)
+                      | Some res \<Rightarrow> Some ((n, off, x) # res)))"
 
 value "Some ((map the (map per_jit_ins [BPF_ALU64 BPF_ADD BR0 (SOReg BR6),BPF_ALU64 BPF_ADD BR0 (SOReg BR1)])))"
 
-value "jit [BPF_ALU64 BPF_SUB BR0 (SOReg BR6),BPF_EXIT]"
+value "jitper [BPF_ALU64 BPF_SUB BR0 (SOReg BR6),BPF_EXIT]"
 
+                
+value "snd (snd ((the (jitper [BPF_EXIT,BPF_EXIT]))!(0::nat)))"
 
-(*lemma "\<forall> s \<in> set ls. per_jit_ins s \<noteq> None \<Longrightarrow> jit ls = Some (concat (map the (map per_jit_ins ls)))"
-  apply(cases ls, simp_all)
-  subgoal for a list apply(cases a, simp_all)
-    subgoal for x91 x92 x93 apply(cases x91,simp_all)
-      apply(cases x93, simp_all)
-      subgoal for x2 apply (unfold per_jit_add_reg64_1_def)
-*)
-                 
-value "snd (snd ((the (jit [BPF_EXIT,BPF_EXIT]))!(0::nat)))"
+value "jitper []"
 
-value "jit []"
+value "jitper [BPF_ALU64 BPF_SUB BR0 (SOReg BR6),BPF_ALU64 BPF_ADD BR0 (SOReg BR6)]"
 
-value "jit [BPF_ALU64 BPF_SUB BR0 (SOReg BR6),BPF_ALU64 BPF_ADD BR0 (SOReg BR6)]"
+value "jitper [BPF_ALU64 BPF_ADD BR0 (SOReg BR6),BPF_ALU64 BPF_SUB BR0 (SOReg BR6)]"
 
-value "jit [BPF_ALU64 BPF_ADD BR0 (SOReg BR6),BPF_ALU64 BPF_SUB BR0 (SOReg BR6)]"
-
-value "jit [BPF_ALU64 BPF_ADD BR0 (SOReg BR6), BPF_ALU64 BPF_ADD BR0 (SOReg BR6), BPF_EXIT]"
+value "jitper [BPF_ALU64 BPF_ADD BR0 (SOReg BR6), BPF_ALU64 BPF_ADD BR0 (SOReg BR6), BPF_EXIT]"
 
 
 value "per_jit_ins (BPF_ALU64 BPF_ADD BR0 (SOReg BR6))"
-(**r simulation relation *)
-(*
-definition match_state :: "sbpf_state \<Rightarrow> x64_state \<Rightarrow> usize list \<Rightarrow> bool" where
-"match_state bst xst pc_map = (
-  case bst of
-  SBPF_OK pc rs m \<Rightarrow> (
-    case xst of
-      Next xpc xrs xm \<Rightarrow>
-        (\<forall> r. (rs r) = xrs (bpf_to_x64_reg r)) \<and> \<comment>\<open> for ALU + MEM + Call \<close>
-        pc_map!(unat pc) = xpc \<and>  \<comment>\<open> for Jump \<close>
-        m = xm  \<comment>\<open> for MEM + Call \<close> |
-      _ \<Rightarrow> False
-  ) |
-  SBPF_Success v \<Rightarrow>(
-    case xst of
-    Next xpc xrs xm \<Rightarrow> v = xrs (bpf_to_x64_reg BR0) \<comment>\<open> for EXIT \<close> |
-      _ \<Rightarrow> False
-  ) |
-  _ \<Rightarrow> False
-)"
-*)
+
+
+subsection \<open> simulation relation \<close>
 
 definition match_state :: "sbpf_state \<Rightarrow> x64_state \<Rightarrow> bool" where
 "match_state bst xst = (
@@ -286,8 +209,8 @@ lemma aluq_subgoal_rr_aux3:"bins = BPF_ALU64 BPF_ADD dst (SOReg src) \<Longright
 
 lemma addq_subgoal_rr_generic:
   assumes a0:"bins = BPF_ALU64 BPF_ADD dst (SOReg src)" and
-       a1:"per_jit_add_reg64_1 dst src = Some l_bin" and
-       a3:"x64_decode 0 l_bin = Some (length l_bin, xins)" and
+       a1:"per_jit_add_reg64_1 dst src = Some (n, off, l_bin)" and
+       a3:"x64_decode 0 l_bin = Some (n, xins)" and
        a4:"sbpf_step prog (SBPF_OK pc rs m) = (SBPF_OK pc' rs' m')" and
        a5:"Next spc' reg' m' = exec_instr xins sz spc reg m" and
        a6:"match_state (SBPF_OK pc rs m) (Next spc reg m) " and
@@ -295,7 +218,7 @@ lemma addq_subgoal_rr_generic:
   shows "match_state (SBPF_OK pc' rs' m') (Next spc' reg' m') "
 proof -
   have b0:"xins = Paddq_rr (bpf_to_x64_reg dst) (bpf_to_x64_reg src)" using x64_encode_decode_consistency per_jit_add_reg64_1_def a1 a3 
-    by (metis option.inject prod.inject)
+    by (metis option.inject prod.inject unat_eq_zero)
     moreover have b1:"(\<forall> r. (rs r) = reg (bpf_to_x64_reg r))" using a6 spec match_state_def by simp
     moreover have b2:"(rs src) = reg (bpf_to_x64_reg src)" using a6 spec b1 by simp
     hence b3:"(rs' dst) = reg' (bpf_to_x64_reg dst)" using aluq_subgoal_rr_aux1 b0 b1 b2 a0 a4 a5 a7 by metis
@@ -320,7 +243,7 @@ lemma exit_subgoal_rr_generic:
 proof-
   have b0:"st' = SBPF_Success (rs BR0)" using a0 a4 a7 a8 by simp
   have b1:"xins = Pret" using x64_encode_decode_consistency per_jit_exit_def a0 a1 a3
-    by (metis Pair_inject option.inject)
+    by (metis Pair_inject option.inject unat_0)
   moreover have b2:"(\<forall> r. (rs r) = reg (bpf_to_x64_reg r))" using a6 spec match_state_def by simp
   moreover have b3:"(rs BR0) = reg (bpf_to_x64_reg BR0)" using a6 spec b2 by simp
   have b4:"Mem.loadv M64 m ((reg SP) + (u64_of_memory_chunk M64)) \<noteq> None" sorry

@@ -68,9 +68,14 @@ fun x64_sem :: "nat \<Rightarrow> x64_bin \<Rightarrow> outcome \<Rightarrow> ou
 
 fun x64_sem1 :: "nat \<Rightarrow> u64 \<Rightarrow> (nat \<times> u64 \<times> x64_bin) list \<Rightarrow> outcome \<Rightarrow> outcome" where
 "x64_sem1 0 _ _ st = st" |
-"x64_sem1 (Suc n) pc lt xst = (let (num,off,l) = lt!(unat pc) in
-                       let xst_temp = (case xst of (Next xpc rs m) \<Rightarrow> Next 0 rs m | Stuck \<Rightarrow> Stuck) in
-                       let xst' = x64_sem num l xst_temp in (x64_sem1 n (pc+off) lt xst'))"
+"x64_sem1 (Suc n) pc lt xst = (
+  let (num,off,l) = lt!(unat pc) in
+  let xst_temp = (
+    case xst of
+    Next xpc rs m \<Rightarrow> Next 0 rs m |
+    Stuck \<Rightarrow> Stuck) in
+  let xst' = x64_sem num l xst_temp in (
+    x64_sem1 n (pc+off) lt xst'))"
 
 
 (*definition x64_sem1 ::"nat \<Rightarrow> (nat \<times> x64_bin) list \<Rightarrow> outcome \<Rightarrow> outcome" where
