@@ -2,13 +2,10 @@ theory JIT_def
 imports
   Main
   rBPFCommType rBPFSyntax
-  x64Syntax
+  x64Syntax x86CommType
   StepSem
+
 begin
-
-
-
-axiomatization x64_encode :: "instruction \<Rightarrow> x64_bin option"
 
 record CallFrame = (*  /// The caller saved registers
     pub caller_saved_registers: [u64; ebpf::SCRATCH_REGS],

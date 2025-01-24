@@ -26,6 +26,7 @@ fun eval_snd_op_u64 :: "snd_op \<Rightarrow> reg_map \<Rightarrow> u64" where
 
 definition eval_alu :: "binop \<Rightarrow> dst_ty \<Rightarrow> snd_op \<Rightarrow> reg_map \<Rightarrow> reg_map option" where
 "eval_alu bop dst sop rs = (
+  case sop of (SOImm x) \<Rightarrow> None | SOReg x \<Rightarrow> 
   let dv :: u64 = eval_reg dst rs in (
   let sv :: u64 = eval_snd_op_u64 sop rs in (
   case bop of
@@ -36,6 +37,7 @@ definition eval_alu :: "binop \<Rightarrow> dst_ty \<Rightarrow> snd_op \<Righta
 fun sbpf_step :: "ebpf_asm \<Rightarrow> sbpf_state \<Rightarrow> sbpf_state" where
 "sbpf_step prog (SBPF_OK pc rs m) = (
   if length prog = 0 then SBPF_Err
+  else if unat pc \<ge> length prog \<or> unat pc < 0 then SBPF_Err
   else (
     case prog!(unat pc) of
     BPF_ALU64 bop d sop \<Rightarrow> (
@@ -49,10 +51,12 @@ fun sbpf_step :: "ebpf_asm \<Rightarrow> sbpf_state \<Rightarrow> sbpf_state" wh
     BPF_EXIT \<Rightarrow> SBPF_Success (rs BR0) |
     _ \<Rightarrow> SBPF_Err
 ))" |
-"sbpf_step _ _ = SBPF_Err"
+"sbpf_step prog _  = SBPF_Err" 
 
 fun sbpf_sem :: "nat \<Rightarrow> ebpf_asm \<Rightarrow> sbpf_state \<Rightarrow> sbpf_state" where
 "sbpf_sem 0 _ st = st" |
 "sbpf_sem (Suc n) prog st = sbpf_sem n prog (sbpf_step prog st)"
+
+
 
 end
