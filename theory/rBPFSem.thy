@@ -6,6 +6,18 @@ begin
 
 type_synonym reg_map = "bpf_ireg \<Rightarrow> u64"
 
+record CallFrame = (*  /// The caller saved registers
+    pub caller_saved_registers: [u64; ebpf::SCRATCH_REGS],
+*)
+caller_saved_registers :: "u64 list"
+frame_pointer :: u64
+target_pc :: u64
+
+record stack_state = 
+call_depth :: u64
+stack_pointer :: u64
+call_frames :: "CallFrame list"
+
 
 definition eval_reg :: "dst_ty \<Rightarrow> reg_map \<Rightarrow> u64" where
 "eval_reg dst rs = rs dst"

@@ -75,6 +75,16 @@ value "per_jit_ins (BPF_ALU64 BPF_ADD BR0 (SOReg BR6))"
 
 subsection \<open> simulation relation \<close>
 
+definition match_stack :: "regset \<Rightarrow> mem \<Rightarrow> bool" where
+"match_stack xrs m = (
+  \<exists> v. Mem.loadv M64 m ((xrs SP) + (u64_of_memory_chunk M64)) = Some (Vlong v))"
+
+text \<open> because jited x64 code may use pop and push to save registers,
+then x64 memory has more info than sbpf memory \<close>
+definition match_mem :: "mem \<Rightarrow> mem \<Rightarrow> bool" where
+"match_mem bm xm = (
+  \<forall> mc addr v. (Mem.loadv mc bm addr = Some v) \<longrightarrow> (Mem.loadv mc xm addr = Some v))"
+
 definition match_state :: "sbpf_state \<Rightarrow> x64_state \<Rightarrow> bool" where
 "match_state bst xst = (
   case bst of
@@ -82,7 +92,7 @@ definition match_state :: "sbpf_state \<Rightarrow> x64_state \<Rightarrow> bool
     case xst of
       Next xpc xrs xm \<Rightarrow>
         (\<forall> r. (rs r) = xrs (bpf_to_x64_reg r)) \<and> \<comment>\<open> for ALU + MEM + Call \<close>
-        m = xm  \<comment>\<open> for MEM + Call \<close> |
+        match_mem m xm  \<comment>\<open> for MEM + Call \<close> |
       _ \<Rightarrow> False
   ) |
   SBPF_Success v \<Rightarrow>(
