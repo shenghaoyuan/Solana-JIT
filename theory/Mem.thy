@@ -102,6 +102,10 @@ definition loadv :: "memory_chunk \<Rightarrow> mem \<Rightarrow> addr_type \<Ri
                         (m (addr+4)) (m (addr+5)) (m (addr+6)) (m (addr+7))
 ))"
 
+value "option_u64_of_u8_2 (Some 0b10000000) (Some 0b01000000)"
+value "0b10000000::u8"
+value "0b01000000::u8"
+
 definition storev :: "memory_chunk \<Rightarrow> mem \<Rightarrow> addr_type \<Rightarrow> val \<Rightarrow> mem option" where
 "storev mc m addr v = (
   case mc of
@@ -142,6 +146,14 @@ definition storev :: "memory_chunk \<Rightarrow> mem \<Rightarrow> addr_type \<R
                       m i) |
     _ \<Rightarrow> None)
 )"
+
+definition init_mem2 :: "mem" where
+"init_mem2 = (\<lambda> i. if i = (0b0000000000000000000000000000000000000000000000000000000000000001::u64) then Some 0 else None)"
+
+
+value "loadv M16 init_mem2 (1::u64)"
+value "loadv M16 (the (storev M16 init_mem2 (1::u64) (Vshort 1))) (1::u64)"
+
 
  (*
 axiomatization
