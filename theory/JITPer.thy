@@ -497,26 +497,89 @@ lemma match_s_not_stuck:"match_state s xst \<Longrightarrow> xst \<noteq> Stuck"
   subgoal for x2 by auto
   by simp
 
+(*
+lemma x64_sem1_induct:"x64_sem1 (Suc n) pc x64_prog (Next xpc xrs m) = xst' \<Longrightarrow> 
+  x64_prog!(unat pc) = (num,off,l) \<Longrightarrow>
+  x64_sem num l (Next 0 xrs1 m1) = Next xpc1 xrs1 m1 \<Longrightarrow> 
+  x64_sem1 n (pc+off) x64_prog (Next xpc1 xrs1 m1) = xst'"
+  apply(cases "x64_prog!(unat pc)",simp_all)
+  subgoal for a apply(cases "(Next 0 xrs1 m1)",simp_all)
+    subgoal for x11
+*)
 
-lemma x64_sem1_induct:"x64_sem1 (Suc n) pc x64_prog xst = xst' \<Longrightarrow>
-  xst1 = Next xpc1 xrs1 m1 \<Longrightarrow> xpc1 = 0 \<Longrightarrow> x64_sem1 n pc x64_prog xst = xst1 \<Longrightarrow> 
-  x64_sem 1 (snd (snd ((x64_prog!(unat pc'))))) xst1 = xst'"
- apply(induct n arbitrary:pc x64_prog xst xst' xst1 xpc1 xrs1 m1 pc')
-   apply simp
-  apply(cases "x64_decode 0 (snd (snd (x64_prog ! unat pc')))", simp_all)
-  subgoal for pc x64_proga xst xst' xst1 xpc1 xrs1 m pc'
-    apply(cases "x64_proga ! unat pc", simp_all)
-    subgoal for a b c apply(cases "x64_decode 0 (snd (snd (x64_proga ! unat pc')))",simp_all)
-      sorry
-    done
-  subgoal for pc x64_proga xst xst' xst1 xpc1 xrs1 m a pc'
-    apply(cases "x64_proga ! unat pc", simp_all)
-    subgoal for aa b c apply(cases "x64_decode 0 (snd (snd (x64_proga ! unat a)))", simp_all) sorry
-    done
-  subgoal for n pc x64_prog xst xst' xst1 xpc1 xrs1 m pc' apply(cases "x64_prog ! unat pc", simp_all)
-    done
-  done
 
+lemma x64_sem1_induct:"x64_sem1 (Suc n) pc x64_prog (Next xpc xrs m) = xst' \<Longrightarrow> 
+  x64_prog!(unat pc) = (num,off,l) \<Longrightarrow>
+  x64_sem num l (Next 0 xrs m) = xst1 \<Longrightarrow> 
+  x64_sem1 n (pc+off) x64_prog xst1 = xst'"
+ apply(induct n arbitrary:pc x64_prog xpc xrs m xst' num off l)
+ apply simp 
+  by simp
+
+lemma demo2_aux:
+  "\<lbrakk> sbpf_sem n prog s = s';
+   s = (SBPF_OK pc rs m);
+   s' = (SBPF_OK pc' rs' m');
+   xst = (Next xpc xrs xm);
+   match_state s xst;
+   jitper prog = Some x64_prog;
+   prog \<noteq> [] \<and> unat pc < length prog \<and> unat pc \<ge> 0;
+   xpc = 0;
+   x64_sem1 n pc x64_prog xst = xst' \<rbrakk> \<Longrightarrow>
+   match_state s' xst'"
+(* \<exists> xst'. x64_sem1 n pc x64_prog xst = xst' \<and> match_state s' xst'"*)
+proof (induction n arbitrary: prog s s' pc rs m pc' rs' m' xst' xst xpc xrs xm x64_prog xst')
+  case 0
+  then show ?case
+    by simp
+next
+  case (Suc n)
+  assume 
+       assm1: "sbpf_sem (Suc n) prog s = s'" and
+       assm2:"s = SBPF_OK pc rs m" and
+       assm3:"s' = SBPF_OK pc' rs' m'" and
+       assm4:"xst = Next xpc xrs xm" and
+       assm5:"match_state s xst" and
+       assm6:"jitper prog = Some x64_prog" and
+       assm7:"prog \<noteq> [] \<and> unat pc < length prog \<and> 0 \<le> unat pc " and
+       assm8:"xpc = 0" and
+       assm9:"x64_sem1 (Suc n) pc x64_prog xst = xst'"
+  then obtain s1 where s1_eq: "s1 = sbpf_step prog s" by simp
+  have n_step_def:"sbpf_sem n prog s1 = s'" using s1_eq assm1 sbpf_sem_induct
+    by (metis sbpf_sem.simps(2))
+  moreover have a1:"\<exists> pc1 rs1 m1. s1 = (SBPF_OK pc1 rs1 m1)"
+    by (metis Suc.prems(3) bot_nat_0.not_eq_extremum intermediate_step_is_ok n_step_def sbpf_sem.simps(1) sbpf_state.simps(6))
+  obtain pc1 rs1 m1 where a2:"s1 = (SBPF_OK pc1 rs1 m1)" using a1 by auto
+  have a3:"m1 = m" using mem_is_not_changed s1_eq assm2 a2 by blast
+  have "\<exists> xst1. x64_sem 1 (snd (snd ((x64_prog!(unat pc)))))(Next xpc xrs xm) = xst1 \<and> match_state s1 xst1"
+    using s1_eq assm2 a2 assm4 assm5 assm6 assm7 assm8 assm8 demo1 by presburger
+  then obtain xst1 where a4:"x64_sem 1 (snd (snd ((x64_prog!(unat pc)))))(Next 0 xrs xm) = xst1 \<and> match_state s1 xst1" using assm8 by auto
+  moreover have a5:"match_state s1 xst1" using calculation(2) by blast
+  have "\<exists> xpc1 xrs1 xm1. xst1 = Next xpc1 xrs1 xm1" using a4 by (metis match_s_not_stuck outcome.exhaust)
+  then obtain xpc1 xrs1 xm1 where a10:"xst1 = Next xpc1 xrs1 xm1" by auto
+  have "\<exists> num off l. x64_prog!(unat pc) = (num,off,l)" by (metis split_pairs)
+  then obtain num off l where a6:"x64_prog!(unat pc) = (num,off,l)" by auto
+  have a7:"l = (snd (snd ((x64_prog!(unat pc)))))" using a6 by simp
+  have a8:"num = 1" sorry
+  let "?pc" = "pc+off"
+  have a9:"x64_sem1 n ?pc x64_prog xst1 = xst'" using x64_sem1_induct assm4 assm9 a7 a6 a8 a4 by blast
+  have a11:"xpc1 = 0" sorry
+  have a12:"unat pc1 < length prog \<and> 0 \<le> unat pc1" using s1_eq n_step_def assm7 sorry
+  have a13:"?pc = pc1" sorry
+  from Suc.IH have " sbpf_sem n prog s = s' \<Longrightarrow>
+           s = SBPF_OK pc rs m \<Longrightarrow>
+           s' = SBPF_OK pc' rs' m' \<Longrightarrow>
+           xst = Next xpc xrs xm \<Longrightarrow>
+           match_state s xst \<Longrightarrow>
+           jitper prog = Some x64_prog \<Longrightarrow>
+           prog \<noteq> [] \<and> unat pc < length prog \<and> 0 \<le> unat pc \<Longrightarrow> 
+           xpc = 0 \<Longrightarrow> 
+           x64_sem1 n pc x64_prog xst = xst' \<Longrightarrow> 
+           match_state s' xst'" by blast
+  have an:"match_state s' xst'" using n_step_def a2 assm3 a10 a5 assm6 assm7 assm8 a9 Suc a11 a12 a13 by blast
+  then show ?case using an by auto
+qed
+(*
 lemma demo2_aux:
   "\<lbrakk> sbpf_sem n prog s = s';
    s = (SBPF_OK pc rs m);
@@ -571,17 +634,17 @@ next
   have b0:"\<exists> xpc1 xrs1 m2. xst1 = (Next xpc1 xrs1 m2)" using match_s_not_stuck a5 by (meson outcome.exhaust)
   obtain xpc1 xrs1 m2 where b0:"xst1 = (Next xpc1 xrs1 m2)" using b0 by auto
   (*moreover have "m2 = m" using a4 a5 calculation(2) match_state_def mem_is_not_changed2 sorry*)
-  have b3:"xpc1 = 0" sorry
   have b4:"unat pc1 < length prog \<and> unat pc1 \<ge> 0" 
     by (metis (no_types, lifting) a4 assm3 get_s1 linorder_not_less sbpf_state.simps(6) sbpf_step.simps(1))
-  have b6:"\<exists> xst2. x64_sem 1 (snd (snd ((x64_prog!(unat pc1))))) xst1 = xst2 \<and> match_state s' xst2" 
-    using s1_eq a4 assm3 b0 a5 assm6 assm7 b3 demo1 b4 Suc.prems(6) get_s1 by metis
-  obtain xst2 where "x64_sem 1 (snd (snd ((x64_prog!(unat pc1))))) xst1 = xst2 \<and> match_state s' xst2" using b6 by auto
+  have b6:"\<exists> xst2. x64_sem 1 (snd (snd ((x64_prog!(unat pc1)))))(Next 0 xrs1 m2) = xst2 \<and> match_state s' xst2" 
+    using s1_eq a4 assm3 b0 a5 assm6 assm7 b0 demo1 b4 Suc.prems(6) get_s1 
+    by (smt (verit, ccfv_SIG) match_state_def outcome.simps(4) sbpf_state.case(1))
+  obtain xst2 where "x64_sem 1 (snd (snd ((x64_prog!(unat pc1))))) (Next 0 xrs1 m2) = xst2 \<and> match_state s' xst2" using b6 by auto
   moreover have "xst2 = xst'" using x64_sem1_induct 
-    using a2 assm9 b3 calculation(2) b0 by blast
+    using a2 assm9 calculation(2) b0 sorry
   then show ?case using calculation(2) by fastforce
 qed
-
+*)
 lemma demo2:
   "\<lbrakk> sbpf_sem n prog s = s';
    s = (SBPF_OK pc rs m);
