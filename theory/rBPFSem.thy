@@ -70,5 +70,18 @@ fun sbpf_sem :: "nat \<Rightarrow> ebpf_asm \<Rightarrow> sbpf_state \<Rightarro
 "sbpf_sem (Suc n) prog st = sbpf_sem n prog (sbpf_step prog st)"
 
 
+value "sbpf_step [BPF_ALU64 BPF_ADD BR0 (SOReg BR1)] (SBPF_OK 1 (\<lambda>x. 0) Map.empty)" 
 
+value "sbpf_sem 0 [BPF_ALU64 BPF_ADD BR0 (SOReg BR1)] (SBPF_OK 1 (\<lambda>x. 0) Map.empty)"
+(*
+n = 0
+  prog = [BPF_LD_IMM BR0 0 0]
+  s = SBPF_OK 1 (\<lambda>x. 0) Map.empty
+  s' = SBPF_OK 1 _ _
+  pc = 1
+  rs = _
+  m = _
+  pc' = 1
+  rs' = _
+  m' = _*)
 end

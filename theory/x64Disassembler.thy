@@ -65,7 +65,7 @@ definition x64_decode :: "nat \<Rightarrow> x64_bin \<Rightarrow> (nat * instruc
   else None
 else None)"
 
-value "x64_decode 0 [0b01001000,0b00000001,0b11011000]"
+value "x64_decode 0 [[0b01001000,0b00000001,0b11011000],[]]"
 
 end
 
