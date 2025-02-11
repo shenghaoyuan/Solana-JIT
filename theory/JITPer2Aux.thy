@@ -6,10 +6,10 @@ begin
 lemma interp3_list_aux1:
   assumes a0:"xins\<noteq>[]" and 
           a1:"result = interp3 xins (Next pc reg m)"
-        shows "result = Next pc' reg' m' \<longrightarrow> (exec_instr (xins!0) sz pc reg m) \<noteq> Stuck"
-proof (rule ccontr)
-  assume a2:"\<not> (result = Next pc' reg' m' \<longrightarrow> (exec_instr (xins!0) sz pc reg m) \<noteq> Stuck)"
-  let ?tmp = "(exec_instr (xins!0) sz pc reg m) "
+        shows "result = Next pc' reg' m' \<longrightarrow> (exec_instr (xins!0) 1 pc reg m) \<noteq> Stuck"
+proof (rule ccontr)                             
+  assume a2:"\<not> (result = Next pc' reg' m' \<longrightarrow> (exec_instr (xins!0) 1 pc reg m) \<noteq> Stuck)"
+  let ?tmp = "(exec_instr (xins!0) 1 pc reg m) "
   let ?res_ok = "Next pc' reg' m'"
   have a3:"\<not> (\<not> result = ?res_ok \<or> ?tmp \<noteq> Stuck)" using imp_conv_disj a2 by blast
   have a4:"result = ?res_ok \<and> ?tmp = Stuck" using a3 by simp
@@ -17,14 +17,12 @@ proof (rule ccontr)
    proof
      have b0:"?tmp = Stuck" using a4 conjE by simp
      have b2: "interp3 xins (Next pc reg m) = Stuck"using a0 b0 exec_instr_def 
-       apply(cases "(xins!0)",simp_all)
-       apply(cases i)
-     (*by (metis (no_types, lifting) interp3.elims nth_Cons_0 outcome.case(2) outcome.simps(4))*)
+     by (metis (no_types, lifting) interp3.elims nth_Cons_0 outcome.case(2) outcome.simps(4))
      thus "False" using b2 
        using a1 a4 by (simp add: a0 exec_instr_def)
    qed
  qed
-(*
+
 lemma interp3_list_aux2:
   assumes a0:"length xins = (2::nat)" and 
           a1:"result = interp3 xins (Next pc reg m)" and
@@ -286,5 +284,5 @@ proof -
   have b2:"butlast(tl xins) = tl ?tmplist" using List.butlast_tl a0 by blast
   thus ?thesis using b2 b1 by simp
   qed
-*)
+
 end
