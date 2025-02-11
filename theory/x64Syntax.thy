@@ -186,8 +186,10 @@ definition cond_of_u8 :: "u8 \<Rightarrow> testcond option" where
 datatype instruction =
   Paddq_rr ireg ireg
   | Pret
-  | Pnop
-
+  | Ppushl_r ireg
+  | Ppopl  ireg
+  | Pmovq_rr ireg ireg       (**r [mov] (integer) *)
+  | Pmulq_r ireg
 
 type_synonym x64_asm = "instruction list"
 type_synonym x64_bin = "u8 list"

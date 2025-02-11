@@ -43,6 +43,7 @@ definition eval_alu :: "binop \<Rightarrow> dst_ty \<Rightarrow> snd_op \<Righta
   let sv :: u64 = eval_snd_op_u64 sop rs in (
   case bop of
   BPF_ADD   \<Rightarrow> Some (rs#dst <-- (dv+sv)) |
+  BPF_MUL   \<Rightarrow> Some (rs#dst <-- (dv*sv)) |
   _ \<Rightarrow> None
 )))"
 
@@ -55,6 +56,11 @@ fun sbpf_step :: "ebpf_asm \<Rightarrow> sbpf_state \<Rightarrow> sbpf_state" wh
     BPF_ALU64 bop d sop \<Rightarrow> (
       case bop of
       BPF_ADD \<Rightarrow>(
+        case eval_alu bop d sop rs of
+        None \<Rightarrow> SBPF_Err |
+        Some rs' \<Rightarrow> SBPF_OK (pc+1) rs' m
+      ) |
+      BPF_MUL \<Rightarrow>(
         case eval_alu bop d sop rs of
         None \<Rightarrow> SBPF_Err |
         Some rs' \<Rightarrow> SBPF_OK (pc+1) rs' m

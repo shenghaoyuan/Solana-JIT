@@ -38,11 +38,26 @@ definition per_jit_exit :: "(nat \<times> u64 \<times> x64_bin) option" where
     map_option (\<lambda> l. (1, 1, l)) (x64_encode ins)
 )"
 
+
+(*definition per_jit_mul_reg64::"bpf_ireg \<Rightarrow> bpf_ireg \<Rightarrow> (nat \<times> u64 \<times> x64_bin) option" where
+"per_jit_mul_reg64 dst src \<equiv> let ins_list = [Pmovq_rr (bpf_to_x64_reg src) R11, Ppushl_r RDX, Pmulq_r R11, Ppopl RDX] in
+   map_option (\<lambda> l. (5, 1, l)) (x64_encodes_func_suffix ins_list)"*)
+
+definition per_jit_mul_reg64::"bpf_ireg \<Rightarrow> bpf_ireg \<Rightarrow> (nat \<times> u64 \<times> x64_bin) option" where
+"per_jit_mul_reg64 dst src \<equiv> let ins_list = case (bpf_to_x64_reg dst) of
+    RAX \<Rightarrow> [Pmovq_rr (bpf_to_x64_reg src) R11, Ppushl_r RDX, Pmulq_r R11, Ppopl RDX]|
+    RDX \<Rightarrow> [Pmovq_rr (bpf_to_x64_reg src) R11, Ppushl_r RAX, Pmovq_rr RAX RDX, Pmulq_r R11, Pmovq_rr RDX RAX, Ppopl RAX]|
+    _   \<Rightarrow> [Pmovq_rr (bpf_to_x64_reg src) R11, Ppushl_r RAX, Pmovq_rr RAX (bpf_to_x64_reg dst), Ppushl_r RDX, Pmulq_r R11, 
+            Ppopl RDX, Pmovq_rr (bpf_to_x64_reg dst) RAX, Ppopl RAX]
+  in map_option (\<lambda> l. (length ins_list, 1, l)) (x64_encodes2 ins_list)"
+
+
 fun per_jit_ins ::" bpf_instruction \<Rightarrow> (nat \<times> u64 \<times> x64_bin) option" where
 "per_jit_ins bins = (
   case bins of
   BPF_ALU64 BPF_ADD dst (SOReg src) \<Rightarrow> (per_jit_add_reg64_1 dst src) |
   BPF_EXIT \<Rightarrow> per_jit_exit |
+  BPF_ALU64 BPF_MUL dst (SOReg src) \<Rightarrow> (per_jit_mul_reg64 dst src) |
   _ \<Rightarrow> None
 )"
 
@@ -58,6 +73,8 @@ fun jitper :: "ebpf_asm \<Rightarrow> (nat \<times> u64 \<times> x64_bin) list o
 value "Some ((map the (map per_jit_ins [BPF_ALU64 BPF_ADD BR0 (SOReg BR6),BPF_ALU64 BPF_ADD BR0 (SOReg BR1)])))"
 
 value "jitper [BPF_ALU64 BPF_SUB BR0 (SOReg BR6),BPF_EXIT]"
+
+value "jitper [BPF_ALU64 BPF_MUL BR0 (SOReg BR6)]"
 
                 
 value "snd (snd ((the (jitper [BPF_EXIT,BPF_EXIT]))!(0::nat)))"
@@ -255,7 +272,8 @@ lemma mem_is_not_changed:"s2 = sbpf_step prog s1 \<Longrightarrow> s1 = (SBPF_OK
     apply(split if_splits, simp_all)
     apply(split if_splits, simp_all)
     apply(cases x91, simp_all)
-    apply(cases "eval_alu BPF_ADD x92 x93 rs1", simp_all)
+     apply(cases "eval_alu BPF_ADD x92 x93 rs1", simp_all)
+    apply(cases "eval_alu BPF_MUL x92 x93 rs1",simp_all)
     done
   subgoal for x10
     by (metis bpf_instruction.simps(370) sbpf_state.simps(6))
@@ -277,7 +295,7 @@ lemma mem_is_not_changed:"s2 = sbpf_step prog s1 \<Longrightarrow> s1 = (SBPF_OK
     by (metis bpf_instruction.simps(378) sbpf_state.simps(6))
   by (metis (no_types, lifting) bpf_instruction.simps(379) sbpf_state.distinct(1) sbpf_state.simps(6))             
 
-lemma mem_is_not_changed2:"x64_sem 1 l xst1 = xst2 \<Longrightarrow> xst1 = Next xpc1 xrs1 m1 \<Longrightarrow> xst2 = Next xpc2 xrs2 m2 \<Longrightarrow> m1 = m2"
+(*lemma mem_is_not_changed2:"x64_sem 1 l xst1 = xst2 \<Longrightarrow> xst1 = Next xpc1 xrs1 m1 \<Longrightarrow> xst2 = Next xpc2 xrs2 m2 \<Longrightarrow> m1 = m2"
   apply(cases "x64_decode (unat xpc1) l", simp_all)
   subgoal for a apply(cases a, simp_all)
     subgoal for aa b
@@ -286,10 +304,10 @@ lemma mem_is_not_changed2:"x64_sem 1 l xst1 = xst2 \<Longrightarrow> xst1 = Next
       apply(unfold exec_ret_def Let_def) 
       apply(cases "loadv M64 m1 (xrs1 SP + u64_of_memory_chunk M64)", simp_all)
       subgoal for ab apply(cases ab, simp_all)
-      done
+        done
     done
   done
-  done
+  done*)
 
 lemma addq_subgoal_rr_generic:
   assumes a0:"bins = BPF_ALU64 BPF_ADD dst (SOReg src)" and
@@ -344,16 +362,46 @@ proof-
   thus ?thesis using exec_instr_def b3 b1 b0 a5 using b5_2 exec_ret_def match_state_def by force
 qed
 
+
+lemma mulq_subgoal_rr_generic:
+  assumes a0:"bins = BPF_ALU64 BPF_ADD dst (SOReg src)" and
+       a1:"per_jit_mul_reg64 dst src = Some (n, off, l_bin)" and
+       a3:"x64_decodes 0 l_bin = Some xins" and
+       a4:"sbpf_step prog (SBPF_OK pc rs m) = (SBPF_OK pc' rs' m')" and
+       a5:"Next spc' reg' xm' = interp3 (map snd xins) (Next spc reg xm)" and
+       a6:"match_state (SBPF_OK pc rs m) (Next spc reg xm) " and
+       a7:"prog!(unat pc) = bins" and 
+       a8:"(bpf_to_x64_reg dst) = RAX"
+  shows "match_state (SBPF_OK pc' rs' m') (Next spc' reg' xm') "
+proof -
+  let "?xins" = "map snd xins"
+  have b0:"?xins = [Pmovq_rr (bpf_to_x64_reg src) R11, Ppushl_r RDX, Pmulq_r R11, Ppopl RDX]"
+    using x64_encodes_decodes_consistency per_jit_mul_reg64_def a1 a3 a8 
+    by(cases "bpf_to_x64_reg dst",simp_all)
+    moreover have b1:"(\<forall> r. (rs r) = reg (bpf_to_x64_reg r))" using a6 spec match_state_def by simp
+    moreover have b2:"(rs src) = reg (bpf_to_x64_reg src)" using a6 spec b1 by simp
+    hence b3:"(rs' dst) = reg' (bpf_to_x64_reg dst)" using mulq_subgoal_rr_aux1 b0 b1 b2 a0 a4 a5 a7 a8 sorry
+    have b4:"\<forall> r \<noteq> dst. reg'(bpf_to_x64_reg r) = reg (bpf_to_x64_reg r)" using b0 a5 aluq_subgoal_rr_aux2 by blast
+    have b5:"\<forall> r \<noteq> dst. (rs' r) = (rs r)" using aluq_subgoal_rr_aux3 a0 a4 a7 by force
+    have b6:"\<forall> r \<noteq> dst. (rs r) = reg ((bpf_to_x64_reg r))" using a6 using b1 by blast
+    have b7:"(\<forall> r \<noteq> dst. (rs' r) = reg' ((bpf_to_x64_reg r)))" using b1 b4 b5 by presburger
+    have b8:"match_stack reg' xm'" using stack_is_not_changed_by_add a6 match_state_def a5 b0 by simp
+    have b9:"match_mem m' xm'" using mem_is_not_changed mem_is_not_changed_by_add match_state_def a6
+      by (metis (no_types, lifting) a4 a5 b0 outcome.simps(4) sbpf_state.simps(9))
+    thus ?thesis using b3 b7 match_state_def b8 b9 by fastforce
+  qed
+
 lemma aux1:"length prog \<noteq> 0 \<and> unat pc < length prog \<and> unat pc \<ge> 0 \<Longrightarrow> 
   s' = sbpf_step prog s \<Longrightarrow>
   s = (SBPF_OK pc rs m) \<Longrightarrow> 
   s' = (SBPF_OK pc' rs' m') \<Longrightarrow> 
-  \<exists> dst src. prog!(unat pc) = BPF_ALU64 BPF_ADD dst (SOReg src)"
+  \<exists> dst src. prog!(unat pc) = BPF_ALU64 BPF_ADD dst (SOReg src) \<or> prog!(unat pc) = BPF_ALU64 BPF_MUL dst (SOReg src)"
   apply(cases "prog!(unat pc)",simp_all)
   subgoal for x91 x92 x93 
    apply(unfold eval_alu_def Let_def)
     apply(cases x91,simp_all) 
-    apply(cases x93, simp_all)
+     apply(cases x93, simp_all)
+     apply(cases x93, simp_all)
     done
   done
 
@@ -361,11 +409,12 @@ lemma aux2:"length prog \<noteq> 0 \<and> unat pc < length prog \<and> unat pc \
   s' = sbpf_step prog s \<Longrightarrow>
   s = (SBPF_OK pc rs m) \<Longrightarrow> 
   s' \<noteq> SBPF_Err \<Longrightarrow> 
-  \<exists> dst src. prog!(unat pc) = BPF_ALU64 BPF_ADD dst (SOReg src) \<or> prog!(unat pc) = BPF_EXIT"
+  \<exists> dst src. prog!(unat pc) \<in> {BPF_ALU64 BPF_ADD dst (SOReg src),BPF_EXIT, BPF_ALU64 BPF_MUL dst (SOReg src)}"
   apply(cases "prog!(unat pc)",simp_all)
   subgoal for x91 x92 x93 
    apply(unfold eval_alu_def Let_def)
     apply(cases x91,simp_all) 
+     apply(cases x93, simp_all)
     apply(cases x93, simp_all)
     done
   done
@@ -423,10 +472,13 @@ next
         apply (cases "jitper prog"; simp_all) 
         apply(cases a, simp_all) 
         subgoal for x91 x92 x93 apply(cases x91,simp_all) 
-          apply(cases x93,simp_all)
+           apply(cases x93,simp_all)
           subgoal for x2 apply(cases "per_jit_add_reg64_1 x92 x2",simp_all) 
             done 
-          done 
+          apply(cases x93,simp_all)
+          subgoal for x2 apply(cases "per_jit_mul_reg64 x92 x2",simp_all)
+            done 
+          done
         apply(unfold per_jit_exit_def) 
         apply(cases per_jit_exit,simp_all) 
         done
@@ -460,7 +512,7 @@ lemma aux4:"jit prog = x64_prog \<Longrightarrow> x64_prog \<noteq> None \<Longr
   using jit_def aux3 by (metis (no_types, lifting) list.map_comp map_equality_iff nth_map nth_mem option.collapse option.sel)
 *)
 
-
+                                  
 lemma demo1: assumes a0:"s' = sbpf_step prog s" and
   a1:"s = (SBPF_OK pc rs m)" and
   a2:"s' = (SBPF_OK pc' rs' m')" and
@@ -475,9 +527,44 @@ shows "\<exists> xst'. let l = (x64_prog!(unat pc)) in x64_sem (fst l) (snd (snd
 proof-
   let "?bpf_ins" = "prog!(unat pc)"
   have b0:"length prog \<noteq> 0" using a6 by blast
-  have b1:"\<exists> src dst. ?bpf_ins = BPF_ALU64 BPF_ADD dst (SOReg src)" using a0 a1 a2 a6 b0 aux1 by blast
-  obtain src dst where b2:"?bpf_ins = BPF_ALU64 BPF_ADD dst (SOReg src)" using b1 by blast
-  let "?l_bin"= "snd (snd (the (per_jit_ins ?bpf_ins)))"
+  have b1:"\<exists> src dst. ?bpf_ins = BPF_ALU64 BPF_ADD dst (SOReg src) \<or> ?bpf_ins = BPF_ALU64 BPF_MUL dst (SOReg src)" using a0 a1 a2 a6 b0 aux1 by blast
+  obtain src dst where b2:"?bpf_ins = BPF_ALU64 BPF_ADD dst (SOReg src) \<or> ?bpf_ins = BPF_ALU64 BPF_MUL dst (SOReg src)" using b1 by blast
+  show ?thesis
+  proof (cases "?bpf_ins = BPF_ALU64 BPF_ADD dst (SOReg src)")
+    case True
+    let "?l_bin"= "snd (snd (the (per_jit_ins ?bpf_ins)))"
+    have c0:"?l_bin = snd (snd (the (per_jit_add_reg64_1 dst src)))" using b2 True by fastforce
+    have c1:"Some ?l_bin = x64_encode (Paddq_rr (bpf_to_x64_reg dst) (bpf_to_x64_reg src))" using per_jit_add_reg64_1_def c0 by fastforce
+    have c2:"snd (snd (x64_prog!(unat pc))) = ?l_bin" using a6 c0 a5 aux5 by metis
+    let "?st" = "x64_sem (fst (x64_prog!(unat pc))) ?l_bin xst"
+    have "x64_prog!(unat pc) = the (per_jit_ins ?bpf_ins)" using aux5 a5 a6 by blast
+    then have "x64_prog!(unat pc) = the (per_jit_add_reg64_1 dst src)" using b2 True by simp
+    then have "(fst (x64_prog!(unat pc))) = 1" using per_jit_add_reg64_1_def by simp
+    hence c3:"\<exists> size2 xins2. x64_decode 0 ?l_bin = Some (length ?l_bin, xins2) \<and> ?st = exec_instr xins2 size2 xpc xrs xm" using x64_encode_decode_consistency a3 a7 c1 by fastforce
+    obtain size2 xins2 where c4:"x64_decode 0 ?l_bin = Some (length ?l_bin, xins2) \<and> ?st = exec_instr xins2 size2 xpc xrs xm" using c3 by auto
+    have c5:"xins2 = Paddq_rr (bpf_to_x64_reg dst) (bpf_to_x64_reg src)" using Pair_inject c4 c1 option.inject x64_encode_decode_consistency by metis
+    have c6:"\<exists> xrs' xpc' xm'. ?st = Next xpc' xrs' xm'" using exec_instr_def spec c5 c4 by auto
+    obtain xrs' xpc' xm' where c7:"?st = Next xpc' xrs' xm'" using c6 by auto
+    have "match_state s' ?st" using addq_subgoal_rr_generic a0 a1 a2 c7 a4 a3 c1 per_jit_add_reg64_1_def b2 c4 True by fastforce
+    then show ?thesis using True b2 c2 by force
+  next
+    case False
+    let "?l_bin"= "snd (snd (the (per_jit_ins ?bpf_ins)))"
+    have c0:"?l_bin = snd (snd (the (per_jit_mul_reg64 dst src)))" using b2 False by fastforce
+    have c1:"Some ?l_bin = (let ins_list = case (bpf_to_x64_reg dst) of
+    RAX \<Rightarrow> [Pmovq_rr (bpf_to_x64_reg src) R11, Ppushl_r RDX, Pmulq_r R11, Ppopl RDX]|
+    RDX \<Rightarrow> [Pmovq_rr (bpf_to_x64_reg src) R11, Ppushl_r RAX, Pmovq_rr RAX RDX, Pmulq_r R11, Pmovq_rr RDX RAX, Ppopl RAX]|
+    _   \<Rightarrow> [Pmovq_rr (bpf_to_x64_reg src) R11, Ppushl_r RAX, Pmovq_rr RAX (bpf_to_x64_reg dst), Ppushl_r RDX, Pmulq_r R11, 
+            Ppopl RDX, Pmovq_rr (bpf_to_x64_reg dst) RAX, Ppopl RAX]
+  in (x64_encodes_suffix ins_list))" using per_jit_mul_reg64_def c0 sorry
+    have c2:"snd (snd (x64_prog!(unat pc))) = ?l_bin" using a6 c0 a5 aux5 by metis
+    let "?st" = "x64_sem (fst (x64_prog!(unat pc))) ?l_bin xst"
+    have "x64_prog!(unat pc) = the (per_jit_ins ?bpf_ins)" using aux5 a5 a6 by blast
+    then have "x64_prog!(unat pc) = the (per_jit_mul_reg64 dst src)" using b2 False by simp
+    then show ?thesis sorry
+  qed
+qed
+  (*let "?l_bin"= "snd (snd (the (per_jit_ins ?bpf_ins)))"
   have c0:"?l_bin = snd (snd (the (per_jit_add_reg64_1 dst src)))" using b2 by fastforce
   have c1:"Some ?l_bin = x64_encode (Paddq_rr (bpf_to_x64_reg dst) (bpf_to_x64_reg src))" using per_jit_add_reg64_1_def c0 by fastforce
   have c2:"snd (snd (x64_prog!(unat pc))) = ?l_bin" using a6 c0 a5 aux5 by metis
@@ -492,7 +579,7 @@ proof-
   obtain xrs' xpc' xm' where c7:"?st = Next xpc' xrs' xm'" using c6 by auto
   have "match_state s' ?st" using addq_subgoal_rr_generic a0 a1 a2 c7 a4 a3 c1 per_jit_add_reg64_1_def b2 c4 by fastforce
   thus ?thesis using c2 by simp
-  qed
+  qed*)
 
 lemma match_s_not_stuck:"match_state s xst \<Longrightarrow> xst \<noteq> Stuck"
   apply(cases s, simp_all)
@@ -621,6 +708,8 @@ next
           apply(cases x91,simp_all)
           apply(cases x93,simp_all)
           subgoal for x1 using b1 b1_1 per_jit_add_reg64_1_def Let_def by auto
+          apply(cases x93,simp_all) 
+          subgoal for x2 using b1 b1_1 per_jit_mul_reg64_def Let_def by (smt (verit) map_option_eq_Some prod.inject)
           done
         apply(unfold per_jit_exit_def Let_def, simp_all) using b1 b1_1 by blast
       done
@@ -634,7 +723,10 @@ next
           apply(cases x93,simp_all)
           subgoal for x2 apply(cases "per_jit_add_reg64_1 x92 x2",simp_all) 
             done 
-          done 
+          apply(cases x93,simp_all) 
+          subgoal for x2 apply(cases "per_jit_mul_reg64 x92 x2",simp_all) 
+            done
+          done
         apply(unfold per_jit_exit_def) 
         apply(cases per_jit_exit,simp_all) 
         done
@@ -668,12 +760,15 @@ proof-
          assm3:"prog \<noteq> [] \<and> unat pc \<ge> 0 \<and> unat pc < length prog" and
          assm4:"s = SBPF_OK pc rs m" and
          assm5:"(num,off,l) = x64_prog!(unat pc)"
-  have "\<exists> src dst. prog!(unat pc) = BPF_ALU64 BPF_ADD dst (SOReg src) \<or> prog!(unat pc) = BPF_EXIT" 
-    by (metis assm0 assm1 assm3 assm4 aux2 length_0_conv sbpf_state.simps(6))
-  then obtain src dst where c0:"prog!(unat pc) = BPF_ALU64 BPF_ADD dst (SOReg src) \<or> prog!(unat pc) = BPF_EXIT" by blast
+  have "\<exists> src dst. prog!(unat pc) \<in> {BPF_ALU64 BPF_ADD dst (SOReg src), BPF_ALU64 BPF_MUL dst (SOReg src), BPF_EXIT}" 
+    using assm0 assm1 assm3 assm4 aux2 length_0_conv sbpf_state.simps(6) by (smt (verit, del_insts) insert_commute)
+  then obtain src dst where c0:"prog!(unat pc) \<in> {BPF_ALU64 BPF_ADD dst (SOReg src), BPF_ALU64 BPF_MUL dst (SOReg src), BPF_EXIT}" by blast
   have c1:"pc' = pc+1" using c0 assm0 assm1 apply(cases "prog!(unat pc)",simp_all)
-    apply (smt (verit) assm4 binop.simps(133) bpf_instruction.simps(369) option.case_eq_if sbpf_state.inject(1) sbpf_state.simps(6) sbpf_step.elims)
-    by (metis (no_types, lifting) assm3 assm4 bpf_instruction.simps(379) linorder_not_less sbpf_state.distinct(1) sbpf_step.simps(1))
+    prefer 2 using assm4 assm3 apply simp
+    subgoal for x91 x92 x93 apply(erule disjE)
+      using assm4 assm3 apply (smt (verit) binop.simps(133) bpf_instruction.simps(369) option.case_eq_if sbpf_state.inject(1) sbpf_state.simps(6) sbpf_step.elims)
+      using assm4 assm3 option.case_eq_if sbpf_step.elims sorry
+    done
   have "off=1" 
     using assm2 assm3 assm5 corr_pc_aux1 by blast
   thus ?thesis using c1 by simp
