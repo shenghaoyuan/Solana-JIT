@@ -3,20 +3,39 @@ theory Proof2
 begin
 
 lemma x64_decode_extend:
-  assumes a0:"x\<noteq> []" and
+  assumes 
     a1:"x64_decode 0 x = Some res1"
   shows "x64_decode 0 (x@xs) = Some res1"
-  sorry
+  apply(unfold x64_decode_def)
+  apply(split if_splits,simp_all)
+  apply (unfold Let_def)
+ apply(split if_splits)
+  apply(cases "ireg_of_u8 (bitfield_insert_u8 3 (Suc 0) (and 7 ((x @ xs) ! 0)) 0)",simp_all)
+   apply(cases "ireg_of_u8 (bitfield_insert_u8 3 (Suc 0) (and 7 ((x @ xs) ! Suc (Suc 0) >> 3)) (and 1 ((x @ xs) ! 0 >> 2)))",simp_all)
+    apply(cases "ireg_of_u8 (bitfield_insert_u8 3 (Suc 0) 4 (and 1 ((x @ xs) ! 0 >> 2)))",simp_all)
+     apply(cases "ireg_of_u8 (bitfield_insert_u8 3 (Suc 0) (and 7 ((x @ xs) ! Suc (Suc 0))) (and 1 ((x @ xs) ! 0)))",simp_all)
+      apply(cases "ireg_of_u8 (bitfield_insert_u8 3 (Suc 0) (and 7 ((x @ xs) ! Suc 0)) (and 1 ((x @ xs) ! 0)))",simp_all)
+  
+       apply rule+
+  using assms x64_decode_def apply auto[1]
+  using assms x64_decode_def apply auto[1]
+          apply(unfold Let_def)
+          apply(split if_splits,simp_all)
+          apply (simp add: nth_append)
+         apply (metis One_nat_def length_greater_0_conv nth_append option.inject option.simps(3))
+  prefer 2 
 (*proof-
   have "\<exists> l_bin. x64_encode (snd res1) = Some l_bin" sorry
   then obtain l_bin where b0:"x64_encode (snd res1) = Some l_bin" by auto
   have b1:"x64_decode 0 l_bin = Some (length l_bin, (snd res1))" using b0 x64_encode_decode_consistency by auto
   have "x64_decode 0 x = Some (length l_bin, (snd res1))" using a1 a0 b0 b1 try
 
-lemma x64_decode_extend:"x\<noteq> [] \<Longrightarrow> x64_decode 0 x = Some res1 \<Longrightarrow> x64_decode 0 (x@xs) = Some res1"*)
+lemma x64_decode_extend:"x\<noteq> [] \<Longrightarrow> x64_decode 0 x = Some res1 \<Longrightarrow> x64_decode 0 (x@xs) = Some res1"
   sorry
+*)
 
-lemma "
+
+lemma x64_encodes_decodes_consistency:"
     Some l_bin = x64_encodes2 ins \<Longrightarrow>
     x64_decodes_aux (length ins) 0 l_bin = Some ins_list \<Longrightarrow>
     map snd ins_list = ins"
@@ -142,34 +161,6 @@ have "\<exists> insa. x64_encode ins = Some insa"
   then show ?case using c0 b3 Cons 
   qed*)
 
-lemma mulq_subgoal_rr_aux1:
-     "(bpf_to_x64_reg dst) = RAX \<Longrightarrow>
-     bins = BPF_ALU64 BPF_MUL dst (SOReg src) \<Longrightarrow>
-     xins = Pmulq_r (bpf_to_x64_reg src) \<Longrightarrow>
-     prog!(unat pc) = bins \<Longrightarrow>
-     sbpf_step prog (SBPF_OK pc rs m) = (SBPF_OK pc' rs' m')  \<Longrightarrow>
-     Next spc' reg' xm' = exec_instr xins sz spc reg xm \<Longrightarrow>
-     reg (bpf_to_x64_reg dst) = rs dst \<Longrightarrow>
-     reg (bpf_to_x64_reg src) = rs src \<Longrightarrow>
-     reg' (bpf_to_x64_reg dst) = (rs' dst)"
-  apply (unfold exec_instr_def step)
-  apply simp
-  apply(cases "prog ! unat pc",simp_all)
-  subgoal for x91 apply(simp split:if_split_asm) 
-    apply(unfold eval_alu_def eval_reg_def,simp_all)
-    by auto
-  done
-
-
-lemma aluq_subgoal_rr_aux2_1:"xins = Pmulq_r (bpf_to_x64_reg src) \<Longrightarrow> 
-  Next pc' reg' m' = exec_instr xins sz pc reg m \<Longrightarrow>
-  \<forall> r \<noteq> dst. reg' r = reg r"
-  apply (simp add: exec_instr_def)
-
-lemma aluq_subgoal_rr_aux2:"xins = Pmulq_r (bpf_to_x64_reg src) \<Longrightarrow> 
-  Next pc' reg' m' = exec_instr xins sz pc reg m \<Longrightarrow>
-  \<forall> r \<noteq> dst. reg' (bpf_to_x64_reg r) = reg (bpf_to_x64_reg r)"
-  using mulq_subgoal_rr_aux2_1 by simp
 
 
 

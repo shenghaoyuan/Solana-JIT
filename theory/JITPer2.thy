@@ -1,153 +1,177 @@
 theory JITPer2
-  imports JITPer
+  imports JITPer JITPer2Aux
 begin
-  
-lemma push_pop_subgoal_rr_aux1:
-  assumes a0:"hd xins = Ppushl_r tmpreg" and 
-          a1:"result = (exec_instr (hd xins) sz pc rs m)" and
-          a2:"tmpreg \<in> {RDX, RAX, RCX}" and
-          a3:"addr = (rs SP) - (u64_of_memory_chunk M32)"
-        shows "result = Next (pc+sz) rs' m' \<longrightarrow> storev M32 m addr (Vlong (rs tmpreg)) \<noteq> None"
-proof (rule ccontr)
-  assume a2:"\<not> (result = Next (pc+sz) rs' m' \<longrightarrow> storev M32 m addr (Vlong (rs tmpreg)) \<noteq> None)"
-  let ?tmp = "storev M32 m addr (Vlong (rs tmpreg)) "
-  let ?res_ok = "Next (pc+sz) rs' m'"
-  have a3:"\<not> (\<not> result = ?res_ok \<or> (?tmp \<noteq> None))" using imp_conv_disj a2 by blast
-  have a4:"result = ?res_ok \<and> ?tmp = None" using a3 by simp
-   then show "False"
-   proof
-     have b0:"?tmp = None" using a4 conjE by simp
-     have b2: "exec_push pc sz M32 m rs (rs tmpreg) = Stuck"using a0 exec_instr_def 
-       using b0 exec_push_def 
-       by (smt (verit, ccfv_threshold) assms(4) option.simps(4) val.simps(29))
-     thus "False" using b2 
-       using a1 a4 a2 a0 by (simp add: exec_instr_def)
-   qed
- qed
 
-lemma push_pop_subgoal_rr_aux2_1_1:"
-    storev M32 m addr (Vlong (rs tmpreg)) = Some m' \<Longrightarrow>
-    xins = Ppushl_r tmpreg \<Longrightarrow> 
-    Next pc' reg' m' = (exec_instr xins sz pc rs m) \<Longrightarrow> 
-    reg' SP = (rs SP)-(u64_of_memory_chunk M32)"
- apply(unfold exec_instr_def )
-  apply(cases xins, simp_all)
-  apply(unfold exec_push_def Let_def)
-  apply(cases "storev M32 m (rs SP - u64_of_memory_chunk M32) (Vlong (rs tmpreg))",simp_all)
-  done
+lemma mulq_subgoal_rr_generic:
+  assumes a0:"bins = BPF_ALU64 BPF_MUL dst (SOReg src)" and
+       a1:"per_jit_mul_reg64 dst src = Some (n, off, l_bin)" and
+       a3:"x64_decodes_aux n 0 l_bin = Some xins" and
+       a4:"sbpf_step prog (SBPF_OK pc rs m) = (SBPF_OK pc' rs' m')" and
+       a5:"Next spc' reg' xm' = interp3 (map snd xins) (Next spc reg xm)" and
+       a6:"match_state (SBPF_OK pc rs m) (Next spc reg xm) " and
+       a7:"prog!(unat pc) = bins" and 
+       a8:"(bpf_to_x64_reg dst) = RAX"
+  shows "match_state (SBPF_OK pc' rs' m') (Next spc' reg' xm') "
+proof -
+  let "?xins" = "map snd xins"
+  have b0:"?xins = [Pmovq_rr (bpf_to_x64_reg src) R11, Ppushl_r RDX, Pmulq_r R11, Ppopl RDX]"
+    using x64_encodes_decodes_consistency per_jit_mul_reg64_def a1 a3 a8 
+    by(cases "bpf_to_x64_reg dst",simp_all) 
+    moreover have b1:"(\<forall> r. (rs r) = reg (bpf_to_x64_reg r))" using a6 spec match_state_def by simp
+    moreover have b2:"(rs src) = reg (bpf_to_x64_reg src)" using a6 spec b1 by simp
+    moreover have "(rs dst) = reg (bpf_to_x64_reg dst)" using a6 spec b1 by simp
+    hence b3:"(rs' dst) = reg' (bpf_to_x64_reg dst)" 
+      using mulq_subgoal_rr_aux1 a0 mulq_subgoal_rr_aux1 b0 a5 a8 a0 a4 a7 b2 by metis
+    have b4:"\<forall> r \<noteq> dst. reg'(bpf_to_x64_reg r) = reg (bpf_to_x64_reg r)" using b0 a5 mulq_subgoal_rr_aux2 
+    have b5:"\<forall> r \<noteq> dst. (rs' r) = (rs r)" using mulq_subgoal_rr_aux3 a0 a4 a7 by force
+     moreover have b6:"\<forall> r \<noteq> dst. (rs r) = reg ((bpf_to_x64_reg r))" using a6 using b1 by blast
+    have b7:"(\<forall> r \<noteq> dst. (rs' r) = reg' ((bpf_to_x64_reg r)))" using b1 b4 b5 by presburger
+    have b8:"match_stack reg' xm'" using stack_is_not_changed_by_add a6 match_state_def a5 b0 by simp
+    have b9:"match_mem m' xm'" using mem_is_not_changed mem_is_not_changed_by_add match_state_def a6
+      by (metis (no_types, lifting) a4 a5 b0 outcome.simps(4) sbpf_state.simps(9))
+    thus ?thesis using b3 b7 match_state_def b8 b9 by fastforce
+  qed
 
-lemma push_pop_subgoal_rr_aux2_1_2:"reg SP = (reg SP)-(u64_of_memory_chunk M32) \<Longrightarrow>
-    loadv M32 m (reg SP) = Some (Vlong (reg tmpreg)) \<Longrightarrow>
-    xins = Ppopl tmpreg \<Longrightarrow> 
-    Next pc' reg' m' = (exec_instr xins sz pc reg m) \<Longrightarrow> 
-    reg' tmpreg = reg tmpreg"
- apply(unfold exec_instr_def )
-  apply(cases xins, simp_all)
-  subgoal for x64
-    apply(unfold exec_pop_def Let_def sub64_def vlong_of_memory_chunk_def add64_def)
-    apply(cases "loadv M32 m (reg SP)",simp_all)
+
+lemma mulq_subgoal_rr_aux2_3:"xins = [Pmovq_rr (bpf_to_x64_reg src) R11, Ppushl_r RDX, Pmulq_r R11, Ppopl RDX] \<Longrightarrow> 
+  Next pc1 reg1 m1 = exec_instr (Pmulq_r (bpf_to_x64_reg src)) sz pc reg m \<Longrightarrow>
+  Next pc2 reg2 m2 = interp3 xins (Next pc reg m) \<Longrightarrow>
+  reg1 (bpf_to_x64_reg src) =  reg2 (bpf_to_x64_reg src) "
+  apply(unfold exec_instr_def)
+  apply(cases "xins ! 2",simp_all)
+  subgoal for x6
+    apply(cases "exec_instr (Pmovq_rr (bpf_to_x64_reg src) REG_SCRATCH) 1 pc reg m",simp_all)
+    subgoal for x11 x12 x13
+      apply(cases "exec_instr (Ppushl_r RDX) 1 x11 x12 x13",simp_all)
+      subgoal for x11a x12a x13a
+        apply(cases "exec_instr (Pmulq_r REG_SCRATCH) 1 x11a x12a x13a",simp_all)
+        subgoal for x11b x12b x13b
+          apply(unfold exec_instr_def)
+          apply(cases "Ppopl RDX",simp_all)
+          subgoal for x4 apply(unfold exec_push_def Let_def)
+            apply(cases "storev M32 x13 (x12 SP - u64_of_memory_chunk M32) (Vlong (x12 RDX))",simp_all)
+            by (simp add: storev_def)
+          done
+        done
       done
     done
-
-lemma push_pop_subgoal_rr_aux2_1:
-  assumes a0:"xins = [Ppushl_r tmpreg, Ppopl tmpreg]" and 
-    a1:"Next pc' reg' m' = (exec_instr (xins!0) sz pc reg m)" and
-    a2:"Next pc'' reg'' m'' = (exec_instr (xins!1) sz' pc' reg' m') " and 
-    a3:"tmpreg \<in> {RDX, RAX, RCX}" 
-  shows "reg'' tmpreg = reg tmpreg"
-proof -
-  have b0:"Next pc' reg' m' = exec_push pc sz M32 m reg (reg tmpreg)" using exec_instr_def by (simp add: a0 a1)
-  let "?xins" = "(xins!0)"
-  let "?addr"= "((reg SP) - (u64_of_memory_chunk M32))"  
-  have b2_1:"(exec_instr ?xins sz pc reg m) = Next pc' reg' m' \<longrightarrow> storev M32 m ?addr (Vlong (reg tmpreg)) \<noteq> None" 
-    by (metis b0 exec_push_def option.case(1) outcome.simps(3))
-  have b2_2:"storev M32 m ?addr (Vlong (reg tmpreg)) \<noteq> None" using b2_1 a1 by simp
-  have b2:"storev M32 m ?addr (Vlong (reg tmpreg)) = Some m'" using b0 b2_2 by (simp add: storev_def)
-  have c0:"Next pc'' reg'' m'' = exec_pop pc' sz' M32 m' reg' tmpreg" using exec_instr_def by (simp add: a0 a2)
-  let "?xins2" = "(xins!1)"
-  have c1:"?xins2 = Ppopl tmpreg" using a0 by auto
-  have c2:"loadv M32 m' ?addr = Some (Vlong (reg tmpreg))" using b2 store_load_consistency by simp
-  have c3:"Some (Vlong (reg'' tmpreg)) = loadv M32 m'?addr" using exec_pop_def c1 b2_2 storev_def by auto
-  have c4:"reg'' tmpreg = reg tmpreg" using c3 c2 by simp
-  thus ?thesis using c4 by simp
-qed
+  done
 
 
-lemma push_pop_subgoal_rr_aux2_2:
- assumes a0:"xins = [Ppushl_r tmpreg, Ppopl tmpreg]" and 
-    a1:"Next pc'' reg'' m'' = interp3 xins (Next pc reg m)" and
-    a2:"tmpreg \<in> {RDX, RAX, RCX}"
-  shows "reg'' tmpreg = reg tmpreg"
+(*lemma mulq_subgoal_rr_aux2_4:
+  assumes a0:"xins = [Pmovq_rr (bpf_to_x64_reg src) R11, Ppushl_r RDX, Pmulq_r R11, Ppopl RDX]" and
+  a1:"Next pc' reg' m' = interp3 xins (Next pc reg m)"
+  shows "bpf_to_x64_reg src \<notin> {RAX, RDX} \<longrightarrow> reg' (bpf_to_x64_reg src) = reg (bpf_to_x64_reg src)"
 proof-
-  have b0:"length xins = (2::nat)" using a0 by simp
-  have b1:"\<exists> n2.  n2 = reg SP - (u64_of_memory_chunk M32)"
-    by (metis (no_types, lifting) memory_chunk.simps(15) val.simps(29) vlong_of_memory_chunk_def)
-  thus ?thesis using b0 a0 a1 push_pop_subgoal_rr_aux2_1 a2 
-    sorry
+ let "?xins" = "Pmulq_r (bpf_to_x64_reg src)" 
+  have "\<exists> result sz. exec_instr ?xins sz pc reg m = result" by blast
+  then obtain result sz where b1_1:"exec_instr ?xins sz pc reg m = result" by auto
+  have "result \<noteq> Stuck"using exec_instr_def b1_1 by auto
+  hence b1:"\<exists> pc1 reg1 m1. Next pc1 reg1 m1 = exec_instr ?xins sz pc reg m" using b1_1
+    by (metis outcome.exhaust)
+  then obtain pc1 reg1 m1 where b1:"Next pc1 reg1 m1 = exec_instr ?xins sz pc reg m" by auto
+  have b2:"reg1 (bpf_to_x64_reg src) =  reg' (bpf_to_x64_reg src)" using mulq_subgoal_rr_aux2_3 a0 a1 b1 by simp
+  have b3:"\<forall> r.  bpf_to_x64_reg r \<notin> {RAX, RDX} \<longrightarrow>reg1 (bpf_to_x64_reg r) = reg (bpf_to_x64_reg r)" using mulq_subgoal_rr_aux2_2 b1 by simp
+  thus ?thesis using b2 b3 by auto
+qed*)
+
+
+lemma mov_does_not_alter_mem_and_SP:
+  "xins = Pmovq_rr (bpf_to_x64_reg src) (bpf_to_x64_reg dst) \<Longrightarrow>
+   (exec_instr xins sz pc reg m) = Next pc' reg' m' \<Longrightarrow>
+  m' = m \<and> reg' SP = reg SP"
+  using exec_instr_def reg_rsp_consist by fastforce
+
+
+lemma mul_does_not_alter_mem_and_SP:
+  "xins = Pmulq_r (bpf_to_x64_reg src)   \<Longrightarrow>
+   (exec_instr xins sz pc reg m) = Next pc' reg' m' \<Longrightarrow>
+  m' = m \<and> reg' SP = reg SP"
+  using exec_instr_def reg_rsp_consist by fastforce
+
+
+lemma mulq_subgoal_rr_aux2_4:
+  assumes a0:"xins = [Pmovq_rr (bpf_to_x64_reg src) R11, Ppushl_r RDX, Pmulq_r R11, Ppopl RDX]" and
+  a1:"Next pc' reg' m' = interp3 xins (Next pc reg m)" and
+  a2:"(bpf_to_x64_reg src) = RDX"
+  shows "reg RDX = reg' RDX"
+proof-
+  have "\<exists> result1. (exec_instr (xins!0) 1 pc reg m) = result1" by simp
+  obtain result1 where b0_1:"(exec_instr (xins!0) 1 pc reg m) = result1" by auto
+  have "result1 \<noteq> Stuck" using a0 a1 b0_1 interp3_list_aux1 by blast
+  hence "\<exists> pc1 reg1 m1. Next pc1 reg1 m1 = result1"  by (metis outcome.exhaust)
+  then obtain pc1 reg1 m1 where b0_2:"Next pc1 reg1 m1 = (exec_instr (xins!0) 1 pc reg m)" using b0_1 by auto
+  moreover have b0_4:"m1 = m" using mov_does_not_alter_mem_and_SP a0 calculation exec_instr_def by auto
+  hence b0:"Next pc1 reg1 m = (exec_instr (xins!0) 1 pc reg m)" using calculation by blast
+  let "?xins" = "tl xins"
+  have c1:"hd ?xins = Ppushl_r RDX" using a0 a2 by simp
+  have c2:"last ?xins = Ppopl RDX" using a0 by simp
+  have "\<exists> result2. (exec_instr (xins!1) 1 pc1 reg1 m1) = result2" by simp
+  obtain result2 where b1_1:"(exec_instr (xins!1) 1 pc1 reg1 m1) = result2" by auto
+  have b1_2:"result2 \<noteq> Stuck" using a0 b1_1
+    by (metis One_nat_def b0_2 a1 calculation interp3.simps(2) interp3_list_aux1 list.simps(3) nth_Cons_0 nth_Cons_Suc outcome.simps(4))
+  then obtain pc2 reg2 m2 where b1_3:"Next pc2 reg2 m2 = (exec_instr (xins!1) 1 pc1 reg1 m1)" using b1_1 by (metis outcome.exhaust)
+  have "\<exists> result3. (exec_instr (xins!2) 1 pc1 reg1 m1) = result3" by simp
+  obtain result3 where b2_1:"(exec_instr (xins!2) 1 pc2 reg2 m2) = result3" by auto
+  have "result3 \<noteq> Stuck" using a0 b2_1 exec_instr_def by auto
+  then obtain pc3 reg3 m3 where b3_0:"Next pc3 reg3 m3 = (exec_instr (xins!2) 1 pc2 reg2 m2)" using b2_1 by (metis outcome.exhaust)
+  have b3:"reg3 SP = reg2 SP" using mul_does_not_alter_mem_and_SP a0 exec_instr_def b3_0 by force
+  have "m3 = m2" using mul_does_not_alter_mem_and_SP a0 exec_instr_def b3_0 exec_instr_def by simp
+  hence b4:"interp3 (butlast(tl ?xins)) (Next pc2 reg2 m2) = Next pc3 reg3 m2" using a0 b3_0 by auto
+  have b5:"reg RDX = reg3 RDX" using a0 a1 b3_0 b1_3
+    by (simp add: exec_instr_def exec_push_def storev_def)
+  have c3:"reg1 RDX = reg' RDX" using exec_instr_def a0 b0_2  b1_2 b1_1 exec_push_def storev_def by auto
+  thus ?thesis using c3 b5 by simp
 qed
 
 
-lemma push_pop_subgoal_rr_aux2_3:
-  assumes a0:"hd xins = Ppushl_r tmpreg" and 
-          a1:"last xins = Ppopl tmpreg"and
-          a2:"interp3 (butlast(tl xins)) (Next pc' reg' m') = Next pc' reg2 m'"and
-          a3:"Next pc'' reg'' m'' = (exec_instr (last xins) 1 pc reg2 m') " and
-          a5:"Next pc' reg' m' = (exec_instr (xins!0) 1 pc reg m) " and
-          a6:"reg' SP =  reg2 SP" and
-          a7:"tmpreg \<in> {x64Syntax.RDX, x64Syntax.RAX, x64Syntax.RCX}" and
-          a8:"n1 = reg SP"
-        shows "reg'' tmpreg = reg tmpreg"
+lemma mulq_subgoal_rr_aux2_5:
+  "xins = [Pmovq_rr (bpf_to_x64_reg src) R11, Ppushl_r RDX, Pmulq_r R11, Ppopl RDX] \<Longrightarrow>
+  Next pc' reg' m' = interp3 xins (Next pc reg m) \<Longrightarrow>
+  reg RAX = reg' RAX"
   sorry
-(*proof-
-  let ?midlist = "butlast(tl xins)"
-  have b0_1_0:"xins \<noteq> []" using a0
-    by (metis a1 hd_Nil_eq_last instruction.distinct(5945))
-  have b0_1_1:"xins = [hd xins]@?midlist@[last xins]" using b0_1_0
-    by (metis a0 a1 append_Cons append_Nil append_butlast_last_id instruction.distinct(5945) last_ConsL last_tl list.collapse)
-  have b0_1:"xins = [Ppushl_r tmpreg]@?midlist@[Ppopl tmpreg]" using a0 a1 b0_1_1 by metis
-  have b0_2:"\<exists> reg' m'. Next reg' m' = (exec_instr (xins!0) 1 reg m)" using a0 a1 
-    interp3_list_aux1 a5 by blast
-  have b0:"Next reg' m' = exec_push 1 M32 m reg (reg (IR tmpreg))" using exec_instr_def a0 b0_2
-    using exec_push_def a5 a0 a5 
-    by (smt (z3) a1 hd_Nil_eq_last hd_conv_nth instruction.distinct(5945) instruction.simps(6455))
-  have b0_2:"\<exists> addr. Vlong addr = sub64 (reg (IR SP)) (vlong_of_memory_chunk M32)" using a3 sub64_def
-  using a3 sub64_def a8
-    by (metis (no_types, lifting) memory_chunk.simps(15) val.simps(29) vlong_of_memory_chunk_def)
-  then obtain addr where b0_3:"Vlong addr = sub64 (reg (IR SP)) (vlong_of_memory_chunk M32)" by auto
-  have b1:"Next reg' m' =
-    (case sub64 (reg (IR SP)) (vlong_of_memory_chunk M32) of
-     Vlong (addr::64 word) \<Rightarrow> (
-       case storev M32 m addr (reg (IR tmpreg)) of None \<Rightarrow> Stuck
-       | Some (x::64 word \<Rightarrow> 8 word option) \<Rightarrow>
-           Next
-            ((undef_regs [CR ZF, CR CF, CR PF, CR SF, CR OF] (reg(IR SP := sub64 (reg (IR SP)) (vlong_of_memory_chunk M32))))
-             (RIP := add64 (undef_regs [CR ZF, CR CF, CR PF, CR SF, CR OF] (reg(IR SP := sub64 (reg (IR SP)) (vlong_of_memory_chunk M32))) RIP) (Vlong ((1::64 word) + (1::64 word)))))
-            x)
-     | _ \<Rightarrow> Stuck) " using b0 nextinstr_nf_def nextinstr_def exec_push_def by metis
-  hence b3_1:"hd xins = (xins!0)" using a0 List.hd_conv_nth b0_1_0 by blast
-  have b2_1:"(exec_instr (xins!0) 1 reg m) = Next reg' m' \<longrightarrow> storev M32 m addr (reg (IR tmpreg)) \<noteq> None" using push_pop_subgoal_rr_aux1 a0 a1
-     b1 a3  b0_3 a0 b3_1 by (metis a7)                                 
-  have b2_2:"storev M32 m addr (reg (IR tmpreg)) \<noteq> None" using b2_1 a5 by simp
-  have b2:"storev M32 m addr (reg (IR tmpreg)) = Some m'" using b1 b2_2 b0_3 
-    by (smt (verit, ccfv_threshold) option.case_eq_if option.distinct(1) option.expand option.sel outcome.inject val.simps(29))
-  have b3:"reg' (IR SP) = sub64 (reg (IR SP)) (vlong_of_memory_chunk M32)" using b2 b0_3 push_pop_subgoal_rr_aux2_1_1 a5 a0 b3_1 by auto
-  let "?sp" = "reg' (IR SP)"
-  have b4_2:" Vlong addr = (reg2 (IR SP))" using a6 b3 b0_3 by auto
-  have b5:"interp3 (butlast(xins)) (Next reg m) = Next reg2 m'" using a2 a5 b0_1 a0
-    using append_Cons append_Nil butlast.simps(1) butlast.simps(2) interp3.simps(2) list.sel(3) list.simps(3) nth_Cons_0 outcome.case(1) by metis
-  have b6:"(exec_instr (last xins) 1 reg2 m') = Next reg'' m''" using a5 a1 a2 a3 b5 by simp
-  have c0:"Next reg'' m'' = exec_pop (1::64 word) M32 m' reg2 (IR tmpreg)" using exec_instr_def using b6 a1 by simp
-  have c1:"loadv M32 m' addr = Some (reg (IR tmpreg))" using store_load_consistency b4_2 b2 b0_3 by blast
-  let "?v" = " (reg (IR tmpreg))"
-  have c4:"reg''(IR tmpreg) = ?v" using exec_pop_def b4_2 b3 a3 a6 push_pop_subgoal_rr_aux2_1_2 c1 a1 by simp
-  thus ?thesis using c4 by simp
+
+lemma mulq_subgoal_rr_aux2:
+  assumes a0:"xins = [Pmovq_rr (bpf_to_x64_reg src) R11, Ppushl_r RDX, Pmulq_r R11, Ppopl RDX]" and
+  a1:"Next pc' reg' m' = interp3 xins (Next pc reg m)"
+  shows "reg' (bpf_to_x64_reg src) = reg (bpf_to_x64_reg src)"
+proof-
+ let "?xins" = "Pmulq_r (bpf_to_x64_reg src)" 
+  have "\<exists> result sz. exec_instr ?xins sz pc reg m = result" by blast
+  then obtain result sz where b1_1:"exec_instr ?xins sz pc reg m = result" by auto
+  have "result \<noteq> Stuck"using exec_instr_def b1_1 by auto
+  hence b1:"\<exists> pc1 reg1 m1. Next pc1 reg1 m1 = exec_instr ?xins sz pc reg m" using b1_1
+    by (metis outcome.exhaust)
+  then obtain pc1 reg1 m1 where b1:"Next pc1 reg1 m1 = exec_instr ?xins sz pc reg m" by auto
+  have b2:"reg1 (bpf_to_x64_reg src) =  reg' (bpf_to_x64_reg src)" using mulq_subgoal_rr_aux2_3 a0 a1 b1 by simp
+  have b3:"bpf_to_x64_reg src = RAX \<or> bpf_to_x64_reg src = RDX \<or> bpf_to_x64_reg src \<notin>{RAX,RDX}" by auto
+  show ?thesis
+  proof(cases "bpf_to_x64_reg src \<notin>{RAX,RDX}")
+    case True
+    have bn:"\<forall> r. bpf_to_x64_reg r \<notin> {RAX, RDX} \<longrightarrow> reg1 (bpf_to_x64_reg r) = reg (bpf_to_x64_reg r)" using mulq_subgoal_rr_aux2_2 b1 by simp
+    thus ?thesis using b2 b3 True by auto
+  next
+    case False
+    have b4:"bpf_to_x64_reg src = RAX \<or> bpf_to_x64_reg src = RDX" using False b3 by simp
+    then show ?thesis 
+    proof(cases "bpf_to_x64_reg src = RAX")
+      case True
+      
+      then show ?thesis sorry
+    next
+      case False
+      have c0:"bpf_to_x64_reg src = RDX" using False b3 b4 by simp
+      then show ?thesis using mulq_subgoal_rr_aux2_4 c0 a0 a1 by metis
+    qed
+  qed
+  
 qed
-*)
 
-lemma reg_rsp_consist:"r = (bpf_to_x64_reg dst) \<Longrightarrow> r \<noteq> x64Syntax.RSP"
-  apply(cases dst) 
-  by (unfold bpf_to_x64_reg_corr bpf_to_x64_reg_def, simp_all)
 
+lemma mulq_subgoal_rr_aux2_3:"xins = [Pmovq_rr (bpf_to_x64_reg src) R11, Ppushl_r RDX, Pmulq_r R11, Ppopl RDX] \<Longrightarrow> 
+  Next pc' reg' m' = interp3 xins (Next pc reg m) \<Longrightarrow>
+  \<forall> r.  bpf_to_x64_reg r \<notin> {RAX, RDX} \<longrightarrow> reg' (bpf_to_x64_reg r) = reg (bpf_to_x64_reg r)"
+  using mulq_subgoal_rr_aux2_2 mulq_subgoal_rr_aux2_3 
 
 
 

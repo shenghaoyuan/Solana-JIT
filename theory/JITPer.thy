@@ -14,7 +14,7 @@ theory JITPer
 imports
   Main
   rBPFCommType rBPFSyntax rBPFSem
-  x64Syntax x64Semantics x64Assembler Proof1
+  x64Syntax x64Semantics x64Assembler Proof1 Proof2
   JITState
 
 begin
@@ -233,6 +233,104 @@ lemma aluq_subgoal_rr_aux3:"bins = BPF_ALU64 BPF_ADD dst (SOReg src) \<Longright
     by auto
   done
 
+
+lemma mulq_subgoal_rr_aux1_1:
+  "xins = [Pmovq_rr (bpf_to_x64_reg src) R11, Ppushl_r RDX, Pmulq_r R11, Ppopl RDX] \<Longrightarrow>
+  Next pc1 reg1 m1 = exec_instr (Pmulq_r (bpf_to_x64_reg src)) sz pc reg m \<Longrightarrow>
+  Next pc2 reg2 m2 = interp3 xins (Next pc reg m) \<Longrightarrow>
+  (bpf_to_x64_reg dst) = RAX \<Longrightarrow>
+  reg1 (bpf_to_x64_reg dst) =  reg2 (bpf_to_x64_reg dst) "
+  apply(unfold exec_instr_def)
+  apply(cases "xins ! 2",simp_all)
+  subgoal for x6
+    apply(cases "exec_instr (Pmovq_rr (bpf_to_x64_reg src) REG_SCRATCH) 1 pc reg m",simp_all)
+    subgoal for x11 x12 x13
+      apply(cases "exec_instr (Ppushl_r RDX) 1 x11 x12 x13",simp_all)
+      subgoal for x11a x12a x13a
+        apply(cases "exec_instr (Pmulq_r REG_SCRATCH) 1 x11a x12a x13a",simp_all)
+        subgoal for x11b x12b x13b
+          apply(unfold exec_instr_def)
+          apply(cases "Ppopl RDX",simp_all)
+          subgoal for x4 apply(unfold exec_push_def Let_def)
+            apply(cases "storev M32 x13 (x12 SP - u64_of_memory_chunk M32) (Vlong (x12 RDX))",simp_all)
+            by (simp add: storev_def)
+          done
+        done
+      done
+    done
+  done
+
+lemma mulq_subgoal_rr_aux1_2:
+     "(bpf_to_x64_reg dst) = RAX \<Longrightarrow>
+     bins = BPF_ALU64 BPF_MUL dst (SOReg src) \<Longrightarrow>
+     xins = Pmulq_r (bpf_to_x64_reg src) \<Longrightarrow>
+     prog!(unat pc) = bins \<Longrightarrow>
+     sbpf_step prog (SBPF_OK pc rs m) = (SBPF_OK pc' rs' m')  \<Longrightarrow>
+     Next spc' reg' xm' = exec_instr xins sz spc reg xm \<Longrightarrow>
+     reg (bpf_to_x64_reg dst) = rs dst \<Longrightarrow>
+     reg (bpf_to_x64_reg src) = rs src \<Longrightarrow>
+     reg' (bpf_to_x64_reg dst) = (rs' dst)"
+  apply (unfold exec_instr_def step)
+  apply simp
+  apply(cases "prog ! unat pc",simp_all)
+  subgoal for x91 apply(simp split:if_split_asm) 
+    apply(unfold eval_alu_def eval_reg_def,simp_all)
+    by auto
+  done
+
+
+lemma mulq_subgoal_rr_aux1:
+  assumes a0:"xins = [Pmovq_rr (bpf_to_x64_reg src) R11, Ppushl_r RDX, Pmulq_r R11, Ppopl RDX]" and
+   a1:"Next spc' reg' xm' = interp3 xins (Next spc reg xm)" and
+  a2:"(bpf_to_x64_reg dst) = RAX " and
+  a3:"bins = BPF_ALU64 BPF_MUL dst (SOReg src)" and
+  a4:"prog!(unat pc) = bins" and
+  a5:"sbpf_step prog (SBPF_OK pc rs m) = (SBPF_OK pc' rs' m')" and
+  a6:"reg (bpf_to_x64_reg dst) = rs dst" and
+  a7:"reg (bpf_to_x64_reg src) = rs src" 
+shows"reg' (bpf_to_x64_reg dst) = (rs' dst)"
+proof-
+  let "?xins" = "Pmulq_r (bpf_to_x64_reg src)" 
+  have "\<exists> result sz. exec_instr ?xins sz pc reg m = result" by blast
+  then obtain result sz where b1_1:"exec_instr ?xins sz spc reg xm = result" by auto
+  have "result \<noteq> Stuck"using exec_instr_def b1_1 by auto
+  hence b1:"\<exists> pc1 reg1 m1. Next pc1 reg1 m1 = exec_instr ?xins sz spc reg xm" using b1_1
+    by (metis outcome.exhaust)
+  then obtain pc1 reg1 m1 where b1:"Next pc1 reg1 m1 = exec_instr ?xins sz spc reg xm" by auto
+  have b2:"reg1 (bpf_to_x64_reg dst) =  reg' (bpf_to_x64_reg dst)" using  mulq_subgoal_rr_aux1_1 a0 a1 a2 b1 by simp
+  have b3:"reg1 (bpf_to_x64_reg dst) =  rs' dst" using mulq_subgoal_rr_aux1_2 a2 a3 a4 a5 a6 a7 b1 by simp
+  thus ?thesis using b2 b3 by auto
+qed
+
+
+lemma mulq_subgoal_rr_aux2_1:
+  "xins = Pmulq_r (bpf_to_x64_reg src) \<Longrightarrow> 
+  Next pc' reg' m' = exec_instr xins sz pc reg m \<Longrightarrow>
+  \<forall> r. r \<notin> {RAX, RDX} \<longrightarrow> reg' r = reg r"
+  by (simp add: exec_instr_def)
+
+lemma mulq_subgoal_rr_aux2_2:"xins = Pmulq_r (bpf_to_x64_reg src) \<Longrightarrow> 
+  Next pc' reg' m' = exec_instr xins sz pc reg m \<Longrightarrow>
+  \<forall> r.  bpf_to_x64_reg r \<notin> {RAX, RDX} \<longrightarrow> reg' (bpf_to_x64_reg r) = reg (bpf_to_x64_reg r)"
+  using mulq_subgoal_rr_aux2_1 by simp
+
+lemma mulq_subgoal_rr_aux2:"xins = Pmulq_r (bpf_to_x64_reg src) \<Longrightarrow> 
+  Next pc' reg' m' = exec_instr xins sz pc reg m \<Longrightarrow>
+  \<forall> r.  r \<noteq> dst \<longrightarrow> reg' (bpf_to_x64_reg r) = reg (bpf_to_x64_reg r)"
+  using mulq_subgoal_rr_aux2_1 sorry
+
+
+lemma mulq_subgoal_rr_aux3:"bins = BPF_ALU64 BPF_MUL dst (SOReg src) \<Longrightarrow> 
+  sbpf_step prog (SBPF_OK pc rs m) = (SBPF_OK pc' rs' m') \<Longrightarrow> 
+  prog!(unat pc) = bins \<Longrightarrow>
+  \<forall> r \<noteq> dst. rs' r = rs r"
+  apply(cases bins,simp_all)
+  apply(cases "prog ! unat pc", simp_all)
+  subgoal for x91 apply(simp split:if_split_asm) 
+    apply(unfold eval_alu_def eval_reg_def,simp_all)
+    by auto
+  done
+
 lemma stack_is_not_changed_by_add:"Next spc' reg' m' = exec_instr xins sz spc reg m \<Longrightarrow> xins = Paddq_rr (bpf_to_x64_reg dst) (bpf_to_x64_reg src) 
    \<Longrightarrow> match_stack reg m \<Longrightarrow> match_stack reg' m'"
 proof-
@@ -363,33 +461,12 @@ proof-
 qed
 
 
-lemma mulq_subgoal_rr_generic:
-  assumes a0:"bins = BPF_ALU64 BPF_ADD dst (SOReg src)" and
-       a1:"per_jit_mul_reg64 dst src = Some (n, off, l_bin)" and
-       a3:"x64_decodes 0 l_bin = Some xins" and
-       a4:"sbpf_step prog (SBPF_OK pc rs m) = (SBPF_OK pc' rs' m')" and
-       a5:"Next spc' reg' xm' = interp3 (map snd xins) (Next spc reg xm)" and
-       a6:"match_state (SBPF_OK pc rs m) (Next spc reg xm) " and
-       a7:"prog!(unat pc) = bins" and 
-       a8:"(bpf_to_x64_reg dst) = RAX"
-  shows "match_state (SBPF_OK pc' rs' m') (Next spc' reg' xm') "
-proof -
-  let "?xins" = "map snd xins"
-  have b0:"?xins = [Pmovq_rr (bpf_to_x64_reg src) R11, Ppushl_r RDX, Pmulq_r R11, Ppopl RDX]"
-    using x64_encodes_decodes_consistency per_jit_mul_reg64_def a1 a3 a8 
-    by(cases "bpf_to_x64_reg dst",simp_all)
-    moreover have b1:"(\<forall> r. (rs r) = reg (bpf_to_x64_reg r))" using a6 spec match_state_def by simp
-    moreover have b2:"(rs src) = reg (bpf_to_x64_reg src)" using a6 spec b1 by simp
-    hence b3:"(rs' dst) = reg' (bpf_to_x64_reg dst)" using mulq_subgoal_rr_aux1 b0 b1 b2 a0 a4 a5 a7 a8 sorry
-    have b4:"\<forall> r \<noteq> dst. reg'(bpf_to_x64_reg r) = reg (bpf_to_x64_reg r)" using b0 a5 aluq_subgoal_rr_aux2 by blast
-    have b5:"\<forall> r \<noteq> dst. (rs' r) = (rs r)" using aluq_subgoal_rr_aux3 a0 a4 a7 by force
-    have b6:"\<forall> r \<noteq> dst. (rs r) = reg ((bpf_to_x64_reg r))" using a6 using b1 by blast
-    have b7:"(\<forall> r \<noteq> dst. (rs' r) = reg' ((bpf_to_x64_reg r)))" using b1 b4 b5 by presburger
-    have b8:"match_stack reg' xm'" using stack_is_not_changed_by_add a6 match_state_def a5 b0 by simp
-    have b9:"match_mem m' xm'" using mem_is_not_changed mem_is_not_changed_by_add match_state_def a6
-      by (metis (no_types, lifting) a4 a5 b0 outcome.simps(4) sbpf_state.simps(9))
-    thus ?thesis using b3 b7 match_state_def b8 b9 by fastforce
-  qed
+(*
+    Some l_bin = x64_encodes2 ins \<Longrightarrow>
+    x64_decodes_aux (length ins) 0 l_bin = Some ins_list \<Longrightarrow>
+    map snd ins_list = ins"
+*)
+
 
 lemma aux1:"length prog \<noteq> 0 \<and> unat pc < length prog \<and> unat pc \<ge> 0 \<Longrightarrow> 
   s' = sbpf_step prog s \<Longrightarrow>
