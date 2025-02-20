@@ -18,8 +18,8 @@ definition sub_overflowi64 :: "u64 \<Rightarrow> u64 \<Rightarrow> u64 \<Rightar
     if i64_MIN \<le>s s \<and> s \<le>s i64_MAX then 0 else 1
 )"
 
-
-datatype val = Vundef | Vbyte u8 | Vshort u16 | Vint u32 | Vlong u64
+(*| Vptr nat u64*)
+datatype val = Vundef | Vbyte u8 | Vshort u16 | Vint u32 | Vlong u64 
 
 subsection \<open> 16-bit Arithmetic operations \<close>
 

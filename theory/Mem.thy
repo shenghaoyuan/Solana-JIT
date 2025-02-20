@@ -6,13 +6,16 @@ imports
   rBPFCommType Val
 begin
 
+(*type_synonym mem = "nat \<Rightarrow> (u64, u8) map"*)
+
 type_synonym mem = "(u64, u8) map"
 
 definition init_mem :: "mem" where
-"init_mem = (\<lambda> _. None)"
+"init_mem = (\<lambda> _ . None)"
 
 datatype memory_chunk = M8 | M16 | M32 | M64
 
+(*type_synonym addr_type = val*)
 type_synonym addr_type = u64
 
 definition option_u64_of_u8_1 :: "u8 option \<Rightarrow> u64 option" where
@@ -45,6 +48,9 @@ definition option_u64_of_u8_4 :: "u8 option \<Rightarrow> u8 option \<Rightarrow
                         (or ((ucast n1) << 8) (ucast n0) ) ))))
   )
 )"
+
+definition sp_block ::"nat" where "sp_block = 1"
+
 
 definition option_u64_of_u8_8 :: "u8 option \<Rightarrow> u8 option \<Rightarrow> u8 option \<Rightarrow> u8 option \<Rightarrow>
   u8 option \<Rightarrow> u8 option \<Rightarrow> u8 option \<Rightarrow> u8 option \<Rightarrow>  u64 option" where
@@ -92,6 +98,7 @@ definition option_val_of_u64 :: "memory_chunk \<Rightarrow> u64 option \<Rightar
   Some v1 \<Rightarrow> Some (memory_chunk_value_of_u64 mc v1)
 )"
 
+
 definition loadv :: "memory_chunk \<Rightarrow> mem \<Rightarrow> addr_type \<Rightarrow> val option" where
 "loadv mc m addr = ( option_val_of_u64 mc (
   case mc of
@@ -102,6 +109,31 @@ definition loadv :: "memory_chunk \<Rightarrow> mem \<Rightarrow> addr_type \<Ri
                         (m (addr+4)) (m (addr+5)) (m (addr+6)) (m (addr+7))
 ))"
 
+(*
+definition loadv :: "memory_chunk \<Rightarrow> mem \<Rightarrow> addr_type \<Rightarrow> val option" where
+"loadv mc m addr = (
+  case addr of Vptr b off \<Rightarrow>
+    if b = 0 then None
+    else 
+
+( option_val_of_u64 mc (
+  case mc of
+  M8  \<Rightarrow> option_u64_of_u8_1 (m b off) |
+  M16 \<Rightarrow> option_u64_of_u8_2 (m b off) (m b (off+1))|
+  M32 \<Rightarrow> option_u64_of_u8_4 (m b off) (m b (off+1)) (m b (off+2)) (m b (off+3))|
+  M64 \<Rightarrow> option_u64_of_u8_8 (m b off) (m b (off+1)) (m b (off+2)) (m b (off+3))
+                        (m b (off+4)) (m b (off+5)) (m b (off+6)) (m b (off+7))
+))|
+  Vlong off \<Rightarrow> ( option_val_of_u64 mc (
+  case mc of
+  M8  \<Rightarrow> option_u64_of_u8_1 (m 0 off) |
+  M16 \<Rightarrow> option_u64_of_u8_2 (m 0 off) (m 0 (off+1))|
+  M32 \<Rightarrow> option_u64_of_u8_4 (m 0 off) (m 0 (off+1)) (m 0 (off+2)) (m 0 (off+3))|
+  M64 \<Rightarrow> option_u64_of_u8_8 (m 0 off) (m 0 (off+1)) (m 0 (off+2)) (m 0 (off+3))
+                        (m 0 (off+4)) (m 0 (off+5)) (m 0 (off+6)) (m 0 (off+7))
+))|
+_ \<Rightarrow> None)"
+*)
 value "option_u64_of_u8_2 (Some 0b10000000) (Some 0b01000000)"
 value "0b10000000::u8"
 value "0b01000000::u8"
@@ -203,6 +235,7 @@ lemma int_255_8_eq: "k \<le> n \<Longrightarrow> n < k+8 \<Longrightarrow> bit (
   using sub_8_eq le_255_int
   by presburger
 
+(*prove load_store_other *)
 lemma store_load_consistency_aux: "Some m' = storev M32 m place v \<Longrightarrow> loadv M32 m' place = Some v"
   apply (simp add: storev_def loadv_def option_val_of_u64_def option_u64_of_u8_4_def)
   apply (cases v; simp add: Let_def memory_chunk_value_of_u64_def u8_list_of_u32_def)
@@ -250,9 +283,14 @@ lemma store_load_consistency_aux: "Some m' = storev M32 m place v \<Longrightarr
   done
 
 
-lemma store_load_consistency: "storev M32 m place v = Some m' \<Longrightarrow> loadv M32 m' place = Some v"
+lemma store_load_consistency1: "storev M32 m place v = Some m' \<Longrightarrow> loadv M32 m' place = Some v"
+  using store_load_consistency_aux by metis
+
+
+
+lemma store_load_consistency: "storev M64 m place v = Some m' \<Longrightarrow> loadv M64 m' place = Some v"
   using store_load_consistency_aux
-  by metis
+  sorry
 
 end
 

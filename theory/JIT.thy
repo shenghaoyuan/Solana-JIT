@@ -356,7 +356,10 @@ lemma aux2:"length prog \<noteq> 0 \<and> unat pc < length prog \<and> unat pc \
   subgoal for x91 x92 x93 
    apply(unfold eval_alu_def Let_def)
     apply(cases x91,simp_all) 
+     apply(cases x93, simp_all)
     apply(cases x93, simp_all)
+    subgoal for x2  try
+
     done
   done
 
@@ -495,7 +498,8 @@ lemma mem_is_not_changed:"s2 = sbpf_step prog s1 \<Longrightarrow> s1 = (SBPF_OK
     apply(split if_splits, simp_all)
     apply(split if_splits, simp_all)
     apply(cases x91, simp_all)
-    apply(cases "eval_alu BPF_ADD x92 x93 rs1", simp_all)
+     apply(cases "eval_alu BPF_ADD x92 x93 rs1", simp_all)
+    apply(cases "eval_alu BPF_MUL x92 x93 rs1",simp_all)
     done
   subgoal for x10
     by (metis bpf_instruction.simps(370) sbpf_state.simps(6))
@@ -517,7 +521,7 @@ lemma mem_is_not_changed:"s2 = sbpf_step prog s1 \<Longrightarrow> s1 = (SBPF_OK
     by (metis bpf_instruction.simps(378) sbpf_state.simps(6))
   by (metis (no_types, lifting) bpf_instruction.simps(379) sbpf_state.distinct(1) sbpf_state.simps(6))             
 
-lemma mem_is_not_changed2:"x64_sem 1 l xst1 = xst2 \<Longrightarrow> xst1 = Next xpc1 xrs1 m1 \<Longrightarrow> xst2 = Next xpc2 xrs2 m2 \<Longrightarrow> m1 = m2"
+(*lemma mem_is_not_changed2:"x64_sem 1 l xst1 = xst2 \<Longrightarrow> xst1 = Next xpc1 xrs1 m1 \<Longrightarrow> xst2 = Next xpc2 xrs2 m2 \<Longrightarrow> m1 = m2"
   apply(cases "x64_decode (unat xpc1) l", simp_all)
   subgoal for a apply(cases a, simp_all)
     subgoal for aa b
@@ -529,26 +533,7 @@ lemma mem_is_not_changed2:"x64_sem 1 l xst1 = xst2 \<Longrightarrow> xst1 = Next
         done
       done
     done
-  done
-
-lemma x64_sem1_induct:"x64_sem1 (Suc n) pc x64_prog xst = xst' \<Longrightarrow>
-  xst1 = Next xpc1 xrs1 m \<Longrightarrow> xpc1 = 0 \<Longrightarrow> x64_sem1 n pc x64_prog xst = xst1 \<Longrightarrow> 
-  x64_sem 1 (snd (snd ((x64_prog!(unat pc'))))) xst1 = xst'"
- apply(induct n arbitrary:pc x64_prog xst xst' xst1 xpc1 xrs1 m pc')
-   apply simp
-  apply(cases "x64_decode 0 (snd (snd (x64_prog ! unat pc')))", simp_all)
-  subgoal for pc x64_proga xst xst' xst1 xpc1 xrs1 m pc'
-    apply(cases "x64_proga ! unat pc", simp_all)
-    subgoal for a b c apply(cases "x64_decode 0 (snd (snd (x64_proga ! unat pc')))",simp_all)
-      sorry
-    done
-  subgoal for pc x64_proga xst xst' xst1 xpc1 xrs1 m a pc'
-    apply(cases "x64_proga ! unat pc", simp_all)
-    subgoal for aa b c apply(cases "x64_decode 0 (snd (snd (x64_proga ! unat a)))", simp_all) sorry
-    done
-  subgoal for n pc x64_prog xst xst' xst1 xpc1 xrs1 m pc' apply(cases "x64_prog ! unat pc", simp_all)
-    done
-  done
+  done*)
 
 lemma demo2:
   "\<lbrakk> sbpf_sem n prog s = s';

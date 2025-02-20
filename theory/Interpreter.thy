@@ -373,7 +373,7 @@ definition eval_store :: "memory_chunk \<Rightarrow> dst_ty \<Rightarrow> snd_op
   (storev chk mem vm_addr (memory_chunk_value_of_u64 chk sv))
 ))))"
 
-
+(*et vm_addr :: val = Vlong (sv + (scast off)) in*)
 definition eval_load :: "memory_chunk \<Rightarrow> dst_ty \<Rightarrow> src_ty \<Rightarrow> off_ty \<Rightarrow> reg_map \<Rightarrow> mem \<Rightarrow> reg_map option" where
 "eval_load chk dst sop off rs mem = (
   let sv :: u64 = eval_snd_op_u64 (SOReg sop) rs in (

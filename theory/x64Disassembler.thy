@@ -6,44 +6,9 @@ imports
   x64Assembler
 begin
 
-(*
-  \<comment> \<open> P2887 `ADD register1 to register2` -> `0100 WR0B : 0000 000w : 11 reg1 reg2` \<close>
-            if modrm = 0b11 then (
-              case ireg_of_u8 src of None \<Rightarrow> None | Some src \<Rightarrow> (
-              case ireg_of_u8 dst of None \<Rightarrow> None | Some dst \<Rightarrow> (
-                if w = 1 \<and> x = 0 then 
-                  Some (3, Paddq_rr dst src)
-                else None
-*)
-(*definition x64_decode :: "nat \<Rightarrow> x64_bin \<Rightarrow> (nat * instruction) option" where
-"x64_decode pc l_bin = (
-  let h = l_bin!pc in
-    if h = 0xc3 then Some (1, Pret)
-  else 
-  let w = unsigned_bitfield_extract_u8 3 1 h in
-  let r = unsigned_bitfield_extract_u8 2 1 h in
-  let x = unsigned_bitfield_extract_u8 1 1 h in
-  let b = unsigned_bitfield_extract_u8 0 1 h in
-  let op = l_bin!(pc+1) in 
-  let reg = l_bin!(pc+2) in 
-  let modrm = unsigned_bitfield_extract_u8 6 2 reg in
-  let reg1  = unsigned_bitfield_extract_u8 3 3 reg in
-  let reg2  = unsigned_bitfield_extract_u8 0 3 reg in
-  let src   = bitfield_insert_u8 3 1 reg1 r in
-  let dst   = bitfield_insert_u8 3 1 reg2 b in
-  if op = 0x01 then if modrm = 0b11 then
-              case ireg_of_u8 src of None \<Rightarrow> None | Some src \<Rightarrow> (
-              case ireg_of_u8 dst of None \<Rightarrow> None | Some dst \<Rightarrow> (
-                if w = 1 \<and> x = 0 then 
-                  Some (3, Paddq_rr dst src)
-                else None))
-  else None
-else None)"
-*)
-
 definition x64_decode :: "nat \<Rightarrow> x64_bin \<Rightarrow> (nat * instruction) option" where
 "x64_decode pc l_bin = (
-if pc \<ge> length l_bin then None else 
+
   let h = l_bin!pc in
   if h = 0xc3 then Some (1, Pret)
   else if unsigned_bitfield_extract_u8 4 4 h \<noteq> 0b0100 then  \<comment> \<open> h is not rex  \<close>
@@ -125,61 +90,6 @@ if pc \<ge> length l_bin then None else
 value "x64_decode 0 [0b01001000,0b00000001,0b11011000,0xc3]"
 
 
-(*
-fun x64_decodes_aux ::  "nat \<Rightarrow> x64_bin list \<Rightarrow> (nat * instruction) option list " where
-"x64_decodes_aux _ [] = [None]" |
-"x64_decodes_aux pc (h#t) = (if pc \<le> length (h#t) then let ins' = x64_decode pc h in 
-                              (case ins' of None \<Rightarrow> [None] |
-                                 Some (len, v) \<Rightarrow> [Some (len, v) ] @ x64_decodes_aux pc t)
-                            else [None])"
-
-fun x64_decodes_aux ::  "nat \<Rightarrow> x64_bin list \<Rightarrow> (nat * instruction) option list " where
-"x64_decodes_aux _ [] = [None]" |
-"x64_decodes_aux pc (h#t) = (if pc \<le> length (h#t) then let ins' = x64_decode pc h in 
-                              (case ins' of None \<Rightarrow> [None] |
-                                 Some (len, v) \<Rightarrow> [Some (len, v) ] @ x64_decodes_aux pc t)
-                            else [None])"
-*)
-
-(*
-fun x64_decodes_aux ::  "nat \<Rightarrow> x64_bin \<Rightarrow> (nat * instruction) option list " where
-"x64_decodes_aux _ [] = [None]" |
-"x64_decodes_aux pc xs = (if pc \<ge> length xs then [None] 
-                          else let xs' = drop pc xs; ins' = x64_decode 0 xs' in 
-                              (case ins' of None \<Rightarrow> [None] |
-                                 Some (len, v) \<Rightarrow> [Some (len, v)] @ x64_decodes_aux (len-1) (drop 1 xs')))"
-
-definition x64_decodes:: "nat \<Rightarrow> x64_bin \<Rightarrow> (nat * instruction) list option" where
-"x64_decodes pc xs = (let x = x64_decodes_aux pc xs in if x = [None] then None  
-                   else Some (map Option.the (butlast x)))
-
-*)
-
-(*fun x64_decodes_aux ::  "nat \<Rightarrow> nat \<Rightarrow> x64_bin \<Rightarrow> (nat * instruction) option list " where
-"x64_decodes_aux 0 _ _ = []" |
-"x64_decodes_aux (Suc num) pc xs = (if pc \<ge> length xs then [] else 
-                                      let ins' = x64_decode pc xs in 
-                              (case ins' of None \<Rightarrow> [None] |
-                                 Some (len, v) \<Rightarrow> [Some (len, v)] @ x64_decodes_aux num (pc+len) xs))"
-
-definition x64_decodes:: "nat \<Rightarrow> nat \<Rightarrow> x64_bin \<Rightarrow> (nat * instruction) list option" where
-"x64_decodes num pc xs = (let x = x64_decodes_aux num pc xs in if x = [None] then None  
-                   else Some (map Option.the x))"
-
-*)
-
-
-(*fun x64_decodes_aux ::  "nat \<Rightarrow> nat \<Rightarrow> x64_bin \<Rightarrow> (nat * instruction) list option" where
-"x64_decodes_aux 0 _ _ = Some []" |
-"x64_decodes_aux (Suc num) pc xs = (if pc \<ge> length xs then None else 
-                                      let ins' = x64_decode pc xs in (case ins' of 
-                                        None \<Rightarrow> None |
-                                        Some (len, v) \<Rightarrow>  
-                                          (case x64_decodes_aux num (pc+len) xs of
-                                            None \<Rightarrow> None |
-                                            Some res \<Rightarrow> Some ((len, v)#res))))"*)
-
-
 fun x64_decodes_aux ::  "nat \<Rightarrow> nat \<Rightarrow> x64_bin \<Rightarrow> (nat * instruction) list option" where
 "x64_decodes_aux 0 _ _ = Some []" |
 "x64_decodes_aux (Suc num) pc xs = ( let ins' = x64_decode pc xs in (case ins' of 
@@ -188,28 +98,6 @@ fun x64_decodes_aux ::  "nat \<Rightarrow> nat \<Rightarrow> x64_bin \<Rightarro
                                           (case x64_decodes_aux num pc (drop len xs) of
                                             None \<Rightarrow> None |
                                             Some res \<Rightarrow> Some ((len, v)#res))))"
-
-(*lemma x64_decodes_aux_induct:"x64_decodes_aux (n+m) pc xs = Some res \<Longrightarrow>
-  x64_decodes_aux n pc xs = Some res1 \<Longrightarrow>
-  pc' = pc + sum_list (map fst res1) \<Longrightarrow>
-  x64_decodes_aux m pc' xs = Some res2 \<Longrightarrow>
-  res = res1@res2"
-  apply(induction n arbitrary: m pc xs res res1 pc' res2)
-   apply simp
-  subgoal for n m pc xs res res1 pc' res2
-    apply simp
-    apply(split if_splits, simp_all)
-    apply(cases "x64_decode pc xs",simp_all)
-    subgoal for a apply(cases a,simp_all)
-      subgoal for aa b apply(cases "x64_decodes_aux n (pc + aa) xs",simp_all)
-        subgoal for ab apply(cases "x64_decodes_aux (n + m) (pc + aa) xs",simp_all)
-          subgoal for ac 
-            by (smt (verit, best) append_Cons fst_conv group_cancel.add1 list.simps(9) sum_list.Cons)
-          done
-        done
-      done
-    done
-  done*)
 
 lemma x64_decodes_aux_equiv:
   "Some res = x64_decode pc ins \<Longrightarrow>
@@ -256,69 +144,6 @@ value "x64_decodes_aux 1 1 [0xc3,0b01001000,0b00000001,0b11011000]"
 value "x64_decodes_aux 0 1 [0xc3,0b01001000,0b00000001,0b11011000]"
 
 value "x64_decodes_aux 5 1 [0xc3,0b01001000,0b00000001,0b11011000]"
-
-
-
-(*lemma "x64_decodes_aux (Suc n) pc xs = Some res \<Longrightarrow>
-  x64_decode pc xs = Some res1 \<Longrightarrow>
-  len = (fst res1) \<Longrightarrow>
-  \<exists> res2. x64_decodes_aux n pc (drop len xs) = Some res2 \<and> res = res1#res2"
-  using x64_decodes_aux_induct2 
-apply(split if_splits, simp_all)
-    done*)
-
-
-(*lemma x64_decodes_aux_induct2:"
-  x64_decodes_aux (Suc n) pc xs = Some res \<Longrightarrow>
-  x64_decode pc xs = Some res1 \<Longrightarrow>
-  pc' = pc + (fst res1) \<Longrightarrow>
-  x64_decodes_aux n pc' xs = Some res2 \<Longrightarrow>
-  res = res1#res2"
-  sorry*)
-
-(*
-lemma x64_decodes_aux_induct2:"
-  x64_decodes_aux (Suc n) pc xs = Some res \<Longrightarrow>
-  x64_decode pc xs = Some res1 \<Longrightarrow>
-  pc' = pc + (fst res1) \<Longrightarrow>
-  x64_decodes_aux n pc' xs = Some res2 \<Longrightarrow>
-  res = res1#res2"
-  apply(induction n arbitrary: pc xs res res1 pc' res2)
-   apply simp
-  subgoal for pc xs res res1 pc' res2
-    apply(split if_splits, simp_all)
-    done
-  subgoal for n pc xs res res1 pc' res2 
-
-lemma
-  "x64_decode pc xs = Some res1 \<Longrightarrow> 
-  x64_decodes_aux 1 pc xs = Some res2  \<Longrightarrow>
-  [res1] = res2"
-
-
-(*x64_decodes_aux (Suc n) pc xs = Some res \<Longrightarrow> *)
-lemma x64_decodes_aux_induct3:"
-  x64_decode pc xs = Some res1 \<Longrightarrow>
-  len = (fst res1) \<Longrightarrow>
-  x64_decodes_aux n (pc+len) xs = Some res2 \<Longrightarrow>
-  x64_decodes_aux n pc (drop len xs) = Some res3 \<Longrightarrow> 
-  res2 = res3"
-  sorry
-
-
-lemma hhh:"a = take len xs \<Longrightarrow> b = drop len xs \<Longrightarrow> a@b = xs"
-  by simp
-
-lemma hhhh:"take (length xs) xs = xs"
-  by simp
-
-lemma "x64_decodes_aux (Suc n) 0 xs = Some res \<Longrightarrow>
-  x64_decodes 0 (take len xs) = Some res1 \<Longrightarrow>
-  len = fst res1 \<Longrightarrow>
-  x64_decodes_aux n 0 (drop len xs) = Some res2 \<Longrightarrow>
-  res = res1#res2"
-  sorry
-*)
 
 
 end
