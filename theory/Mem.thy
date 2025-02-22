@@ -371,6 +371,57 @@ lemma int_255_8_eq: "k \<le> n \<Longrightarrow> n < k+8 \<Longrightarrow> bit (
   done
 *)
 
+lemma u32_shift_u8_eq: "
+ ucast
+     ((or (ucast ((ucast (and (x4 >> 24) 255)) ::u8) << 24)
+       (or (ucast ((ucast (and (x4 >> 16) 255)) ::u8) << 16)
+         (or (ucast ((ucast (and (x4 >> 8) 255)) ::u8) << 8)
+             (ucast ((ucast (and x4 255)) ::u8)) ))) ::u64) =
+    (x4::u32)
+"
+  apply (simp add: bit_eq_iff [of _ x4])
+  apply (simp add: bit_simps)
+  apply (rule allI)
+  subgoal for n
+    apply (cases "24 \<le> n"; simp)
+    subgoal
+      apply (cases "bit x4 n"; simp)
+      apply (rule impI)
+      apply (subgoal_tac "n - 24 < 64 \<and> n - 24 < 8 \<and> n - 24 < 32 \<and> bit (255::int) (n - 24)")
+      subgoal by simp
+      subgoal using int_255_8_eq
+        by auto
+      done
+  
+    subgoal
+      apply (cases "16 \<le> n"; simp)
+      subgoal
+        apply (cases "bit x4 n"; simp)
+        apply (subgoal_tac "n - 16 < 64 \<and> n - 16 < 8 \<and> n - 16 < 32 \<and> bit (255::int) (n - 16)")
+        subgoal by simp
+        subgoal using int_255_8_eq
+          by auto
+        done
+  
+      subgoal
+        apply (cases "8 \<le> n"; simp)
+        subgoal
+          apply (drule Orderings.linorder_class.not_le_imp_less)
+          subgoal using int_255_8_eq
+            by auto
+          done
+        subgoal
+          apply (drule Orderings.linorder_class.not_le_imp_less)
+          apply (cases "bit x4 n"; simp)
+          using int_255_8_eq
+          using le_255_int by blast
+        done
+      done
+    done
+  done
+      
+
+
 lemma store_load_consistency_aux: "Some m' = storev M32 m place v \<Longrightarrow> loadv M32 m' place = Some v"
   apply (simp add: storev_def loadv_def option_val_of_u64_def option_u64_of_u8_4_def)
   apply (cases v; simp add: Let_def memory_chunk_value_of_u64_def u8_list_of_u32_def)
@@ -394,11 +445,17 @@ lemma store_load_consistency_aux: "Some m' = storev M32 m place v \<Longrightarr
     subgoal for x5
       apply(unfold Let_def,simp_all)
       apply(unfold u8_list_of_u32_def option_u64_of_u8_4_def option_val_of_u64_def memory_chunk_value_of_u64_def,simp_all)
-      sorry
+
+      using u32_shift_u8_eq
+      by blast
+      
     subgoal for x61 x62
       apply(split if_splits,simp_all)
       apply(unfold Let_def option_u64_of_u8_4_def option_val_of_u64_def memory_chunk_value_of_u64_def u8_list_of_u32_def,simp_all)
-      sorry
+      
+      using u32_shift_u8_eq
+      by blast
+
     done
   subgoal for x5
     apply(cases place,simp_all) 
@@ -422,9 +479,5 @@ lemma store_load_consistency1: "storev M32 m place v = Some m' \<Longrightarrow>
 
 lemma store_load_consistency: "storev M64 m place v = Some m' \<Longrightarrow> loadv M64 m' place = Some v"
   sorry
-
-end
-
-(*axiomatization where store_load_consistency: "storev M32 m place v = Some m' \<Longrightarrow>  loadv M32 m' place = Some v "*)
 
 end
