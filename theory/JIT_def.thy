@@ -3,7 +3,8 @@ imports
   Main
   rBPFCommType rBPFSyntax
   x64Syntax x86CommType
-  StepSem
+  StepSem  x64Semantics x64Assembler 
+
 
 begin
 
@@ -23,6 +24,7 @@ type_synonym func_key = u32
 
 type_synonym func_val = u64
 type_synonym func_map = "(func_key, func_val) map"
+
 
 
 

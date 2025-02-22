@@ -27,8 +27,8 @@ datatype outcome = Next u64 regset mem | Stuck
 
 definition exec_ret :: "memory_chunk \<Rightarrow> mem \<Rightarrow> regset \<Rightarrow> outcome" where
 "exec_ret chunk m rs = (
-  let nsp = (rs SP) + (u64_of_memory_chunk chunk) in
-    case Mem.loadv M64 m nsp of
+  let nsp =  (rs SP) + (u64_of_memory_chunk chunk) in
+    case Mem.loadv M64 m (Vlong nsp) of
     None \<Rightarrow> Stuck |
     Some ra \<Rightarrow> (
       case ra of
@@ -41,7 +41,7 @@ definition exec_pop :: "usize \<Rightarrow> u64 \<Rightarrow> memory_chunk \<Rig
 "exec_pop pc sz chunk m rs rd = (
   let nsp = (rs SP) + (u64_of_memory_chunk chunk) in
     let addr = (rs SP) in
-      case Mem.loadv chunk m addr of
+      case Mem.loadv chunk m (Vptr 1 addr) of
         None \<Rightarrow> Stuck |
         Some x => 
           (case x of Vlong v \<Rightarrow> let rs1 =rs # SP <- nsp  in
@@ -52,7 +52,7 @@ definition exec_pop :: "usize \<Rightarrow> u64 \<Rightarrow> memory_chunk \<Rig
 definition exec_push :: "usize \<Rightarrow> u64 \<Rightarrow> memory_chunk \<Rightarrow> mem \<Rightarrow> regset \<Rightarrow> usize \<Rightarrow> outcome" where
 "exec_push pc sz chunk m rs v = ( 
   let nsp = (rs SP) - (u64_of_memory_chunk chunk) in
-      case Mem.storev chunk m nsp (Vlong v) of
+      case Mem.storev chunk m (Vptr 1 nsp) (Vlong v) of
         None \<Rightarrow> Stuck |
         Some m' => Next (pc + sz) (rs#SP <- nsp) m'
 )"
@@ -167,12 +167,7 @@ definition x64_sem2 :: "nat \<Rightarrow> x64_bin \<Rightarrow> outcome \<Righta
 ))"
 *)
 
-
-
-definition match_stack :: "regset \<Rightarrow> mem \<Rightarrow> bool" where
-"match_stack xrs m = (
-  \<exists> v. Mem.loadv M64 m ((xrs SP) + (u64_of_memory_chunk M64)) = Some (Vlong v))"
-
+(*
 definition corr_state:: "outcome \<Rightarrow> outcome \<Rightarrow> bool" where
 "corr_state bst1 bst2 \<equiv> 
   (case bst1 of
@@ -183,7 +178,10 @@ definition corr_state:: "outcome \<Rightarrow> outcome \<Rightarrow> bool" where
            _ \<Rightarrow> False)|
       _ \<Rightarrow> False)"
 
-
+definition match_stack :: "regset \<Rightarrow> mem \<Rightarrow> bool" where
+"match_stack xrs m = (
+  \<exists> v. Mem.loadv M64 m (Vptr 1 ((xrs SP) + (u64_of_memory_chunk M64))) = Some v)" (* v of Vlong or Vint?*)
+*)
 
 (*
 lemma interp1_increase_pc:

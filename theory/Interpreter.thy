@@ -370,14 +370,14 @@ definition eval_store :: "memory_chunk \<Rightarrow> dst_ty \<Rightarrow> snd_op
   let dv :: i64 = scast (eval_reg dst rs) in (
   let vm_addr :: u64 = ucast (dv + (scast off)) in (  
   let sv :: u64 = eval_snd_op_u64 sop rs in ( \<comment> \<open> TODO: sv is signed for imm and unsigned for src reg? \<close>
-  (storev chk mem vm_addr (memory_chunk_value_of_u64 chk sv))
+  (storev chk mem (Vlong vm_addr) (memory_chunk_value_of_u64 chk sv))
 ))))"
 
 (*et vm_addr :: val = Vlong (sv + (scast off)) in*)
 definition eval_load :: "memory_chunk \<Rightarrow> dst_ty \<Rightarrow> src_ty \<Rightarrow> off_ty \<Rightarrow> reg_map \<Rightarrow> mem \<Rightarrow> reg_map option" where
 "eval_load chk dst sop off rs mem = (
   let sv :: u64 = eval_snd_op_u64 (SOReg sop) rs in (
-  let vm_addr :: u64 = sv + (scast off) in (  
+  let vm_addr :: val = Vlong (sv + (scast off)) in (  
   let v = loadv chk mem vm_addr in (
     case v of 
     None \<Rightarrow> None |
@@ -631,7 +631,7 @@ definition int_to_u8_list :: "int list \<Rightarrow> u8 list" where
 
 (**r the initial state of R1 should be MM_INPUT_START, so here should be (MM_INPUT_START + i), we set MM_INPUT_START = 0 in this model *)
 definition u8_list_to_mem :: "u8 list \<Rightarrow> mem" where
-"u8_list_to_mem l = (\<lambda> i. if (unat i) < length(l) then Some (l!((unat i))) else None)"
+"u8_list_to_mem l = (\<lambda> b i. if b = 0 \<and> (unat i) < length(l) then Some (l!((unat i))) else None)"
 
 definition intlist_to_reg_map :: "int list \<Rightarrow> reg_map" where
 " intlist_to_reg_map l = ( \<lambda> r.
@@ -840,11 +840,11 @@ value "bpf_interp_test
 value "loadv M8 (u8_list_to_mem (int_to_u8_list [0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09])) 2" *)
 
 
-value "loadv M16 (u8_list_to_mem (int_to_u8_list [0x11, 0x22, 0x33])) 1"
+value "loadv M16 (u8_list_to_mem (int_to_u8_list [0x11, 0x22, 0x33])) (Vlong 1)"
 (**r return 0x3322 = 13090 *)
 value "(u16_of_u8_list (rev (u8_list_of_u16 (ucast (0x3322::u64)))))"
 (**r return 0x2233 = 8755 *)
-value "case storev M16 init_mem 0 (Vshort 0x1122) of None \<Rightarrow> None | Some m \<Rightarrow> loadv M16 m 0"
+value "case storev M16 init_mem (Vlong 0) (Vshort 0x1122) of None \<Rightarrow> None | Some m \<Rightarrow> loadv M16 m (Vlong 0)"
 (**r return 0x1122 =4386 *)
 
 

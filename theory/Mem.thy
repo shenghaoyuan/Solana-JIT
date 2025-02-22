@@ -6,17 +6,17 @@ imports
   rBPFCommType Val
 begin
 
-(*type_synonym mem = "nat \<Rightarrow> (u64, u8) map"*)
+type_synonym mem = "nat \<Rightarrow> (u64, u8) map"
 
-type_synonym mem = "(u64, u8) map"
+(*type_synonym mem = "(u64, u8) map"*)
 
 definition init_mem :: "mem" where
-"init_mem = (\<lambda> _ . None)"
+"init_mem = (\<lambda> _ _ . None)"
 
-datatype memory_chunk = M8 | M16 | M32 | M64
+datatype memory_chunk = M8 | M16 | M32 | M64 
 
-(*type_synonym addr_type = val*)
-type_synonym addr_type = u64
+type_synonym addr_type = val
+(*type_synonym addr_type = u64*)
 
 definition option_u64_of_u8_1 :: "u8 option \<Rightarrow> u64 option" where
 "option_u64_of_u8_1 v0 = (
@@ -98,7 +98,7 @@ definition option_val_of_u64 :: "memory_chunk \<Rightarrow> u64 option \<Rightar
   Some v1 \<Rightarrow> Some (memory_chunk_value_of_u64 mc v1)
 )"
 
-
+(*
 definition loadv :: "memory_chunk \<Rightarrow> mem \<Rightarrow> addr_type \<Rightarrow> val option" where
 "loadv mc m addr = ( option_val_of_u64 mc (
   case mc of
@@ -108,37 +108,36 @@ definition loadv :: "memory_chunk \<Rightarrow> mem \<Rightarrow> addr_type \<Ri
   M64 \<Rightarrow> option_u64_of_u8_8 (m addr) (m (addr+1)) (m (addr+2)) (m (addr+3))
                         (m (addr+4)) (m (addr+5)) (m (addr+6)) (m (addr+7))
 ))"
+*)
 
-(*
 definition loadv :: "memory_chunk \<Rightarrow> mem \<Rightarrow> addr_type \<Rightarrow> val option" where
 "loadv mc m addr = (
-  case addr of Vptr b off \<Rightarrow>
-    if b = 0 then None
-    else 
-
-( option_val_of_u64 mc (
-  case mc of
-  M8  \<Rightarrow> option_u64_of_u8_1 (m b off) |
-  M16 \<Rightarrow> option_u64_of_u8_2 (m b off) (m b (off+1))|
-  M32 \<Rightarrow> option_u64_of_u8_4 (m b off) (m b (off+1)) (m b (off+2)) (m b (off+3))|
-  M64 \<Rightarrow> option_u64_of_u8_8 (m b off) (m b (off+1)) (m b (off+2)) (m b (off+3))
+  case addr of 
+     Vptr b off \<Rightarrow>
+        if b = 0 then None
+        else 
+          ( option_val_of_u64 mc (case mc of
+            M8  \<Rightarrow> option_u64_of_u8_1 (m b off) |
+            M16 \<Rightarrow> option_u64_of_u8_2 (m b off) (m b (off+1))|
+            M32 \<Rightarrow> option_u64_of_u8_4 (m b off) (m b (off+1)) (m b (off+2)) (m b (off+3))|
+            M64 \<Rightarrow> option_u64_of_u8_8 (m b off) (m b (off+1)) (m b (off+2)) (m b (off+3))
                         (m b (off+4)) (m b (off+5)) (m b (off+6)) (m b (off+7))
-))|
-  Vlong off \<Rightarrow> ( option_val_of_u64 mc (
-  case mc of
-  M8  \<Rightarrow> option_u64_of_u8_1 (m 0 off) |
-  M16 \<Rightarrow> option_u64_of_u8_2 (m 0 off) (m 0 (off+1))|
-  M32 \<Rightarrow> option_u64_of_u8_4 (m 0 off) (m 0 (off+1)) (m 0 (off+2)) (m 0 (off+3))|
-  M64 \<Rightarrow> option_u64_of_u8_8 (m 0 off) (m 0 (off+1)) (m 0 (off+2)) (m 0 (off+3))
+    ))|
+    Vlong off \<Rightarrow> (option_val_of_u64 mc (
+        case mc of
+          M8  \<Rightarrow> option_u64_of_u8_1 (m 0 off) |
+          M16 \<Rightarrow> option_u64_of_u8_2 (m 0 off) (m 0 (off+1))|
+          M32 \<Rightarrow> option_u64_of_u8_4 (m 0 off) (m 0 (off+1)) (m 0 (off+2)) (m 0 (off+3))|
+          M64 \<Rightarrow> option_u64_of_u8_8 (m 0 off) (m 0 (off+1)) (m 0 (off+2)) (m 0 (off+3))
                         (m 0 (off+4)) (m 0 (off+5)) (m 0 (off+6)) (m 0 (off+7))
-))|
-_ \<Rightarrow> None)"
-*)
+    ))|
+    _ \<Rightarrow> None)"
+
 value "option_u64_of_u8_2 (Some 0b10000000) (Some 0b01000000)"
 value "0b10000000::u8"
 value "0b01000000::u8"
 
-definition storev :: "memory_chunk \<Rightarrow> mem \<Rightarrow> addr_type \<Rightarrow> val \<Rightarrow> mem option" where
+(*definition storev :: "memory_chunk \<Rightarrow> mem \<Rightarrow> addr_type \<Rightarrow> val \<Rightarrow> mem option" where
 "storev mc m addr v = (
   case mc of
   M8  \<Rightarrow> (
@@ -178,19 +177,108 @@ definition storev :: "memory_chunk \<Rightarrow> mem \<Rightarrow> addr_type \<R
                       m i) |
     _ \<Rightarrow> None)
 )"
+*)
+definition storev :: "memory_chunk \<Rightarrow> mem \<Rightarrow> addr_type \<Rightarrow> val \<Rightarrow> mem option" where
+"storev mc m addr v = (
+  case addr of 
+    Vptr b off \<Rightarrow>
+      if b = 0 then None
+      else
+        (case mc of
+          M8  \<Rightarrow> (
+             case v of
+                Vbyte n \<Rightarrow> Some (\<lambda> x i. if x = b \<and> i = off then Some n else m x i ) |
+                _ \<Rightarrow> None) |
+          M16 \<Rightarrow> (
+             case v of
+                Vshort n \<Rightarrow>
+                  let l = u8_list_of_u16 n in
+                    Some (\<lambda> x i. if x = b \<and> i = off      then Some (l!(0)) else
+                                 if x = b \<and> i = (off+1)  then Some (l!(1)) else
+                           m x i) |
+                _ \<Rightarrow> None) |
+         M32 \<Rightarrow> (
+            case v of
+              Vint n \<Rightarrow>
+                let l = u8_list_of_u32 n in
+                  Some (\<lambda> x i. if x = b \<and> i = off      then Some (l!(0)) else
+                             if x = b \<and> i = (off+1)    then Some (l!(1)) else
+                             if x = b \<and> i = (off+2)    then Some (l!(2)) else
+                             if x = b \<and> i = (off+3)    then Some (l!(3)) else
+                             m x i) |
+              _ \<Rightarrow> None) |
+        M64 \<Rightarrow> (
+          case v of
+            Vlong n \<Rightarrow>
+              let l = u8_list_of_u64 n in
+                Some (\<lambda> x i. if x = b \<and> i = off    then Some (l!(0)) else
+                             if x = b \<and> i = (off+1)  then Some (l!(1)) else
+                             if x = b \<and> i = (off+2)  then Some (l!(2)) else
+                             if x = b \<and> i = (off+3)  then Some (l!(3)) else
+                             if x = b \<and> i = (off+4)  then Some (l!(4)) else
+                             if x = b \<and> i = (off+5)  then Some (l!(5)) else
+                             if x = b \<and> i = (off+6)  then Some (l!(6)) else
+                             if x = b \<and> i = (off+7)  then Some (l!(7)) else
+                              m x i) |
+            _ \<Rightarrow> None))|
+
+  Vlong off \<Rightarrow> 
+      (case mc of
+          M8  \<Rightarrow> (
+            case v of
+              Vbyte n \<Rightarrow> Some (\<lambda> x i. if x = 0 \<and> i = off then Some n else m 0 i) |
+              _ \<Rightarrow> None) |
+          M16 \<Rightarrow> (
+             case v of
+              Vshort n \<Rightarrow>
+                let l = u8_list_of_u16 n in
+                Some (\<lambda> x i. if x = 0 \<and> i = off    then Some (l!(0)) else
+                   if x = 0 \<and> i = off+1  then Some (l!(1)) else
+                      m 0 i) |
+              _ \<Rightarrow> None) |
+        M32 \<Rightarrow> (
+            case v of
+              Vint n \<Rightarrow>
+                let l = u8_list_of_u32 n in
+                Some (\<lambda> x i. if x = 0 \<and> i = off    then Some (l!(0)) else
+                   if x = 0 \<and> i = off+1  then Some (l!(1)) else
+                   if x = 0 \<and> i = off+2  then Some (l!(2)) else
+                   if x = 0 \<and> i = off+3  then Some (l!(3)) else
+                      m 0 i) |
+             _ \<Rightarrow> None) |
+       M64 \<Rightarrow> (
+          case v of
+            Vlong n \<Rightarrow>
+              let l = u8_list_of_u64 n in
+               Some (\<lambda> x i. if x = 0 \<and> i = off    then Some (l!(0)) else
+                   if x = 0 \<and> i = off+1  then Some (l!(1)) else
+                   if x = 0 \<and> i = off+2  then Some (l!(2)) else
+                   if x = 0 \<and> i = off+3  then Some (l!(3)) else
+                   if x = 0 \<and> i = off+4  then Some (l!(4)) else
+                   if x = 0 \<and> i = off+5  then Some (l!(5)) else
+                   if x = 0 \<and> i = off+6  then Some (l!(6)) else
+                   if x = 0 \<and> i = off+7  then Some (l!(7)) else
+                      m 0 i) |
+           _ \<Rightarrow> None))|
+  _ \<Rightarrow> None
+)"
 
 definition init_mem2 :: "mem" where
-"init_mem2 = (\<lambda> i. if i = (0b0000000000000000000000000000000000000000000000000000000000000001::u64) then Some 0 else None)"
+"init_mem2 = (\<lambda> x i. if x = 1 \<and> i = (0b0000000000000000000000000000000000000000000000000000000000000001::u64) then Some 0 else None)"
 
 
-value "loadv M16 init_mem2 (1::u64)"
-value "loadv M16 (the (storev M16 init_mem2 (1::u64) (Vshort 1))) (1::u64)"
+value "loadv M16 init_mem2 ((Vptr 1 1)::val)"
 
+value "loadv M16 init_mem2 ((Vlong 1)::val)"
 
- (*
-axiomatization
-  loadv   :: "memory_chunk \<Rightarrow> mem \<Rightarrow> addr_type \<Rightarrow> val option" and
-  storev  :: "memory_chunk \<Rightarrow> mem \<Rightarrow> addr_type \<Rightarrow> val \<Rightarrow> mem option"  *)
+value "(storev M16 init_mem2 (Vptr 0 1) (Vshort 1))"
+
+value "(storev M16 init_mem2 (Vlong 1) (Vshort 1))"
+
+value "loadv M16 (the (storev M16 init_mem2 (Vlong 1) (Vshort 1))) (Vlong 1)"
+
+value "loadv M16 (the (storev M16 init_mem2 (Vptr 1 1) (Vshort 1))) (Vptr 1 1)"
+
 
 definition vlong_of_memory_chunk :: "memory_chunk \<Rightarrow> val" where
 "vlong_of_memory_chunk chunk = (
@@ -236,7 +324,7 @@ lemma int_255_8_eq: "k \<le> n \<Longrightarrow> n < k+8 \<Longrightarrow> bit (
   by presburger
 
 (*prove load_store_other *)
-lemma store_load_consistency_aux: "Some m' = storev M32 m place v \<Longrightarrow> loadv M32 m' place = Some v"
+(*lemma store_load_consistency_aux: "Some m' = storev M32 m place v \<Longrightarrow> loadv M32 m' place = Some v"
   apply (simp add: storev_def loadv_def option_val_of_u64_def option_u64_of_u8_4_def)
   apply (cases v; simp add: Let_def memory_chunk_value_of_u64_def u8_list_of_u32_def)
   subgoal for x4
@@ -281,6 +369,50 @@ lemma store_load_consistency_aux: "Some m' = storev M32 m place v \<Longrightarr
       done
     done
   done
+*)
+
+lemma store_load_consistency_aux: "Some m' = storev M32 m place v \<Longrightarrow> loadv M32 m' place = Some v"
+  apply (simp add: storev_def loadv_def option_val_of_u64_def option_u64_of_u8_4_def)
+  apply (cases v; simp add: Let_def memory_chunk_value_of_u64_def u8_list_of_u32_def)
+       apply(cases place,simp_all)
+  subgoal for x61 x62
+    apply(split if_splits,simp_all)
+    done
+  subgoal for x2 apply(cases place,simp_all)
+    subgoal for x61 x62
+      apply(split if_splits,simp_all)
+      done
+    done
+  subgoal for x3
+    apply(cases place,simp_all)
+ subgoal for x61 x62
+   apply(split if_splits,simp_all)
+   done
+  done
+  subgoal for x4
+    apply(cases place,simp_all)
+    subgoal for x5
+      apply(unfold Let_def,simp_all)
+      apply(unfold u8_list_of_u32_def option_u64_of_u8_4_def option_val_of_u64_def memory_chunk_value_of_u64_def,simp_all)
+      sorry
+    subgoal for x61 x62
+      apply(split if_splits,simp_all)
+      apply(unfold Let_def option_u64_of_u8_4_def option_val_of_u64_def memory_chunk_value_of_u64_def u8_list_of_u32_def,simp_all)
+      sorry
+    done
+  subgoal for x5
+    apply(cases place,simp_all) 
+    subgoal for x61 x62 
+      apply(split if_splits,simp_all)
+      done
+    done
+  subgoal for x61 x62 
+    apply(cases place,simp_all) 
+    subgoal for x61a x62a
+      apply(split if_splits,simp_all)
+      done
+    done
+  done
 
 
 lemma store_load_consistency1: "storev M32 m place v = Some m' \<Longrightarrow> loadv M32 m' place = Some v"
@@ -289,7 +421,6 @@ lemma store_load_consistency1: "storev M32 m place v = Some m' \<Longrightarrow>
 
 
 lemma store_load_consistency: "storev M64 m place v = Some m' \<Longrightarrow> loadv M64 m' place = Some v"
-  using store_load_consistency_aux
   sorry
 
 end

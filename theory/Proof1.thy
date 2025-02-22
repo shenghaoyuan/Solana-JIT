@@ -27,8 +27,8 @@ lemma x64_encode_decode_consistency:
  "list_in_list l_bin pc l \<Longrightarrow>
    l_bin = x64_encode ins \<Longrightarrow>
    x64_decode pc l = Some (length l_bin, ins)"
-  sorry
-  (*apply(cases ins,simp_all)
+  using list_in_list_prop
+  apply(cases ins,simp_all)
   subgoal for dst src 
     \<comment> \<open> Paddq_rr \<close> 
     apply (unfold Let_def construct_rex_to_u8_def construct_modsib_to_u8_def)
@@ -58,7 +58,7 @@ lemma x64_encode_decode_consistency:
     apply (unfold Let_def construct_rex_to_u8_def construct_modsib_to_u8_def)
     apply (cases dst; auto simp add: x64_decode_def bitfield_insert_u8_def Let_def ireg_of_u8_def)
   done
-  done*)
+  done
 
 (*lemma x64_encodes_decodes_consistency:
   "Some l_bin = x64_encodes2 ins \<Longrightarrow>
