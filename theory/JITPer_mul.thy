@@ -19,7 +19,7 @@ lemma mulq_subgoal_rr_aux1_1:
   apply(cases "Pmulq_r (bpf_to_x64_reg src)",simp_all)
   subgoal for x6
     apply(unfold exec_push_def exec_pop_def exec_ret_def  Let_def) 
-    using store_load_consistency
+    using store_load_consistency sp_block_def
     apply(cases "storev M64 m1 (Vptr 1 (rs1 SP - u64_of_memory_chunk M64)) (Vlong (rs1 RAX))",simp_all)
     apply(cases "loadv M64 m5 (Vptr (Suc 0) (rs5 SP))", simp_all)
     subgoal for a apply(cases a,simp_all)
@@ -52,7 +52,7 @@ lemma mulq_subgoal_rr_aux1_2:
       apply(split if_splits,simp_all)
       apply(cases " prog ! unat pc ",simp_all)
       subgoal for x91 apply(split if_splits,simp_all)
-        using store_load_consistency
+        using store_load_consistency sp_block_def
         apply(cases "storev M64 m1 (Vptr (Suc 0) (rs1 SP - u64_of_memory_chunk M64)) (Vlong (rs1 RAX))",simp_all)
         apply(cases "loadv M64 m5 (Vptr (Suc 0) (rs5 SP))", simp_all)
     subgoal for a apply(cases a,simp_all)
@@ -86,11 +86,11 @@ proof-
     subgoal for a using b1 by blast
     done
   have b2:"storev M64 m1 ?addr (Vlong (xrs1 RAX)) = Some m2" 
-    using b2_2 b2_1 exec_push_def
+    using b2_2 b2_1 exec_push_def sp_block_def
     by(cases "storev M64 m1 ?addr (Vlong (xrs1 RAX))",simp_all)
-  have c2:"xrs2 RSP = (xrs1 SP)- (u64_of_memory_chunk M64)" using b2_1 exec_push_def b2_2 b2_1
+  have c2:"xrs2 RSP = (xrs1 SP)- (u64_of_memory_chunk M64)" using b2_1 exec_push_def b2_2 b2_1 sp_block_def
     by(cases "storev M64 m1 ?addr (Vlong (xrs1 RAX))",simp_all) 
-  have d2:"xrs2 RAX = xrs1 RAX" using a0 exec_instr_def a2 b2_1 exec_push_def 
+  have d2:"xrs2 RAX = xrs1 RAX" using a0 exec_instr_def a2 b2_1 exec_push_def sp_block_def
     by(cases "storev M64 m1 ?addr (Vlong (xrs1 RAX))",simp_all) 
   
   have b3:"m2=m3" using a0 exec_instr_def a3 by simp
@@ -109,13 +109,13 @@ proof-
     apply(cases "Mem.loadv M64 m5 ?addr",simp_all) 
      apply(cases "Vlong (xrs1 RAX)",simp_all)
     subgoal for a x5 
-      using b5_1 b5_3 c2 c3 c4 c5 c1 by force
+      using b5_1 b5_3 c2 c3 c4 c5 c1 sp_block_def by force
     done
   have d5:"xrs6 RAX = xrs RAX" using exec_pop_def b5_2
     apply(cases "Mem.loadv M64 m5 ?addr",simp_all) 
      apply(cases "Vlong (xrs1 RAX)",simp_all)
     subgoal for a x5 
-      using b5_1 b5_3 c2 c3 c4 c5 d1 d2 by force
+      using b5_1 b5_3 c2 c3 c4 c5 d1 d2 sp_block_def by force
     done
   thus ?thesis using d5 b5 by simp
 qed
@@ -221,9 +221,9 @@ proof-
     subgoal for a using b1 by blast
     done
   have b2:"storev M64 m1 ?addr (Vlong (xrs1 RAX)) = Some m2" 
-    using b2_2 b2_1 exec_push_def
+    using b2_2 b2_1 exec_push_def sp_block_def
     by(cases "storev M64 m1 ?addr (Vlong (xrs1 RAX))",simp_all)
-  have c2:"xrs2 RSP = (xrs1 SP)- (u64_of_memory_chunk M64)" using b2_1 exec_push_def b2_2 b2_1
+  have c2:"xrs2 RSP = (xrs1 SP)- (u64_of_memory_chunk M64)" using b2_1 exec_push_def b2_2 b2_1 sp_block_def
     by(cases "storev M64 m1 ?addr (Vlong (xrs1 RAX))",simp_all) 
  
   have b3:"m2=m3" using a0 exec_instr_def a3 by simp
@@ -242,7 +242,7 @@ proof-
     apply(cases "Mem.loadv M64 m5 ?addr",simp_all) 
      apply(cases "Vlong (xrs1 RAX)",simp_all)
     subgoal for a x5 
-      using b5_1 b5_3 c2 c3 c4 c5 c1 by force
+      using b5_1 b5_3 c2 c3 c4 c5 c1 sp_block_def by force
     done
   have b7:"match_mem m1 m2" using store_load_other b2 match_mem_def by simp
   thus ?thesis using b1 b3 b4 b5 b6 b7 mulq_match_mem_aux2_1 by blast
@@ -295,11 +295,11 @@ proof-
   let "?addr" = "Vptr 1 ((xrs1 SP)- (u64_of_memory_chunk M64))"
   have b2_2:"storev M64 m1 ?addr (Vlong (xrs1 RAX)) \<noteq> None" 
     using a0 a1 exec_push_def apply(cases "storev M64 m1 ?addr (Vlong (xrs1 RAX))",simp_all)
-    using b2_1 by force
+    using b2_1 sp_block_def by force
   have b2:"storev M64 m1 ?addr (Vlong (xrs1 RAX)) = Some m2" 
-    using b2_2 b2_1 exec_push_def
+    using b2_2 b2_1 exec_push_def sp_block_def
     by(cases "storev M64 m1 ?addr (Vlong (xrs1 RAX))",simp_all)
-  have c2:"xrs2 RSP = (xrs1 SP)- (u64_of_memory_chunk M64)" using b2_1 exec_push_def b2_2 b2_1
+  have c2:"xrs2 RSP = (xrs1 SP)- (u64_of_memory_chunk M64)" using b2_1 exec_push_def b2_2 b2_1 sp_block_def
     by(cases "storev M64 m1 ?addr (Vlong (xrs1 RAX))",simp_all) 
   
   have b3:"m2=m3" using a0 exec_instr_def a3 by simp
@@ -318,7 +318,7 @@ proof-
     apply(cases "Mem.loadv M64 m5 ?addr",simp_all) 
      apply(cases "Vlong (xrs1 RAX)",simp_all)
     subgoal for a x5 
-      using b5_1 b5_3 c2 c3 c4 c5 by force
+      using b5_1 b5_3 c2 c3 c4 c5 sp_block_def by force
     done
   thus ?thesis by simp
 qed

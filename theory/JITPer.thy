@@ -108,7 +108,7 @@ proof-
   hence d4_1:"(sz2,xins2) =(length ?l_bin2,Ppushl_r RAX)" using x64_encode_decode_consistency c1 d0 option.sel d3 by metis
   hence d4_2:"sz2 = 1 " apply(cases xins2,simp_all)using bitfield_insert_u8_def Let_def construct_rex_to_u8_def by simp
   have f1:"1 = length ?l_bin2" using d4_2 d4_1 by blast
-  let "?len" = "length (let rex::8 word = construct_rex_to_u8 False False False False; op::8 word = bitfield_insert_u8 (0::nat) (3::nat) (80::8 word) (0::8 word) in if rex = (64::8 word) then [op] else [rex, op])" 
+  let "?len" = "length (let rex = construct_rex_to_u8 False False False False; op = bitfield_insert_u8 0 3 80 0 in if rex = 64 then [op] else [rex, op])" 
   have fn:"?len = 1" by(unfold Let_def construct_rex_to_u8_def bitfield_insert_u8_def,simp_all)
   have "\<exists> st2. exec_instr xins2 (of_nat sz2) xpc1 xrs1 m1 = st2" 
     using d4_1 d4_2 apply(unfold exec_instr_def) 
@@ -123,7 +123,7 @@ proof-
       apply(unfold storev_def,simp_all)
       by (meson option.simps(3))
     subgoal for x3 a 
-      apply(unfold storev_def,simp_all)
+      apply(unfold storev_def sp_block_def,simp_all)
       by blast
     done
   then obtain xpc2 xrs2 m2 where b4:"Next xpc2 xrs2 m2 = exec_instr xins2 (of_nat sz2) xpc1 xrs1 m1" using d4_3 by auto
@@ -241,7 +241,7 @@ proof-
     have c5_1:"xpc2 = xpc1 + of_nat(length ?l_bin2)" using b4 d4_1 d4_2
       apply(unfold exec_instr_def,simp_all)
       apply(cases xins2,simp_all)
-      apply(unfold exec_push_def)
+      apply(unfold exec_push_def sp_block_def)
       apply(cases "storev M64 m1 (Vptr 1 (xrs1 SP - u64_of_memory_chunk M64)) (Vlong (xrs1 RAX))",simp_all)
        apply (metis One_nat_def of_nat_1 outcome.simps(3))
       subgoal for a
