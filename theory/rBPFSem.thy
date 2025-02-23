@@ -66,6 +66,7 @@ fun sbpf_step :: "ebpf_asm \<Rightarrow> sbpf_state \<Rightarrow> sbpf_state" wh
         Some rs' \<Rightarrow> SBPF_OK (pc+1) rs' m
       ) |
     _ \<Rightarrow> SBPF_Err) |
+    BPF_JA off \<Rightarrow> SBPF_OK (pc+1+scast off) rs m | 
     BPF_EXIT \<Rightarrow> SBPF_Success (rs BR0) |
     _ \<Rightarrow> SBPF_Err
 ))" |
@@ -76,7 +77,7 @@ fun sbpf_sem :: "nat \<Rightarrow> ebpf_asm \<Rightarrow> sbpf_state \<Rightarro
 "sbpf_sem (Suc n) prog st = sbpf_sem n prog (sbpf_step prog st)"
 
 
-value "sbpf_step [BPF_ALU64 BPF_ADD BR0 (SOReg BR1)] (SBPF_OK 1 (\<lambda>x. 0) Map.empty)" 
+value "sbpf_step [BPF_ALU64 BPF_ADD BR0 (SOReg BR1)] (SBPF_OK 1 (\<lambda> x. 0) Map.empty)" 
 
 value "sbpf_sem 0 [BPF_ALU64 BPF_ADD BR0 (SOReg BR1)] (SBPF_OK 1 (\<lambda>x. 0) Map.empty)"
 (*

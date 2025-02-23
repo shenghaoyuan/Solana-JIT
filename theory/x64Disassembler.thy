@@ -26,6 +26,14 @@ definition x64_decode :: "nat \<Rightarrow> x64_bin \<Rightarrow> (nat * instruc
         case ireg_of_u8 dst of None \<Rightarrow> None | Some dst \<Rightarrow> (
           Some (1, Ppopl dst))
       else None
+  else if h = 0xe9 then
+        \<comment> \<open> P2881 `JMP: direct` -> `1110 1001 : displacement32` \<close>
+        let i1 = l_bin!(pc+1)  in
+        let i2 = l_bin!(pc+2)  in
+        let i3 = l_bin!(pc+3)  in
+        let i4 = l_bin!(pc+4)  in
+          case u32_of_u8_list [i1,i2,i3,i4] of None \<Rightarrow> None |
+            Some d \<Rightarrow> ( Some (5, Pjmp (scast d))) 
   else 
     let w = unsigned_bitfield_extract_u8 3 1 h in
     let r = unsigned_bitfield_extract_u8 2 1 h in

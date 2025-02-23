@@ -36,8 +36,10 @@ shows "\<exists> xst'. let l = (x64_prog!(unat pc)) in x64_sem (fst l) (snd (snd
 proof-
   let "?bpf_ins" = "prog!(unat pc)"
   have b0:"length prog \<noteq> 0" using a6 by blast
-  have b1:"\<exists> src dst. ?bpf_ins = BPF_ALU64 BPF_ADD dst (SOReg src) \<or> ?bpf_ins = BPF_ALU64 BPF_MUL dst (SOReg src)" using a0 a1 a2 a6 b0 aux1 by blast
-  obtain src dst where b2:"?bpf_ins = BPF_ALU64 BPF_ADD dst (SOReg src) \<or> ?bpf_ins = BPF_ALU64 BPF_MUL dst (SOReg src)" using b1 by blast
+  have b1:"(\<exists> src dst. ?bpf_ins = BPF_ALU64 BPF_ADD dst (SOReg src) \<or> ?bpf_ins = BPF_ALU64 BPF_MUL dst (SOReg src))
+  \<or> (\<exists> x. ?bpf_ins = BPF_JA x)" using a0 a1 a2 a6 b0 aux1 by blast
+  obtain src dst where b2:"?bpf_ins = BPF_ALU64 BPF_ADD dst (SOReg src) \<or> ?bpf_ins = BPF_ALU64 BPF_MUL dst (SOReg src)
+  " using b1 sorry
   show ?thesis
   proof (cases "?bpf_ins = BPF_ALU64 BPF_ADD dst (SOReg src)")
     case True
@@ -419,7 +421,7 @@ next
   have "\<exists> num off l. x64_prog!(unat pc) = (num,off,l)" by (metis split_pairs)
   then obtain num off l where a6:"x64_prog!(unat pc) = (num,off,l)" by auto
   have a7:"l = (snd (snd ((x64_prog!(unat pc)))))" using a6 by simp
-  let "?pc" = "pc+off"
+  let "?pc" = "scast pc+scast off"
   have a9:"x64_sem1 n ?pc x64_prog ?xst1 = xst'" using x64_sem1_induct_aux3 assm4 assm9 a7 a6 a4_1 a10 by (metis fst_conv)
   have a13:"?pc = pc1" using corr_pc_aux2 assm6 a0 s1_eq a6 a2 assm7 assm2 by auto
   from Suc.IH have " sbpf_sem n prog s = s' \<Longrightarrow>
@@ -449,8 +451,6 @@ lemma demo2:
    xpc = 0 \<rbrakk> \<Longrightarrow>
    \<exists> xst'. x64_sem1 n pc x64_prog xst = xst' \<and> match_state s' xst'"
   using demo2_aux by blast
-
-
 
                                   
 

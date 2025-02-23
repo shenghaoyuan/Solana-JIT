@@ -190,6 +190,7 @@ datatype instruction =
   | Ppopl  ireg
   | Pmovq_rr ireg ireg       (**r [mov] (integer) *)
   | Pmulq_r ireg
+  | Pjmp i32
 
 type_synonym x64_asm = "instruction list"
 type_synonym x64_bin = "u8 list"

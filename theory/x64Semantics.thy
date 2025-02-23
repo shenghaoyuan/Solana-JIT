@@ -66,7 +66,8 @@ definition exec_instr :: "instruction \<Rightarrow> u64 \<Rightarrow> u64 \<Righ
   Ppushl_r  r1    \<Rightarrow> exec_push pc sz M64 m rs (rs r1) |
   Pmovq_rr rd r1  \<Rightarrow> Next (pc + sz) (rs#rd <- (rs r1)) m |
   Pmulq_r   r1    \<Rightarrow> let rs1 = rs#RAX <- ((rs RAX)*(rs r1)) in
-                     Next (pc + sz) (rs1# RDX <-( (rs RAX)*(rs r1) div (2 ^ 32))) m 
+                     Next (pc + sz) (rs1# RDX <-( (rs RAX)*(rs r1) div (2 ^ 32))) m |
+  Pjmp       d    \<Rightarrow> Next (scast d) rs m
 )"
 
 
@@ -112,7 +113,7 @@ lemma x64_sem_add:
   done
 
 
-fun x64_sem1 :: "nat \<Rightarrow> u64 \<Rightarrow> (nat \<times> u64 \<times> x64_bin) list \<Rightarrow> outcome \<Rightarrow> outcome" where
+fun x64_sem1 :: "nat \<Rightarrow> u64 \<Rightarrow> (nat \<times> i64 \<times> x64_bin) list \<Rightarrow> outcome \<Rightarrow> outcome" where
 "x64_sem1 0 _ _ st = (let xst_temp =
    case st of
     Next xpc rs m \<Rightarrow> Next 0 rs m |
@@ -124,11 +125,13 @@ fun x64_sem1 :: "nat \<Rightarrow> u64 \<Rightarrow> (nat \<times> u64 \<times> 
     Next xpc rs m \<Rightarrow> Next 0 rs m |
     Stuck \<Rightarrow> Stuck) in
   let xst' = x64_sem num l xst_temp in (
-    x64_sem1 n (pc+off) lt xst'))"
+    x64_sem1 n (ucast (scast pc+off)) lt xst'))"
 
 
 type_synonym x64_state = outcome
 
+value "scast (100::u64) ::i64"
 
+value "ucast((scast (100::u64) ::i64) + (-1::i64))::u64"
 
 end

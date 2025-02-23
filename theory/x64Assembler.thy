@@ -64,9 +64,13 @@ Paddq_rr rd r1 \<Rightarrow>
       if rex = 0x40 then
          [op]
       else 
-          [rex, op] )"
+          [rex, op] |
+   \<comment> \<open> P2881 `JMP: direct` -> `1110 1001 : displacement32` \<close>
+  Pjmp d \<Rightarrow>
+    let (op:: u8) = 0xe9 in
+      [op] @ (u8_list_of_u32 (ucast d)))"
 
-
+                                         
 fun list_in_list :: "'a list \<Rightarrow> nat \<Rightarrow> 'a list \<Rightarrow> bool" where
 "list_in_list [] _ _ = True" |
 "list_in_list (h#t) n l = (h = l!n \<and> list_in_list t (Suc n) l)"
