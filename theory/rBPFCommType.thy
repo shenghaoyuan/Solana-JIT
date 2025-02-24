@@ -133,6 +133,14 @@ definition u8_list_of_u32 :: "u32 \<Rightarrow> u8 list" where
     (ucast (and (i >> 24) 0xff))
   ]"
 
+definition u8_list_of_i32 :: "i32 \<Rightarrow> u8 list" where
+"u8_list_of_i32 i =
+  [ (scast (and  i        0xff)),
+    (scast (and (i >> 8 ) 0xff)),
+    (scast (and (i >> 16) 0xff)),
+    (scast (and (i >> 24) 0xff))
+  ]"
+
 definition u8_list_of_u64 :: "u64 \<Rightarrow> u8 list" where
 "u8_list_of_u64 i =
   [ (ucast (and  i        0xff)),

@@ -118,6 +118,8 @@ value "(ucast(-1::u16)::u64)+1::u64"
 
 value "(-1::i16) + (1::i16)"
 
+value "(-1::u16) + (1::u16)"
+
 value "Some ((map the (map per_jit_ins [BPF_ALU64 BPF_ADD BR0 (SOReg BR6),BPF_ALU64 BPF_ADD BR0 (SOReg BR1)])))"
 
 value "jitper [BPF_ALU64 BPF_SUB BR0 (SOReg BR6),BPF_EXIT]"
@@ -612,6 +614,6 @@ qed*)
   qed                                                   
 qed*)
 
-
-
+value "(x64_encode (Pmovq_rr R11 RBX)@(x64_encode (Ppushl_r RDX)) @ (x64_encode (Pmulq_r R11)) @ (x64_encode (Ppopl RDX)))"
+(*[1001001,10001001,11011011,1010010,1001001,11110111,11100011,1011010]*)
 end
