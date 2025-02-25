@@ -7,7 +7,7 @@ type_synonym l_pc = "u64 list"
 
 type_synonym location = u64
 
-type_synonym target_pc = i64
+type_synonym target_pc = u64
 
 type_synonym l_jump = "(location\<times>target_pc) list"
 
@@ -42,7 +42,7 @@ value "(-1::i64) + (2::i64) > negative_value_of_i64"
 
 
 
-fun jitflat :: "(nat \<times> i64 \<times> x64_bin) list \<Rightarrow> x64_bin \<times> l_pc \<times> l_jump \<Rightarrow> x64_bin \<times> l_pc \<times> l_jump " where
+fun jitflat :: "(nat \<times> u64 \<times> x64_bin) list \<Rightarrow> x64_bin \<times> l_pc \<times> l_jump \<Rightarrow> x64_bin \<times> l_pc \<times> l_jump " where
   "jitflat [] last_comp = last_comp"| 
   "jitflat ((num,off,l_bin0)#xs) (fst_comp,snd_comp,trd_comp) = 
         (let curr_pc = of_nat (length fst_comp) in 
@@ -117,11 +117,11 @@ fun jitfix :: "l_jump \<Rightarrow> x64_bin \<Rightarrow> l_pc \<Rightarrow> x64
                               l' = x64_bin_update l (unat (fix_begin_addr+1)) u8_list in 
                           jitfix xs l' pcs)"
 
-value "jitfix [(1::64 word, 3::64 signed word)] 
+value "jitfix [(1::64 word, 3::64 word)] 
   [72::8 word, 1::8 word, 216::8 word, 233::8 word, 0::8 word, 0::8 word, 0::8 word, 0::8 word, 72::8 word, 1::8 word, 216::8 word, 72::8 word, 1::8 word, 216::8 word]
   [0::64 word, 3::64 word, 8::64 word, 11::64 word]"
 
-value "jitfix [(0::64 word, 2::64 signed word), (4::64 word, 1::64 signed word)]
+value "jitfix [(0::64 word, 2::64 word), (4::64 word, 1::64 word)]
 [233::8 word, 0::8 word, 0::8 word, 0::8 word, 0::8 word, 195::8 word, 72::8 word, 1::8 word, 216::8 word, 72::8 word, 1::8 word, 216::8 word, 233::8 word, 0::8 word, 0::8 word, 0::8 word, 0::8 word]
 [0::64 word, 5::64 word, 6::64 word, 9::64 word, 12::64 word]  "
 
@@ -185,5 +185,10 @@ definition jitflat3 :: "(nat \<times> u64 \<times> x64_bin) list \<Rightarrow> (
     then Some (curr_jump_list !(unat i)) else init_l_jump i))"
 *)
 
-value "x64_encode (Pjmp ((-1)::i32)"
+value "x64_encode (Pjmp ((-1)::i32))"
+
+
+                                                 
+qed
+
 end

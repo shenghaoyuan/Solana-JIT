@@ -53,13 +53,13 @@ text \<open> return
   - the number of jited x64 assembly code
   - the offset pointing to next pc
   - the jited x64 binary code \<close>
-definition per_jit_add_reg64_1 :: "bpf_ireg \<Rightarrow> bpf_ireg \<Rightarrow> (nat \<times> i64 \<times> x64_bin) option" where
+definition per_jit_add_reg64_1 :: "bpf_ireg \<Rightarrow> bpf_ireg \<Rightarrow> (nat \<times> u64 \<times> x64_bin) option" where
 "per_jit_add_reg64_1 dst src = (
   let ins = Paddq_rr (bpf_to_x64_reg dst) (bpf_to_x64_reg src) in
     Some (1, 1, x64_encode ins) 
 )"
 
-definition per_jit_exit :: "(nat \<times> i64 \<times> x64_bin) option" where
+definition per_jit_exit :: "(nat \<times> u64 \<times> x64_bin) option" where
 "per_jit_exit = (
   let ins = Pret in
     Some (1, 1, x64_encode ins) 
@@ -70,7 +70,7 @@ definition per_jit_exit :: "(nat \<times> i64 \<times> x64_bin) option" where
 "per_jit_mul_reg64 dst src \<equiv> let ins_list = [Pmovq_rr (bpf_to_x64_reg src) R11, Ppushl_r RDX, Pmulq_r R11, Ppopl RDX] in
    map_option (\<lambda> l. (5, 1, l)) (x64_encodes_func_suffix ins_list)"*)
 
-definition per_jit_mul_reg64::"bpf_ireg \<Rightarrow> bpf_ireg \<Rightarrow> (nat \<times> i64 \<times> x64_bin) option" where
+definition per_jit_mul_reg64::"bpf_ireg \<Rightarrow> bpf_ireg \<Rightarrow> (nat \<times> u64 \<times> x64_bin) option" where
 "per_jit_mul_reg64 dst src \<equiv> 
   let ins_list = case (bpf_to_x64_reg dst) of 
       RAX \<Rightarrow> (x64_encode (Pmovq_rr R11 (bpf_to_x64_reg src))@(x64_encode (Ppushl_r RDX)) @ (x64_encode (Pmulq_r R11)) @ (x64_encode (Ppopl RDX))) |
@@ -87,10 +87,10 @@ definition per_jit_mul_reg64::"bpf_ireg \<Rightarrow> bpf_ireg \<Rightarrow> (na
     _ \<Rightarrow> 8
     in Some (len, 1, ins_list)"
 
-definition per_jit_ja ::"i64 \<Rightarrow> (nat \<times> i64 \<times> x64_bin) option" where
-  "per_jit_ja off \<equiv> let ins = (Pjmp (scast off)) in Some (1,off,x64_encode ins )"
+definition per_jit_ja ::"u64 \<Rightarrow> (nat \<times> u64 \<times> x64_bin) option" where
+  "per_jit_ja off \<equiv> let ins = (Pjmp 0) in Some (1,off+1,x64_encode ins )"
                                                
-fun per_jit_ins ::" bpf_instruction \<Rightarrow> (nat \<times> i64 \<times> x64_bin) option" where
+fun per_jit_ins ::" bpf_instruction \<Rightarrow> (nat \<times> u64 \<times> x64_bin) option" where
 "per_jit_ins bins = (
   case bins of
   BPF_ALU64 BPF_ADD dst (SOReg src) \<Rightarrow> (per_jit_add_reg64_1 dst src) |
@@ -100,7 +100,7 @@ fun per_jit_ins ::" bpf_instruction \<Rightarrow> (nat \<times> i64 \<times> x64
   _ \<Rightarrow> None
 )"
 
-fun jitper :: "ebpf_asm \<Rightarrow> (nat \<times> i64 \<times> x64_bin) list option" where
+fun jitper :: "ebpf_asm \<Rightarrow> (nat \<times> u64 \<times> x64_bin) list option" where
   "jitper [] = Some []" |
   "jitper (h#xs) = (case per_jit_ins h of 
                    None \<Rightarrow> None 
@@ -164,7 +164,7 @@ definition match_state :: "sbpf_state \<Rightarrow> x64_state \<Rightarrow> bool
       Next xpc xrs xm \<Rightarrow>
         match_reg rs xrs \<and> \<comment>\<open> for ALU + MEM + Call \<close>
         match_mem m xm  \<comment>\<open> for MEM + Call \<close> \<and> 
-        match_stack xrs xm |
+        match_stack xrs xm  |
       _ \<Rightarrow> False
   ) |
   SBPF_Success v \<Rightarrow>(
@@ -491,7 +491,7 @@ lemma match_s_not_stuck:"match_state s xst \<Longrightarrow> xst \<noteq> Stuck"
 lemma x64_sem1_induct_aux1:"x64_sem1 (Suc n) pc x64_prog (Next xpc xrs m) = xst' \<Longrightarrow> 
   x64_prog!(unat pc) = (num,off,l) \<Longrightarrow>
   x64_sem num l (Next 0 xrs m) = xst1 \<Longrightarrow> 
-  x64_sem1 n (ucast (scast pc+ off)) x64_prog xst1 = xst'"
+  x64_sem1 n (pc+ off) x64_prog xst1 = xst'"
  apply(induct n arbitrary:pc x64_prog xpc xrs m xst' num off l)
  apply simp 
   by simp
@@ -511,7 +511,7 @@ lemma x64_sem1_induct_aux3:"
   x64_prog!(unat pc) = (num,off,l) \<Longrightarrow>
   x64_sem num l (Next 0 xrs m) = xst1 \<Longrightarrow> 
   xst1 = Next xpc1 xrs1 m1 \<Longrightarrow>
-  x64_sem1 n (ucast (scast pc+ off)) x64_prog (Next 0 xrs1 m1) = xst'"
+  x64_sem1 n (pc+ off) x64_prog (Next 0 xrs1 m1) = xst'"
   using x64_sem1_induct_aux2 x64_sem1_induct_aux1 by metis
 
 lemma pc_scope_aux:"\<lbrakk> sbpf_sem n prog s = s'; s = (SBPF_OK pc rs m); s' = (SBPF_OK pc' rs' m'); prog \<noteq> []; n>0\<rbrakk> \<Longrightarrow> 
@@ -569,6 +569,144 @@ next
   qed
 qed
 *)
+lemma corr_pc_aux1_1:
+  "jitper prog = Some x64_prog \<Longrightarrow> 
+  prog \<noteq> [] \<and> unat pc \<ge> 0 \<and> unat pc < length prog \<Longrightarrow>
+  prog!(unat pc) \<in> {BPF_ALU64 BPF_ADD dst (SOReg src), BPF_ALU64 BPF_MUL dst (SOReg src), BPF_EXIT} \<Longrightarrow>
+  (num,off,l) = x64_prog!(unat pc) \<Longrightarrow>
+  off=1"
+proof (induction prog arbitrary: x64_prog pc dst src num off l)
+  case Nil
+  then show ?case by simp
+next
+  case (Cons a prog)
+  then show ?case
+  proof-
+    assume assm1:"(a # prog) ! unat pc \<in> {BPF_ALU64 BPF_ADD dst (SOReg src), BPF_ALU64 BPF_MUL dst (SOReg src), BPF_EXIT}"
+    have a0:"unat pc = 0 \<or> unat pc \<ge> 1" by auto
+    show ?thesis
+    proof (cases "unat pc = 0")
+      case True
+      have b0_1:"unat pc = 0" using True a0 by simp
+      have b0:"\<exists> x. per_jit_ins a = Some x" using Cons by (cases "per_jit_ins a"; auto)
+      obtain x where b1:"per_jit_ins a = Some x" using b0 by auto
+      have b1_1:"(num,off,l) = x" using b0_1 b1 True Cons
+        by (smt (verit) jitper.simps(2) nth_Cons_0 old.prod.case option.case_eq_if option.discI option.sel prod_cases3)
+      
+      have bn:"off = 1"
+        using b1 apply(cases "per_jit_ins a", simp_all) 
+        subgoal for aa 
+         apply(cases a,simp_all)
+        subgoal for x91 x92 x93
+          apply(cases x91,simp_all)
+          apply(cases x93,simp_all)
+          subgoal for x1 using b1 b1_1 per_jit_add_reg64_1_def Let_def by auto
+          apply(cases x93,simp_all) 
+          subgoal for x2 using b1 b1_1 per_jit_mul_reg64_def Let_def by auto
+          done 
+        subgoal for x15 using assm1 b0_1 by(unfold per_jit_ja_def Let_def,simp_all) 
+        apply(unfold per_jit_exit_def Let_def, simp_all) using b1 b1_1 by blast
+      done
+      then show ?thesis using bn by blast
+    next
+      case False
+      have "\<exists> res. jitper prog = Some res" using Cons assm1 
+        apply (cases "jitper prog"; simp_all) 
+        apply(cases a, simp_all) 
+        subgoal for x91 x92 x93 apply(cases x91,simp_all) 
+          apply(cases x93,simp_all)
+          subgoal for x2 apply(cases "per_jit_add_reg64_1 x92 x2",simp_all) 
+            done 
+          apply(cases x93,simp_all) 
+          subgoal for x2 apply(cases "per_jit_mul_reg64 x92 x2",simp_all) 
+            done
+          done
+        apply(unfold per_jit_exit_def) 
+         apply(cases per_jit_exit,simp_all) 
+        subgoal for x15 by(cases "per_jit_ja (scast x15)",simp_all)
+        subgoal for x15 aa by(cases "per_jit_ja (scast x15)",simp_all)
+        done
+      then obtain res where b0:"jitper prog = Some res" by auto
+      have b1:"\<exists> x. per_jit_ins a = Some x" using Cons by (cases "per_jit_ins a"; auto)
+      obtain x where b2:"per_jit_ins a = Some x" using b1 by auto
+      have c0:" Some (x # res) = Some x64_prog" using b0 b2 Cons by auto
+      have c1:"unat pc \<ge> 1" using a0 False by blast
+      have c2:"x64_prog ! unat pc = (num,off,l)" using c0 Cons by simp
+      let "?pc'" = "unat pc -1"
+      have c3:"(num,off,l) = res! ?pc'" using c0 False c2 by auto
+      have c4:"0 \<le> ?pc' \<and> ?pc' < length prog \<and> prog \<noteq> [] " using Cons c0 c1 by auto
+      have c5:"off=1" using c3 c4 Cons.IH False b0 unat_minus_one unsigned_eq_0_iff 
+        by (metis (no_types, lifting) assm1 nth_Cons')
+      then show ?thesis by blast
+    qed
+  qed
+qed
+
+lemma corr_pc_aux1_2:
+  "jitper prog = Some x64_prog \<Longrightarrow> 
+  prog \<noteq> [] \<and> unat pc \<ge> 0 \<and> unat pc < length prog \<Longrightarrow>
+  prog!(unat pc) = BPF_JA d \<Longrightarrow>
+  (num,off,l) = x64_prog!(unat pc) \<Longrightarrow>
+  off = scast d+1"
+proof (induction prog arbitrary: x64_prog pc d num off l)
+  case Nil
+  then show ?case by simp
+next
+  case (Cons a prog)
+  then show ?case
+  proof-
+    assume assm1:"(a # prog) ! unat pc = BPF_JA d"
+    have a0:"unat pc = 0 \<or> unat pc \<ge> 1" by auto
+    show ?thesis
+    proof (cases "unat pc = 0")
+      case True
+      have b0_1:"unat pc = 0" using True a0 by simp
+      have b0:"\<exists> x. per_jit_ins a = Some x" using Cons by (cases "per_jit_ins a"; auto)
+      obtain x where b1:"per_jit_ins a = Some x" using b0 by auto
+      have b1_1:"(num,off,l) = x" using b0_1 b1 True Cons
+        by (smt (verit) jitper.simps(2) nth_Cons_0 old.prod.case option.case_eq_if option.discI option.sel prod_cases3)
+      have b2:"a = BPF_JA d" using assm1 True by simp
+
+      have bn:"off = scast d+1"
+        using b1 b2 assm1 b0_1 b1_1 apply(cases "per_jit_ins a", simp_all) 
+        subgoal for aa 
+         apply(cases a,simp_all)
+          using assm1 b0_1 apply(unfold per_jit_ja_def Let_def u8_list_of_u32_def,simp_all) by auto
+        done
+      then show ?thesis using bn by blast
+    next
+      case False
+      have "\<exists> res. jitper prog = Some res" using Cons assm1 
+        apply (cases "jitper prog"; simp_all) 
+        apply(cases a, simp_all) 
+        subgoal for x91 x92 x93 apply(cases x91,simp_all) 
+          apply(cases x93,simp_all)
+          subgoal for x2 apply(cases "per_jit_add_reg64_1 x92 x2",simp_all) 
+            done 
+          apply(cases x93,simp_all) 
+          subgoal for x2 apply(cases "per_jit_mul_reg64 x92 x2",simp_all) 
+            done
+          done
+        apply(unfold per_jit_exit_def) 
+         apply(cases per_jit_exit,simp_all) 
+        subgoal for x15 by(cases "per_jit_ja (scast x15)",simp_all)
+        subgoal for x15 aa by(cases "per_jit_ja (scast x15)",simp_all)
+        done
+      then obtain res where b0:"jitper prog = Some res" by auto
+      have b1:"\<exists> x. per_jit_ins a = Some x" using Cons by (cases "per_jit_ins a"; auto)
+      obtain x where b2:"per_jit_ins a = Some x" using b1 by auto
+      have c0:" Some (x # res) = Some x64_prog" using b0 b2 Cons by auto
+      have c1:"unat pc \<ge> 1" using a0 False by blast
+      have c2:"x64_prog ! unat pc = (num,off,l)" using c0 Cons by simp
+      let "?pc'" = "unat pc -1"
+      have c3:"(num,off,l) = res! ?pc'" using c0 False c2 by auto
+      have c4:"0 \<le> ?pc' \<and> ?pc' < length prog \<and> prog \<noteq> [] " using Cons c0 c1 by auto
+      have c5:"off=scast d+1" using c3 c4 Cons.IH False b0 unat_minus_one unsigned_eq_0_iff 
+        by (metis (mono_tags, lifting) assm1 nth_Cons')
+      then show ?thesis by blast
+    qed
+  qed
+qed
 
 
 lemma corr_pc_aux2:
@@ -576,9 +714,52 @@ lemma corr_pc_aux2:
   s =  SBPF_OK pc rs m \<Longrightarrow>
   s' = sbpf_step prog s \<Longrightarrow> s' = SBPF_OK pc' rs' m' \<Longrightarrow> 
   (num,off,l) = x64_prog!(unat pc) \<Longrightarrow>
+  pc' = pc + off"
+proof-
+  assume assm0:"s' = sbpf_step prog s"  and
+         assm1:"s' = SBPF_OK pc' rs' m'" and
+         assm2:"jitper prog = Some x64_prog" and
+         assm3:"prog \<noteq> [] \<and> unat pc \<ge> 0 \<and> unat pc < length prog" and
+         assm4:"s = SBPF_OK pc rs m" and
+         assm5:"(num,off,l) = x64_prog!(unat pc)"
+  have "\<exists> src dst d. prog!(unat pc) \<in> {BPF_ALU64 BPF_ADD dst (SOReg src), BPF_ALU64 BPF_MUL dst (SOReg src), BPF_EXIT, BPF_JA d}" using assm0 assm1 assm3 assm4 aux2 by fastforce
+  then obtain src dst d where "prog!(unat pc) \<in> {BPF_ALU64 BPF_ADD dst (SOReg src), BPF_ALU64 BPF_MUL dst (SOReg src), BPF_EXIT, BPF_JA d}" by blast
+  hence "(\<exists> src dst. prog!(unat pc) \<in> {BPF_ALU64 BPF_ADD dst (SOReg src), BPF_ALU64 BPF_MUL dst (SOReg src), BPF_EXIT}) \<or> (\<exists> d. prog!(unat pc) = BPF_JA d)" by blast
+  then obtain src dst d where c0:"prog!(unat pc) \<in> {BPF_ALU64 BPF_ADD dst (SOReg src), BPF_ALU64 BPF_MUL dst (SOReg src), BPF_EXIT} \<or> prog!(unat pc) = BPF_JA d" by auto
+  thus ?thesis
+proof(cases "prog!(unat pc) \<in> {BPF_ALU64 BPF_ADD dst (SOReg src), BPF_ALU64 BPF_MUL dst (SOReg src), BPF_EXIT}")
+  case True
+  have c1:"pc' = pc+1" using c0 assm0 assm1 True apply(cases "prog!(unat pc)",simp_all)
+    prefer 2 using assm4 assm3 apply simp
+    subgoal for x91 x92 x93 apply(erule disjE)
+      using assm4 assm3 eval_alu_def apply simp 
+      using assm4 assm3 eval_alu_def by simp
+    done
+  have "off=1" using assm2 assm3 assm5 corr_pc_aux1_1 True by blast
+  thus ?thesis using c1 True c0 by auto
+next
+  case False
+  have c1:"prog!(unat pc) = BPF_JA d" using False c0 by blast
+  have c2:"pc' = pc+1+scast d" using assm0 c1 assm4 apply(cases "prog!(unat pc)",simp_all)
+    by (metis (no_types, lifting) assm1 bpf_instruction.simps(375) sbpf_state.inject(1) sbpf_state.simps(6))
+  have c3:"off = scast d + 1" using corr_pc_aux1_2 assm2 assm3 assm5 c1 by blast
+  then show ?thesis using c3 c2 False by simp
+qed
+qed
+
+
+
+
+
+(*
+
+lemma corr_pc_aux2:
+  "jitper prog = Some x64_prog \<Longrightarrow> prog \<noteq> [] \<and> unat pc \<ge> 0 \<and> unat pc < length prog \<Longrightarrow>
+  s =  SBPF_OK pc rs m \<Longrightarrow>
+  s' = sbpf_step prog s \<Longrightarrow> s' = SBPF_OK pc' rs' m' \<Longrightarrow> 
+  (num,off,l) = x64_prog!(unat pc) \<Longrightarrow>
   pc' = ucast (scast pc+ off)"
-  sorry
-(*proof-
+proof-
   assume assm0:"s' = sbpf_step prog s"  and
          assm1:"s' = SBPF_OK pc' rs' m'" and
          assm2:"jitper prog = Some x64_prog" and

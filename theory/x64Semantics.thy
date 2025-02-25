@@ -113,7 +113,7 @@ lemma x64_sem_add:
   done
 
 
-fun x64_sem1 :: "nat \<Rightarrow> u64 \<Rightarrow> (nat \<times> i64 \<times> x64_bin) list \<Rightarrow> outcome \<Rightarrow> outcome" where
+fun x64_sem1 :: "nat \<Rightarrow> u64 \<Rightarrow> (nat \<times> u64 \<times> x64_bin) list \<Rightarrow> outcome \<Rightarrow> outcome" where
 "x64_sem1 0 _ _ st = (let xst_temp =
    case st of
     Next xpc rs m \<Rightarrow> Next 0 rs m |
@@ -125,7 +125,7 @@ fun x64_sem1 :: "nat \<Rightarrow> u64 \<Rightarrow> (nat \<times> i64 \<times> 
     Next xpc rs m \<Rightarrow> Next 0 rs m |
     Stuck \<Rightarrow> Stuck) in
   let xst' = x64_sem num l xst_temp in (
-    x64_sem1 n (ucast (scast pc+off)) lt xst'))"
+    x64_sem1 n (pc+off) lt xst'))"
 
 
 type_synonym x64_state = outcome

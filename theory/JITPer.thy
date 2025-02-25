@@ -16,7 +16,7 @@ imports
   rBPFCommType rBPFSyntax rBPFSem
   x64Syntax x64Semantics x64Assembler
    x64DecodeProofAux
-  JITPer_add JITPer_mul  JITPer_exit
+  JITPer_add JITPer_mul JITPer_exit JITPer_jump
 
 begin
 
@@ -38,8 +38,7 @@ proof-
   have b0:"length prog \<noteq> 0" using a6 by blast
   have b1:"(\<exists> src dst. ?bpf_ins = BPF_ALU64 BPF_ADD dst (SOReg src) \<or> ?bpf_ins = BPF_ALU64 BPF_MUL dst (SOReg src))
   \<or> (\<exists> x. ?bpf_ins = BPF_JA x)" using a0 a1 a2 a6 b0 aux1 by blast
-  obtain src dst where b2:"?bpf_ins = BPF_ALU64 BPF_ADD dst (SOReg src) \<or> ?bpf_ins = BPF_ALU64 BPF_MUL dst (SOReg src)
-  " using b1 sorry
+  obtain src dst x where b2:"?bpf_ins = BPF_ALU64 BPF_ADD dst (SOReg src) \<or> ?bpf_ins = BPF_ALU64 BPF_MUL dst (SOReg src) \<or> (?bpf_ins = BPF_JA x)" using b1 by auto
   show ?thesis
   proof (cases "?bpf_ins = BPF_ALU64 BPF_ADD dst (SOReg src)")
     case True
@@ -64,9 +63,34 @@ proof-
     then show ?thesis using True b2 c2 by force                                        
   next
     case False
-    have c0_1:"?bpf_ins = BPF_ALU64 BPF_MUL dst (SOReg src)" using False b2 by blast
+    have c0_0:"?bpf_ins = BPF_ALU64 BPF_MUL dst (SOReg src) \<or> (?bpf_ins = BPF_JA x)" using False b2 by blast
+    thus ?thesis
+  proof(cases "(?bpf_ins = BPF_JA x)")
+    case True
     let "?l_bin"= "snd (snd (the (per_jit_ins ?bpf_ins)))"
-    have c0:"?l_bin = snd (snd (the (per_jit_mul_reg64 dst src)))" using b2 False by fastforce
+    have c0:"?l_bin = snd (snd (the (per_jit_ja (scast x))))" using b2 True by fastforce
+    have c1:"?l_bin = x64_encode (Pjmp 0)" using per_jit_ja_def c0 by fastforce
+    have c2:"snd (snd (x64_prog!(unat pc))) = ?l_bin" using a6 c0 a5 aux5 by metis
+    let "?st" = "x64_sem (fst (x64_prog!(unat pc))) ?l_bin xst"
+    have "x64_prog!(unat pc) = the (per_jit_ins ?bpf_ins)" using aux5 a5 a6 by blast
+    then have "x64_prog!(unat pc) = the (per_jit_ja (scast x))" using b2 True by simp
+    then have c3_1:"(fst (x64_prog!(unat pc))) = 1" using per_jit_ja_def by simp
+    moreover have "list_in_list ?l_bin 0 ?l_bin" using  list_in_list_prop by simp
+    hence "\<exists> xins2. x64_decode 0 ?l_bin = Some (length ?l_bin, xins2) " 
+      using x64_encode_decode_consistency a3 a7 c1 list_in_list_prop c3_1 by blast
+    then obtain xins2 where c3:"x64_decode 0 ?l_bin = Some (length ?l_bin, xins2)" by auto
+    have c4:"?st = exec_instr xins2 (of_nat (length ?l_bin)) xpc xrs xm" using c3 True a3 a7
+      apply(cases xst,simp_all) apply(cases "prog ! unat pc",simp_all) by (simp add: calculation)
+    have c5:"xins2 = Pjmp 0" using Pair_inject c4 c3 c1 option.inject x64_encode_decode_consistency list_in_list_prop by metis
+    have c6:"\<exists> xrs' xpc' xm'. ?st = Next xpc' xrs' xm'" using exec_instr_def spec c5 c4 by auto
+    obtain xrs' xpc' xm' where c7:"?st = Next xpc' xrs' xm'" using c6 by auto
+    have "match_state s' ?st" using ja_subgoal_rr_generic a0 a1 a2 c7 a4 a3 per_jit_ja_def b2 c4 c3 True by fastforce
+    then show ?thesis using True c0_0 False c2 by simp
+  next
+    case False
+    have c0_1:"?bpf_ins = BPF_ALU64 BPF_MUL dst (SOReg src)" using False c0_0 by simp
+    let "?l_bin"= "snd (snd (the (per_jit_ins ?bpf_ins)))"
+    have c0:"?l_bin = snd (snd (the (per_jit_mul_reg64 dst src)))" using b2 c0_0 False by fastforce
     let "?result" = "per_jit_mul_reg64 dst src"
     have c2_0:"(bpf_to_x64_reg dst) = RDX \<or> (bpf_to_x64_reg dst) = RAX \<or> (bpf_to_x64_reg dst) \<notin> {RAX, RDX}" by blast
     
@@ -207,7 +231,7 @@ proof-
   let "?st'" = "x64_sem (fst (x64_prog!(unat pc))) ?l_bin xst" 
   have c16:"snd (snd (x64_prog!(unat pc))) = ?l_bin" using a6 c0 a5 aux5 by metis
   have "x64_prog!(unat pc) = the (per_jit_ins ?bpf_ins)" using aux5 a5 a6 by blast
-  then have c5:"x64_prog!(unat pc) = the (per_jit_mul_reg64 dst src)" using b2 False by simp
+  then have c5:"x64_prog!(unat pc) = the (per_jit_mul_reg64 dst src)" using b2 c0_0 False by simp
   have c17:"(fst (x64_prog!(unat pc))) = length ?xins" using per_jit_mul_reg64_def c2
       apply(cases "(bpf_to_x64_reg dst)",simp_all) using c5 by force
    have c15:"(fst (x64_prog!(unat pc))) = (Suc(Suc(Suc(Suc(Suc(Suc 0))))))" using c17 by simp
@@ -370,6 +394,7 @@ next
 qed
 qed
 qed
+qed
 
 lemma demo2_aux:
   "\<lbrakk> sbpf_sem n prog s = s';
@@ -421,7 +446,7 @@ next
   have "\<exists> num off l. x64_prog!(unat pc) = (num,off,l)" by (metis split_pairs)
   then obtain num off l where a6:"x64_prog!(unat pc) = (num,off,l)" by auto
   have a7:"l = (snd (snd ((x64_prog!(unat pc)))))" using a6 by simp
-  let "?pc" = "scast pc+scast off"
+  let "?pc" = "pc+off"
   have a9:"x64_sem1 n ?pc x64_prog ?xst1 = xst'" using x64_sem1_induct_aux3 assm4 assm9 a7 a6 a4_1 a10 by (metis fst_conv)
   have a13:"?pc = pc1" using corr_pc_aux2 assm6 a0 s1_eq a6 a2 assm7 assm2 by auto
   from Suc.IH have " sbpf_sem n prog s = s' \<Longrightarrow>

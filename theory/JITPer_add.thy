@@ -89,6 +89,14 @@ proof -
     have b8:"match_stack reg' xm'" using stack_is_not_changed_by_add a6 match_state_def a5 b0 by simp
     have b9:"match_mem m' xm'" using mem_is_not_changed mem_is_not_changed_by_add match_state_def a6
       by (metis (no_types, lifting) a4 a5 b0 outcome.simps(4) sbpf_state.simps(9))
+    (*have b10:"pc = spc" using match_state_def a6 by simp
+    have "pc' = pc+1" using a4 a7 a0 
+      apply(cases bins,simp_all) 
+      subgoal for x91 apply(split if_splits,simp_all) 
+        using eval_alu_def
+        by (smt (verit) binop.simps(133) bpf_instruction.simps(369) option.simps(5) sbpf_state.distinct(3) sbpf_state.inject(1) snd_op.simps(6))
+      done
+    have "spc' = spc+sz" using a5 apply(unfold exec_instr_def,simp_all) using b0 by(cases xins,simp_all)*)
     thus ?thesis using b3 b7 match_state_def b8 b9 match_reg_def by fastforce
   qed
       

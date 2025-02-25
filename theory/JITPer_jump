@@ -1,0 +1,44 @@
+theory JITPer_jump
+imports
+  Main
+  rBPFCommType rBPFSyntax rBPFSem
+  x64Syntax x64Semantics x64Assembler
+  JITPer_aux
+
+begin
+
+lemma ja_subgoal_rr_generic:
+  assumes a0:"bins = BPF_JA d" and
+       a1:"per_jit_ja (scast d) = Some (n, off, l_bin)" and
+       a3:"x64_decode 0 l_bin = Some (length l_bin, xins)" and
+       a4:"sbpf_step prog (SBPF_OK pc rs m) = (SBPF_OK pc' rs' m')" and
+       a5:"Next spc' reg' xm' = exec_instr xins sz spc reg xm" and
+       a6:"match_state (SBPF_OK pc rs m) (Next spc reg xm) " and
+       a7:"prog!(unat pc) = bins"
+  shows "match_state (SBPF_OK pc' rs' m') (Next spc' reg' xm') "
+proof -
+    have b0:"xins = Paddq_rr (bpf_to_x64_reg dst) (bpf_to_x64_reg src)" 
+      using x64_encode_decode_consistency per_jit_add_reg64_1_def a1 a3 list_in_list_prop
+    by (smt (verit, ccfv_SIG) Pair_inject map_option_eq_Some option.inject)
+    moreover have b1:"(\<forall> r. (rs r) = reg (bpf_to_x64_reg r))" using a6 spec match_state_def match_reg_def by simp
+    moreover have b2:"(rs src) = reg (bpf_to_x64_reg src)" using a6 spec b1 by simp
+    hence b3:"(rs' dst) = reg' (bpf_to_x64_reg dst)" using aluq_subgoal_rr_aux1 b0 b1 b2 a0 a4 a5 a7 by metis
+    have b4:"\<forall> r \<noteq> dst. reg'(bpf_to_x64_reg r) = reg (bpf_to_x64_reg r)" using b0 a5 aluq_subgoal_rr_aux2 by blast
+    have b5:"\<forall> r \<noteq> dst. (rs' r) = (rs r)" using aluq_subgoal_rr_aux3 a0 a4 a7 by force
+    have b6:"\<forall> r \<noteq> dst. (rs r) = reg ((bpf_to_x64_reg r))" using a6 using b1 by blast
+    have b7:"(\<forall> r \<noteq> dst. (rs' r) = reg' ((bpf_to_x64_reg r)))" using b1 b4 b5 by presburger
+    have b8:"match_stack reg' xm'" using stack_is_not_changed_by_add a6 match_state_def a5 b0 by simp
+    have b9:"match_mem m' xm'" using mem_is_not_changed mem_is_not_changed_by_add match_state_def a6
+      by (metis (no_types, lifting) a4 a5 b0 outcome.simps(4) sbpf_state.simps(9))
+    (*have b10:"pc = spc" using match_state_def a6 by simp
+    have "pc' = pc+1" using a4 a7 a0 
+      apply(cases bins,simp_all) 
+      subgoal for x91 apply(split if_splits,simp_all) 
+        using eval_alu_def
+        by (smt (verit) binop.simps(133) bpf_instruction.simps(369) option.simps(5) sbpf_state.distinct(3) sbpf_state.inject(1) snd_op.simps(6))
+      done
+    have "spc' = spc+sz" using a5 apply(unfold exec_instr_def,simp_all) using b0 by(cases xins,simp_all)*)
+    thus ?thesis using b3 b7 match_state_def b8 b9 match_reg_def by fastforce
+  qed
+      
+end
