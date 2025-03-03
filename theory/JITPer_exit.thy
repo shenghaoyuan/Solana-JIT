@@ -12,10 +12,10 @@ lemma exit_subgoal_rr_generic:
        a3:"x64_decode 0 l_bin = Some (n, xins)" and
        a4:"sbpf_step prog (SBPF_OK pc rs m) = st'" and
        a5:"xst' = exec_instr xins sz spc reg m" and
-       a6:"match_state (SBPF_OK pc rs m) (Next spc reg m) " and
+       a6:"match_state (SBPF_OK pc rs m) (pc,(Next spc reg m)) " and
        a7:"prog!(unat pc) = bins" and
        a8:"prog \<noteq> [] \<and> unat pc < length prog \<and> unat pc \<ge> 0"
-     shows "match_state st' xst'"
+     shows "match_state st' (pc',xst')"
 proof-
   have b0:"st' = SBPF_Success (rs BR0)" using a0 a4 a7 a8 by simp
   have b1:"xins = Pret" using x64_encode_decode_consistency per_jit_exit_def a0 a1 a3 list_in_list_prop

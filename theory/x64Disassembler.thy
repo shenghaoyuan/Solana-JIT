@@ -6,9 +6,19 @@ imports
   x64Assembler
 begin
 
+(*
+ else if h = 0xe9 then
+        \<comment> \<open> P2881 `JMP: direct` -> `1110 1001 : displacement32` \<close>
+        let i1 = l_bin!(pc+1)  in
+        let i2 = l_bin!(pc+2)  in
+        let i3 = l_bin!(pc+3)  in
+        let i4 = l_bin!(pc+4)  in
+          case u32_of_u8_list [i1,i2,i3,i4] of None \<Rightarrow> None |
+            Some d \<Rightarrow> ( Some (5, Pjmp (scast d))) 
+*)
+
 definition x64_decode :: "nat \<Rightarrow> x64_bin \<Rightarrow> (nat * instruction) option" where
 "x64_decode pc l_bin = (
-
   let h = l_bin!pc in
   if h = 0xc3 then Some (1, Pret)
   else if unsigned_bitfield_extract_u8 4 4 h \<noteq> 0b0100 then  \<comment> \<open> h is not rex  \<close>
@@ -26,14 +36,18 @@ definition x64_decode :: "nat \<Rightarrow> x64_bin \<Rightarrow> (nat * instruc
         case ireg_of_u8 dst of None \<Rightarrow> None | Some dst \<Rightarrow> (
           Some (1, Ppopl dst))
       else None
-  else if h = 0xe9 then
-        \<comment> \<open> P2881 `JMP: direct` -> `1110 1001 : displacement32` \<close>
-        let i1 = l_bin!(pc+1)  in
-        let i2 = l_bin!(pc+2)  in
-        let i3 = l_bin!(pc+3)  in
-        let i4 = l_bin!(pc+4)  in
-          case u32_of_u8_list [i1,i2,i3,i4] of None \<Rightarrow> None |
-            Some d \<Rightarrow> ( Some (5, Pjmp (scast d))) 
+  else if h = 0x0f then \<comment> \<open> R8 escape \<close>
+    let op = l_bin!(pc+1) in
+    if unsigned_bitfield_extract_u8 4 4 op = 0b1000 then
+        let flag = (unsigned_bitfield_extract_u8 0 4 op) in
+        let i1 = l_bin!(pc+2)  in
+        let i2 = l_bin!(pc+3)  in
+        let i3 = l_bin!(pc+4)  in
+        let i4 = l_bin!(pc+5)  in
+          case u32_of_u8_list [i1,i2,i3,i4] of None \<Rightarrow> None | Some d \<Rightarrow>(
+          case cond_of_u8 flag of None \<Rightarrow> None | Some t \<Rightarrow>(
+            Some(6, Pjcc t (scast d))))
+     else None
   else 
     let w = unsigned_bitfield_extract_u8 3 1 h in
     let r = unsigned_bitfield_extract_u8 2 1 h in
@@ -82,6 +96,14 @@ definition x64_decode :: "nat \<Rightarrow> x64_bin \<Rightarrow> (nat * instruc
                 Some (3, Pmulq_r dst) 
               else None)
            else None
+      else if op = 0x39 then
+          if modrm = 0b11 then
+            case ireg_of_u8 src of None \<Rightarrow> None | Some src \<Rightarrow> (
+            case ireg_of_u8 dst of None \<Rightarrow> None | Some dst \<Rightarrow> (
+              if w = 1 \<and> x = 0 then
+                Some(3, Pcmpq_rr src dst)
+              else None))
+          else None
       else if op = 0x89 then
             if modrm = 0b11 then 
             \<comment> \<open> P2882 `MOV register1 to register2` -> `0100 WR0B : 1000 100w : 11 reg1 reg2` \<close>

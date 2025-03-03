@@ -94,6 +94,9 @@ text \<open> skip float registers, as Solana rBPF doesn't deal with float \<clos
 
 datatype crbit = ZF | CF | PF | SF | OF
 
+datatype preg = IR ireg | CR crbit 
+
+type_synonym label = nat
 (*
 datatype preg = PC | IR ireg | CR crbit
 
@@ -101,8 +104,6 @@ abbreviation "RIP \<equiv> PC"  \<comment> \<open> the RIP register in x86-64 (x
     *)
 
 abbreviation "SP \<equiv> RSP"
-
-type_synonym label = nat
 
 datatype addrmode =
   Addrmode "ireg option" "(ireg * u8) option" u32
@@ -183,6 +184,7 @@ definition cond_of_u8 :: "u8 \<Rightarrow> testcond option" where
   (and first argument), the second suffix describes the second argument.
 *)
 
+(*Pjmp i32*)
 datatype instruction =
   Paddq_rr ireg ireg
   | Pret
@@ -190,7 +192,8 @@ datatype instruction =
   | Ppopl  ireg
   | Pmovq_rr ireg ireg       (**r [mov] (integer) *)
   | Pmulq_r ireg
-  | Pjmp i32
+  | Pjcc testcond i32
+  | Pcmpq_rr ireg ireg
 
 type_synonym x64_asm = "instruction list"
 type_synonym x64_bin = "u8 list"

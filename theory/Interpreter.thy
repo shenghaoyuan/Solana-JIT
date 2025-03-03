@@ -581,8 +581,8 @@ fun step :: "u64 \<Rightarrow> bpf_instruction \<Rightarrow> reg_map \<Rightarro
   BPF_JA off  \<Rightarrow>
     BPF_OK (pc + scast off + 1) rs m ss sv fm (cur_cu+1) remain_cu |
 
-  BPF_JUMP cond bpf_ireg snd_op off  \<Rightarrow> (
-    if eval_jmp cond bpf_ireg snd_op rs  then
+  BPF_JUMP cond dst snd_op off  \<Rightarrow> (
+    if eval_jmp cond dst snd_op rs  then
       BPF_OK (pc + scast off + 1) rs m ss sv fm (cur_cu+1) remain_cu
     else
       BPF_OK (pc + 1) rs m ss sv fm (cur_cu+1) remain_cu) |

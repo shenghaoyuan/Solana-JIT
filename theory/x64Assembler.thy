@@ -66,10 +66,24 @@ Paddq_rr rd r1 \<Rightarrow>
       else 
           [rex, op] |
    \<comment> \<open> P2881 `JMP: direct` -> `1110 1001 : displacement32` \<close>
-  Pjmp d \<Rightarrow>
-    let (op:: u8) = 0xe9 in
-      [op] @ (u8_list_of_u32 (ucast d)))"
+  Pjcc t d \<Rightarrow>
+    let (ex:: u8) = 0x0f in
+    let (op:: u8) = bitfield_insert_u8 0 4 0x80 (u8_of_cond t) in
+    [ex, op] @ (u8_list_of_u32 (ucast d)) |
+  Pcmpq_rr r1 r2 \<Rightarrow>
+    let (rex:: u8) = (construct_rex_to_u8  \<comment> \<open> `1R0B` \<close>
+      True  \<comment> \<open> W \<close>
+      (and (u8_of_ireg r1) 0b1000 \<noteq> 0) \<comment> \<open> R \<close>
+      False \<comment> \<open> X \<close>
+      (and (u8_of_ireg r2) 0b1000 \<noteq> 0) \<comment> \<open> B \<close>
+      ) in
+    let (op:: u8) = 0x39 in
+    let (rop::u8) = construct_modsib_to_u8 0b11 (u8_of_ireg r1) (u8_of_ireg r2) in
+      [rex, op, rop])"
 
+(*Pjmp d \<Rightarrow>
+    let (op:: u8) = 0xe9 in
+      [op] @ (u8_list_of_u32 (ucast d)))*)
                                          
 fun list_in_list :: "'a list \<Rightarrow> nat \<Rightarrow> 'a list \<Rightarrow> bool" where
 "list_in_list [] _ _ = True" |

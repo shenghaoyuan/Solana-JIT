@@ -36,6 +36,10 @@ fun eval_snd_op_u64 :: "snd_op \<Rightarrow> reg_map \<Rightarrow> u64" where
 "eval_snd_op_u64 (SOImm i) _ = scast i" |
 "eval_snd_op_u64 (SOReg r) rs = rs r"
 
+fun eval_snd_op_i64 :: "snd_op \<Rightarrow> reg_map \<Rightarrow> i64" where
+"eval_snd_op_i64 (SOImm i) _ = scast i" |
+"eval_snd_op_i64 (SOReg r) rs = scast (rs r)"
+
 definition eval_alu :: "binop \<Rightarrow> dst_ty \<Rightarrow> snd_op \<Rightarrow> reg_map \<Rightarrow> reg_map option" where
 "eval_alu bop dst sop rs = (
   case sop of (SOImm x) \<Rightarrow> None | SOReg x \<Rightarrow> 
@@ -47,6 +51,28 @@ definition eval_alu :: "binop \<Rightarrow> dst_ty \<Rightarrow> snd_op \<Righta
   _ \<Rightarrow> None
 )))"
 
+definition eval_jmp :: "condition \<Rightarrow> dst_ty \<Rightarrow> snd_op \<Rightarrow> reg_map \<Rightarrow> bool" where
+"eval_jmp cond dst sop rs = (
+  let udv :: u64 = eval_reg dst rs in (
+  let usv :: u64 = eval_snd_op_u64 sop rs in (
+  let sdv :: i64 = scast udv in (
+  let ssv :: i64 = eval_snd_op_i64 sop rs in (
+  case cond of
+  Eq  \<Rightarrow> udv = usv |
+  Gt  \<Rightarrow> udv > usv |
+  Ge  \<Rightarrow> udv \<ge> usv |
+  Lt  \<Rightarrow> udv < usv |
+  Le  \<Rightarrow> udv \<le> usv |
+  SEt \<Rightarrow> and udv usv\<noteq>0 |
+  Ne  \<Rightarrow> udv \<noteq> usv |
+  SGt \<Rightarrow> ssv <s sdv |
+  SGe \<Rightarrow> ssv \<le>s sdv |
+  SLt \<Rightarrow> sdv <s ssv |
+  SLe \<Rightarrow> sdv \<le>s ssv ))))
+)"
+
+
+(*BPF_JA off \<Rightarrow> SBPF_OK (pc+1+scast off) rs m | *)
 fun sbpf_step :: "ebpf_asm \<Rightarrow> sbpf_state \<Rightarrow> sbpf_state" where
 "sbpf_step prog (SBPF_OK pc rs m) = (
   if length prog = 0 then SBPF_Err
@@ -66,7 +92,10 @@ fun sbpf_step :: "ebpf_asm \<Rightarrow> sbpf_state \<Rightarrow> sbpf_state" wh
         Some rs' \<Rightarrow> SBPF_OK (pc+1) rs' m
       ) |
     _ \<Rightarrow> SBPF_Err) |
-    BPF_JA off \<Rightarrow> SBPF_OK (pc+1+scast off) rs m | 
+    BPF_JUMP cond dst snd_op off \<Rightarrow> 
+      (case snd_op of (SOImm x) \<Rightarrow> SBPF_Err | SOReg x \<Rightarrow> 
+      if eval_jmp cond dst snd_op rs then SBPF_OK (pc+1+scast off) rs m 
+      else SBPF_OK (pc + 1) rs m) | 
     BPF_EXIT \<Rightarrow> SBPF_Success (rs BR0) |
     _ \<Rightarrow> SBPF_Err
 ))" |

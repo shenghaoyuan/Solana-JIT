@@ -1,7 +1,7 @@
 theory Proof1
 imports
   Main
-  rBPFCommType rBPFSyntax x64Assembler x64Disassembler
+  rBPFCommType rBPFSyntax x64Assembler x64Disassembler x64DecodeProofAux
 
 begin
 

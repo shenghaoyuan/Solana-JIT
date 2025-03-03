@@ -1,6 +1,6 @@
 theory JITFlat
 
-imports JITPer
+imports JITPer_aux
 begin
 
 type_synonym l_pc = "u64 list"
@@ -126,9 +126,33 @@ value "jitfix [(0::64 word, 2::64 word), (4::64 word, 1::64 word)]
 [0::64 word, 5::64 word, 6::64 word, 9::64 word, 12::64 word]  "
 
 
+fun x64_sem2::"nat \<Rightarrow> x64_bin \<Rightarrow> hybrid_state \<Rightarrow> hybrid_state" where
+ "x64_sem2 0 _ st = st" |
+ "x64_sem2 (Suc n) lt (pc,xst) = 
+  (let xst' = x64_sem 1 lt xst;
+   off = (case xst' of Stuck \<Rightarrow> pc |
+                Next pc' rs' m' \<Rightarrow> pc') in
+    x64_sem2 n lt (off,xst'))"
 
 
 (*
+
+fun x64_sem2::"nat \<Rightarrow> x64_bin \<Rightarrow> hybrid_state \<Rightarrow> hybrid_state" where
+ "x64_sem2 0 _ (pc,st) = (let xst_temp =
+   case st of
+    Next xpc rs m \<Rightarrow> Next 0 rs m |
+    Stuck \<Rightarrow> Stuck in (pc,xst_temp))" |
+ "x64_sem2 (Suc n) lt (pc,xst) = 
+  (let xst_temp = (
+    case xst of
+    Next xpc rs m \<Rightarrow> Next 0 rs m |
+    Stuck \<Rightarrow> Stuck) in
+  (let xst' = x64_sem 1 lt xst_temp;
+   off = (case xst' of Stuck \<Rightarrow> pc |
+                Next pc' rs' m' \<Rightarrow> pc') in
+    x64_sem2 n lt (off,xst')))"
+
+
 definition x64_bin_update ::"x64_bin \<Rightarrow> nat \<Rightarrow> u8 list \<Rightarrow> x64_bin " where
  "x64_bin_update l pc u8_list \<equiv>  ( let l1 = list_update l pc (u8_list!0);
                                        l2 = list_update l (pc+1) (u8_list!1);
@@ -188,7 +212,17 @@ definition jitflat3 :: "(nat \<times> u64 \<times> x64_bin) list \<Rightarrow> (
 value "x64_encode (Pjmp ((-1)::i32))"
 
 
+
+lemma refinement_relation_of_two_layers:
+  "snd st = Next pc rs m \<Longrightarrow>
+  x64_sem1 n x64_prog st = st1 \<Longrightarrow>
+  snd st1 = Next pc' rs' m' \<Longrightarrow>
+  (l_bin0, pc_info, jump_info) = jitflat x64_prog init_second_layer \<Longrightarrow>
+  jitfix jump_info l_bin0 pc_info = x64_prog2 \<Longrightarrow>
+  x64_sem2 n x64_prog2 st = st2 \<Longrightarrow>
+  st1 = st2"
+  sorry
                                                  
-qed
+
 
 end
