@@ -187,22 +187,23 @@ lemma x64_sem_add:
 
 type_synonym hybrid_state = "u64 \<times> outcome"
 
-fun x64_sem1 :: "nat \<Rightarrow> (nat \<times> u64 \<times> x64_bin) list \<Rightarrow> hybrid_state \<Rightarrow> hybrid_state" where
-"x64_sem1 0 _ (pc,st) = (let xst_temp =
-   case st of
-    Next xpc rs m \<Rightarrow> Next 0 rs m |
-    Stuck \<Rightarrow> Stuck in (pc,xst_temp))" |
-"x64_sem1 (Suc n) lt (pc,xst) = (
-  let (num,off,l) = lt!(unat pc) in
-  let pair = 
+definition one_step:: " (nat \<times> u64 \<times> x64_bin) list \<Rightarrow> hybrid_state\<Rightarrow> hybrid_state" where
+"one_step lt st  \<equiv> let pc = fst st; xst = snd st in 
+  (let (num,off,l) = lt!(unat pc) in
     (case xst of Next xpc rs m \<Rightarrow> 
       if off \<noteq> 0 then 
         let xst_temp = Next 0 rs m; xst' = x64_sem num l xst_temp in
         case xst' of Next xpc' rs' m' \<Rightarrow>
           if rs' (CR ZF) = 1 then (off+pc, xst')
-          else (pc+1, xst')
+          else (pc+1, xst') |
+         Stuck \<Rightarrow> (pc, Stuck)
       else let xst_temp = Next 0 rs m; xst' = x64_sem num l xst_temp in (pc+1, xst')
-    | Stuck \<Rightarrow> (pc+1,Stuck)) in
+    | Stuck \<Rightarrow> (pc,Stuck)))"
+
+fun x64_sem1 :: "nat \<Rightarrow> (nat \<times> u64 \<times> x64_bin) list \<Rightarrow> hybrid_state \<Rightarrow> hybrid_state" where
+"x64_sem1 0 _ (pc,st) = (pc,st)" |
+"x64_sem1 (Suc n) lt (pc,xst) = (
+  let pair = one_step lt (pc,xst) in
     (x64_sem1 n lt pair))"
 (*
 fun x64_sem1 :: "nat \<Rightarrow> u64 \<Rightarrow> (nat \<times> u64 \<times> x64_bin) list \<Rightarrow> outcome \<Rightarrow> outcome" where

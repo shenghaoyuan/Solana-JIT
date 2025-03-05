@@ -108,40 +108,48 @@ lemma addq_one_step:
   a4:"match_state s (pc,xst)" and
   a5:"jitper prog = Some x64_prog" and                      
   a6:"prog \<noteq> [] \<and> unat pc < length prog \<and> unat pc \<ge> 0" and
-  a7:"xpc = 0" and
   a8:"prog!(unat pc) = BPF_ALU64 BPF_ADD dst (SOReg src)" 
 shows "\<exists> xst'. x64_sem1 1 x64_prog (pc,xst) = (pc',xst') \<and> 
   match_state s' (pc',xst')"
   proof-
     let "?bpf_ins" = "prog!(unat pc)"
     let "?l_bin"= "snd (snd (the (per_jit_ins ?bpf_ins)))"
-    have c0:"?l_bin = snd (snd (the (per_jit_add_reg64_1 dst src)))" using a8 by fastforce
+    have c0:"?l_bin = snd (snd (the (per_jit_add_reg64_1 dst src)))" using a8 per_jit_ins_def by fastforce
     have c1:"?l_bin = x64_encode (Paddq_rr (bpf_to_x64_reg dst) (bpf_to_x64_reg src))" using per_jit_add_reg64_1_def c0 by fastforce
     have c2:"snd (snd(x64_prog!(unat pc))) = ?l_bin" using a6 c0 a5 aux5 by metis
-    let "?st" = "x64_sem (fst (x64_prog!(unat pc))) ?l_bin xst"
+    let "?one_step" = "x64_sem1 1 x64_prog (pc,xst)"
+    let "?st" = "snd ?one_step"
+    have c2_1:"?st = snd (one_step x64_prog (pc,xst))" 
+      by (metis One_nat_def prod.collapse x64_sem1.simps(1) x64_sem1.simps(2))
+
     have "x64_prog!(unat pc) = the (per_jit_ins ?bpf_ins)" using aux5 a5 a6 by blast
-    then have c3_0:"x64_prog!(unat pc) = the (per_jit_add_reg64_1 dst src)" using a8 by simp
+    then have c3_0:"x64_prog!(unat pc) = the (per_jit_add_reg64_1 dst src)" using a8 per_jit_ins_def by simp
 
     have "\<exists> num off l. x64_prog!(unat pc) = (num,off,l)" by (metis split_pairs)
     then obtain num off l where c_aux:"x64_prog!(unat pc) = (num,off,l)" by auto
 
     then have c3_1:"num = 1" using per_jit_add_reg64_1_def c3_0 by simp
-    moreover have "list_in_list ?l_bin 0 ?l_bin" using  list_in_list_prop by simp
+    moreover have "list_in_list ?l_bin 0 ?l_bin" using  list_in_list_prop per_jit_ins_def by simp
     hence "\<exists> xins2. x64_decode 0 ?l_bin = Some (length ?l_bin, xins2) " 
-      using x64_encode_decode_consistency a3 a7 c1 list_in_list_prop c3_1 by blast
+      using x64_encode_decode_consistency a3 c1 list_in_list_prop c3_1 by blast
     then obtain xins2 where c3:"x64_decode 0 ?l_bin = Some (length ?l_bin, xins2)" by auto
-    have c4:"?st = exec_instr xins2 (of_nat (length ?l_bin)) xpc xrs xm" using c3 a8 a3 a7 c_aux
-      apply(cases xst,simp_all) apply(cases "prog ! unat pc",simp_all) by (simp add: calculation)
+
+    have c3_2:"off = 0" using corr_pc_aux1_1 a5 a6 a8 c_aux by fastforce
+
+    have c3_3:"?st = x64_sem num l (Next 0 xrs xm)" using c2_1 c3_2 a3 by (simp add: c_aux one_step_def)
+
+    have c4:"?st = exec_instr xins2 (of_nat (length ?l_bin)) 0 xrs xm" using c3 a8 a3 c_aux c3_3 c_aux c3_0 per_jit_ins_def
+      apply(cases "Next 0 xrs xm",simp_all) apply(cases "prog ! unat pc",simp_all) by (simp add: calculation)
     have c5:"xins2 = Paddq_rr (bpf_to_x64_reg dst) (bpf_to_x64_reg src)" using Pair_inject c4 c3 c1 option.inject x64_encode_decode_consistency list_in_list_prop by metis
     have c6:"\<exists> xrs' xpc' xm'. ?st = Next xpc' xrs' xm'" using exec_instr_def spec c5 c4 by auto
     obtain xrs' xpc' xm' where c7:"?st = Next xpc' xrs' xm'" using c6 by auto
-    have c8:"x64_sem num l xst = ?st \<and> match_state s' (pc',?st)"  
-      using addq_subgoal_rr_generic a0 a1 a2 c7 a4 a3 per_jit_add_reg64_1_def a8 c4 c3 c2 c_aux by force
+    have c8:"x64_sem num l (Next 0 xrs xm) = ?st \<and> match_state s' (pc',?st)"  
+      using addq_subgoal_rr_generic a0 a1 a2 c7 a4 a3 per_jit_add_reg64_1_def a8 c4 c3 c2 c_aux c3_1 c1 c3_3 match_state_eqiv by metis
     (*have c8:"match_state s' (pc',?st)" using addq_subgoal_rr_generic a0 a1 a2 c7 a4 a3 per_jit_add_reg64_1_def b2 c4 c3 True by fastforce*)
-    have c9_1:"off = 0" using c_aux corr_pc_aux1_1 a5 a6 a8 by fastforce
-    have "x64_sem1 1 x64_prog (pc,xst) = (pc',(Next 0 xrs' xm')) \<and> match_state s' (pc', Next 0 xrs' xm')" 
-      using a8 c9_1  a0 a1 a2 a3 a5 a6 a7 x64_sem1_pc_aux1 c7 c8 c_aux by (metis insertCI match_state_eqiv)
+    have "x64_sem1 1 x64_prog (pc,xst) = (pc',(Next xpc' xrs' xm')) \<and> match_state s' (pc', Next xpc' xrs' xm')" 
+      using a8 c3_2 a0 a1 a2 a3 a5 a6 x64_sem1_pc_aux1 c7 c8 c_aux by (metis insertCI)
     thus ?thesis by simp
   qed
+
 
 end

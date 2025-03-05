@@ -323,6 +323,7 @@ proof-
   thus ?thesis by simp
 qed
 
+
 lemma mulq_one_step:
 assumes a0:"s' = sbpf_step prog s" and
   a1:"s = (SBPF_OK pc rs m)" and
@@ -331,7 +332,6 @@ assumes a0:"s' = sbpf_step prog s" and
   a4:"match_state s (pc,xst)" and
   a5:"jitper prog = Some x64_prog" and                      
   a6:"prog \<noteq> [] \<and> unat pc < length prog \<and> unat pc \<ge> 0" and
-  a7:"xpc = 0" and
   a8:"prog!(unat pc) = BPF_ALU64 BPF_MUL dst (SOReg src)" and
   a9:"(bpf_to_x64_reg dst) = RDX "
 shows "\<exists> xst'. x64_sem1 1 x64_prog (pc,xst) = (pc',xst') \<and> 
@@ -339,7 +339,7 @@ shows "\<exists> xst'. x64_sem1 1 x64_prog (pc,xst) = (pc',xst') \<and>
 proof-
   let "?bpf_ins" = "prog!(unat pc)"
   let "?l_bin"= "snd (snd (the (per_jit_ins ?bpf_ins)))"
-  have c0:"?l_bin = snd (snd (the (per_jit_mul_reg64 dst src)))" using a8 by simp
+  have c0:"?l_bin = snd (snd (the (per_jit_mul_reg64 dst src)))" using a8 per_jit_ins_def by simp
   let "?result" = "per_jit_mul_reg64 dst src"
   have c2_0:"(bpf_to_x64_reg dst) = RDX \<or> (bpf_to_x64_reg dst) = RAX \<or> (bpf_to_x64_reg dst) \<notin> {RAX, RDX}" by blast
   have c1:"?l_bin = (x64_encode (Pmovq_rr R11 (bpf_to_x64_reg src))@(x64_encode (Ppushl_r RAX)) @ (x64_encode (Pmovq_rr RAX RDX))
@@ -366,9 +366,9 @@ proof-
   have "\<exists> sz1 xins1. x64_decode 0 ?l_bin = Some (sz1,xins1)" using d0 x64_encode_decode_consistency by blast
   then obtain sz1 xins1 where d3_0:"x64_decode 0 ?l_bin = Some (sz1,xins1)" by auto
   hence d0_1:"(sz1,xins1) = (3, Pmovq_rr R11 (bpf_to_x64_reg src))" using d0 x64_encode_decode_consistency by fastforce
-  have "\<exists> xpc1 xrs1 m1. exec_instr xins1 (of_nat sz1) xpc xrs xm = Next xpc1 xrs1 m1" 
+  have "\<exists> xpc1 xrs1 m1. exec_instr xins1 (of_nat sz1) 0 xrs xm = Next xpc1 xrs1 m1" 
     using d0_1 exec_instr_def by(cases xins1,simp_all)
-  then obtain xpc1 xrs1 m1 where b3:"exec_instr xins1 (of_nat sz1) xpc xrs xm = Next xpc1 xrs1 m1" by blast
+  then obtain xpc1 xrs1 m1 where b3:"exec_instr xins1 (of_nat sz1) 0 xrs xm = Next xpc1 xrs1 m1" by blast
   have f0:"3 = length ?l_bin1" using d0_1 by simp
 
   have d3:"list_in_list ?l_bin2 (0 + length ?l_bin1) ?l_bin" using d1 d2 c1 by argo
@@ -451,7 +451,7 @@ proof-
   let "?xins" = "[(sz1,xins1)]@[(sz2,xins2)]@[(sz3,xins3)]@[(sz4,xins4)]@[(sz5,xins5)]@[(sz6,xins6)]"
   have c13:"?xins = [(3,Pmovq_rr R11 (bpf_to_x64_reg src)), (1,Ppushl_r RAX), (3,Pmovq_rr RAX RDX), (3,Pmulq_r R11), (3,Pmovq_rr RDX RAX), (1,Ppopl RAX)]"
     using d0 d0_1 d4_1 d4_2 d6 d7 d9 d10 d12 d13 d16 d15 by auto
-  have c14_1:"exec_instr (snd(?xins!0)) (of_nat(fst(?xins!0))) xpc xrs xm = Next xpc1 xrs1 m1\<and>
+  have c14_1:"exec_instr (snd(?xins!0)) (of_nat(fst(?xins!0))) 0 xrs xm = Next xpc1 xrs1 m1\<and>
     exec_instr (snd(?xins!1)) (of_nat(fst(?xins!1))) xpc1 xrs1 m1 = Next xpc2 xrs2 m2 \<and>
     exec_instr (snd(?xins!2)) (of_nat(fst(?xins!2))) xpc2 xrs2 m2 = Next xpc3 xrs3 m3 \<and>
     exec_instr (snd(?xins!3)) (of_nat(fst(?xins!3))) xpc3 xrs3 m3 = Next xpc4 xrs4 m4 \<and>
@@ -463,7 +463,7 @@ proof-
   hence "\<exists> xpc6 xrs6 m6. st6 = Next xpc6 xrs6 m6 "by (meson outcome.exhaust)
   then obtain xpc6 xrs6 m6 where b8:"Next xpc6 xrs6 m6 = exec_instr xins6 (of_nat sz6) xpc5 xrs5 m5" using b8_1 by auto
 
-  have c14:"exec_instr (snd(?xins!0)) (of_nat(fst(?xins!0))) xpc xrs xm = Next xpc1 xrs1 m1\<and>
+  have c14:"exec_instr (snd(?xins!0)) (of_nat(fst(?xins!0))) 0 xrs xm = Next xpc1 xrs1 m1\<and>
     exec_instr (snd(?xins!1)) (of_nat(fst(?xins!1))) xpc1 xrs1 m1 = Next xpc2 xrs2 m2 \<and>
     exec_instr (snd(?xins!2)) (of_nat(fst(?xins!2))) xpc2 xrs2 m2 = Next xpc3 xrs3 m3 \<and>
     exec_instr (snd(?xins!3)) (of_nat(fst(?xins!3))) xpc3 xrs3 m3 = Next xpc4 xrs4 m4 \<and>
@@ -474,30 +474,35 @@ proof-
   have "\<exists> num off l. x64_prog!(unat pc) = (num,off,l)" by (metis split_pairs)
   then obtain num off l where c_aux:"x64_prog!(unat pc) = (num,off,l)" by auto
 
-  let "?st'" = "x64_sem num ?l_bin xst" 
+  
+  
+  let "?one_step" = "x64_sem1 1 x64_prog (pc,xst)"
+  let "?st'" = "snd ?one_step"
+  have c15_1:"?st' = snd (one_step x64_prog (pc,xst))" 
+    by (metis One_nat_def prod.collapse x64_sem1.simps(1) x64_sem1.simps(2))
+  have c15_2:"off = 0" using c_aux corr_pc_aux1_1 a5 a6 a8 by fastforce
+  have c15_3:"?st' = x64_sem num l (Next 0 xrs xm)" using c15_2 a3 c15_1 by (simp add: c_aux one_step_def)
+  
   have c16:"l = ?l_bin" using a6 c0 a5 aux5 c_aux by fastforce
   have "x64_prog!(unat pc) = the (per_jit_ins ?bpf_ins)" using aux5 a5 a6 by blast
-  then have c5:"x64_prog!(unat pc) = the (per_jit_mul_reg64 dst src)" using a8 by simp
+  then have c5:"x64_prog!(unat pc) = the (per_jit_mul_reg64 dst src)" using a8 per_jit_ins_def by simp
   have c17:"num = length ?xins" using per_jit_mul_reg64_def a9
       apply(cases "(bpf_to_x64_reg dst)",simp_all) using c5 c_aux by force
    have c15:"num = (Suc(Suc(Suc(Suc(Suc(Suc 0))))))" using c17 by simp
   (*let "?st'" = "x64_sem (Suc(Suc(Suc(Suc(Suc(Suc 0)))))) ?l_bin xst" *)
    (*have cn:"?st' = Next xpc6 xrs6 m6" using c15 b3 b4 b5 b6 b7 b8  d3_0 d4_0 d5_1 d8_1 d11_1 d14_1 sorry*)
-   have c3_1:"x64_decode (unat xpc) ?l_bin \<noteq> None" using a7 using d3_0 by simp
-   hence c3_2:"?st' = (case x64_decode (unat xpc) ?l_bin of
+   have c3_1:"x64_decode 0 ?l_bin \<noteq> None" using d3_0 by simp
+   hence c3_2:"?st' = (case x64_decode 0 ?l_bin of
                   None \<Rightarrow> Stuck |
                  Some (sz, ins) \<Rightarrow>
-              x64_sem (Suc(Suc(Suc(Suc(Suc 0))))) ?l_bin (exec_instr ins (of_nat sz) xpc xrs xm))" 
-      using a3 a8 c15 c0 d3_0 apply(cases xst,simp_all) 
-      apply(cases "prog ! unat pc",simp_all)
-      subgoal for x91 by(cases "x64_decode (unat xpc) ?l_bin",simp_all)
-      done
+              x64_sem (Suc(Suc(Suc(Suc(Suc 0))))) ?l_bin (exec_instr ins (of_nat sz) 0 xrs xm))" 
+      using a3 a8 c15 c0 d3_0 c16  c15_3 by(cases "Next 0 xrs xm",simp_all) 
     have c3:"?st' = x64_sem (Suc(Suc(Suc(Suc(Suc 0))))) ?l_bin (Next xpc1 xrs1 m1)" 
-      using c3_1 c3_2 d3_0 b3 by (simp add: a7)
+      using c3_1 c3_2 d3_0 b3 by auto
 
-    have c4_0:"xpc1 = of_nat (length ?l_bin1)" using d0_1 a7 b3 exec_instr_def by(cases xins1,simp_all)
+    have c4_0:"xpc1 = of_nat (length ?l_bin1)" using d0_1 b3 exec_instr_def by(cases xins1,simp_all)
     have c4_4:"unat xpc1 = of_nat (0+length ?l_bin1)" using d3_0 of_nat_def c4_0 by simp
-    hence c4_1:"x64_decode (unat xpc1) ?l_bin \<noteq> None" using d4_0 a7 by simp     
+    hence c4_1:"x64_decode (unat xpc1) ?l_bin \<noteq> None" using d4_0 by simp     
     have c4_2:"?st' = (case x64_decode (unat xpc1) ?l_bin of
                   None \<Rightarrow> Stuck |
                  Some (sz, ins) \<Rightarrow>
@@ -624,14 +629,13 @@ proof-
   have e8:"match_stack xrs6 m6" using mulq_match_stack match_state_def a4 c13 c14 a3 a1 by auto
   have e9:"match_mem m' m6" using mulq_match_mem match_state_def a4 c13 c14 a3 a1 a0 a1 a2 a8 by fastforce
   have "match_state s' (pc',?st')" using e3 e7 match_state_def e8 e9 match_reg_def cn a2 by fastforce
-  hence e10:"x64_sem num l xst = ?st' \<and> match_state s' (pc',?st')"  using c16 by force   
+  hence e10:"x64_sem num l (Next 0 xrs xm) = ?st' \<and> match_state s' (pc',?st')"  using c16 c15_3 by auto
     (*have c8:"match_state s' (pc',?st)" using addq_subgoal_rr_generic a0 a1 a2 c7 a4 a3 per_jit_add_reg64_1_def b2 c4 c3 True by fastforce*)
   
   have e11: "1 + pc = pc'" using corr_pc_aux2 a5 a6 a8 a0 a2 a2 a3 c_aux a1
     by (metis add.commute insertCI)
-  have e12:"off = 0" using c_aux corr_pc_aux1_1 a5 a6 a8 by fastforce
-  have "x64_sem1 1 x64_prog (pc,xst) = (pc',(Next 0 xrs6 m6)) \<and> match_state s' (pc', Next 0 xrs6 m6)" 
-      using a8 e11 e12 e10 a0 a1 a2 a3 a5 a6 a7 x64_sem1_pc_aux1 c7 c8 c_aux match_state_eqiv cn by fastforce
+  have "x64_sem1 1 x64_prog (pc,xst) = (pc',(Next xpc6 xrs6 m6)) \<and> match_state s' (pc', Next xpc6 xrs6 m6)" 
+      using a8 e11 c15_2 e10 a0 a1 a2 a3 a5 a6 x64_sem1_pc_aux1 c7 c8 c_aux match_state_eqiv cn  by (simp add: add.commute one_step_def)
   then show ?thesis by blast 
 qed
 
