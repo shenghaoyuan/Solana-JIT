@@ -163,7 +163,6 @@ next
   then show ?case using an by auto
 qed
 
-
 lemma n_steps_equiv_proof:
   "\<lbrakk> sbpf_sem n prog s = s';
    s = (SBPF_OK pc rs m);
@@ -171,12 +170,10 @@ lemma n_steps_equiv_proof:
    xst = (Next xpc xrs xm);
    match_state s (pc,xst);
    jitper prog = Some x64_prog;
-   prog \<noteq> [];
-   xpc = 0 \<rbrakk> \<Longrightarrow>
-   \<exists> xst'.  x64_sem1 n x64_prog (pc,xst) = (pc',xst') \<and>
-   match_state s' (pc',xst')"
-  using n_steps_equiv_proof_aux sorry
-  
-
+   prog \<noteq> [] \<rbrakk> \<Longrightarrow>
+   \<exists> xst'.  x64_sem1 n x64_prog (pc,xst) = xst' \<and>
+   match_state s' xst'"
+  using n_steps_equiv_proof_aux
+  by blast
                                  
 end

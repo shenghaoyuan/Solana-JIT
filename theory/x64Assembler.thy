@@ -2,7 +2,8 @@ theory x64Assembler
   imports Main rBPFCommType rBPFSyntax x64Syntax x86CommType
 
 begin
-fun x64_encode :: "instruction \<Rightarrow> x64_bin" where
+
+definition x64_encode :: "instruction \<Rightarrow> x64_bin" where
 "x64_encode ins = (
 case ins of
 Paddq_rr rd r1 \<Rightarrow>
@@ -198,7 +199,7 @@ lemma x64_encodes1_induct:"x64_encodes1 insns = res \<Longrightarrow>
 lemma x64_encodes2_equiv:"res = x64_encode ins \<Longrightarrow>
   resn = x64_encodes2 [ins] \<Longrightarrow>
   res = resn"
-  using x64_encodes2_def by (metis (mono_tags) append.right_neutral flat.simps(1) flat.simps(2) option.sel option.simps(5) x64_encodes1.simps(1) x64_encodes1.simps(2))
+  using x64_encodes2_def by (metis (mono_tags) append.right_neutral flat.simps(1) flat.simps(2) x64_encodes1.simps(1) x64_encodes1.simps(2))
 
 lemma x64_encodes2_induct:
   assumes 

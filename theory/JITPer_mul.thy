@@ -162,28 +162,6 @@ lemma mulq_match_mem_aux1:
 lemma mulq_match_mem_aux2_1: 
    "\<forall> x1 x2. x1 = x2 \<longrightarrow> match_mem x1 x2 " using match_mem_def by simp
 
-(*Theorem load_store_other:
-  forall chunk' b' ofs',
-  b' <> b
-  \/ ofs' + size_chunk chunk' <= ofs
-  \/ ofs + size_chunk chunk <= ofs' ->
-  load chunk' m2 b' ofs' = load chunk' m1 b' ofs'.
-Proof.
-  intros. unfold load.
-  destruct (valid_access_dec m1 chunk' b' ofs' Readable).
-  rewrite pred_dec_true.
-  decEq. decEq. rewrite store_mem_contents; simpl.
-  rewrite PMap.gsspec. destruct (peq b' b). subst b'.
-  apply getN_setN_outside. rewrite encode_val_length. repeat rewrite <- size_chunk_conv.
-  intuition.
-  auto.
-  eauto with mem.
-  rewrite pred_dec_false. auto.
-  eauto with mem.
-Qed.
-
-"*)
-
 lemma store_load_other:"storev M64 m (Vptr 1 off) x = Some m' \<Longrightarrow>
   loadv mc m (Vlong place) = Some v \<Longrightarrow> loadv mc m' (Vlong place) = Some v"
   using store_load_consistency 
@@ -323,7 +301,6 @@ proof-
   thus ?thesis by simp
 qed
 
-
 lemma mulq_one_step:
 assumes a0:"s' = sbpf_step prog s" and
   a1:"s = (SBPF_OK pc rs m)" and
@@ -362,14 +339,14 @@ proof-
   using list_in_list_concat d1 c1 list_in_list_prop
   by (metis (no_types, lifting))
 
-  have d0:"list_in_list ?l_bin1 0 ?l_bin" using c1 by simp
+  have d0:"list_in_list ?l_bin1 0 ?l_bin" using c1 x64_encode_def by simp
   have "\<exists> sz1 xins1. x64_decode 0 ?l_bin = Some (sz1,xins1)" using d0 x64_encode_decode_consistency by blast
   then obtain sz1 xins1 where d3_0:"x64_decode 0 ?l_bin = Some (sz1,xins1)" by auto
-  hence d0_1:"(sz1,xins1) = (3, Pmovq_rr R11 (bpf_to_x64_reg src))" using d0 x64_encode_decode_consistency by fastforce
+  hence d0_1:"(sz1,xins1) = (3, Pmovq_rr R11 (bpf_to_x64_reg src))" using d0 x64_encode_decode_consistency x64_encode_def by fastforce
   have "\<exists> xpc1 xrs1 m1. exec_instr xins1 (of_nat sz1) 0 xrs xm = Next xpc1 xrs1 m1" 
     using d0_1 exec_instr_def by(cases xins1,simp_all)
   then obtain xpc1 xrs1 m1 where b3:"exec_instr xins1 (of_nat sz1) 0 xrs xm = Next xpc1 xrs1 m1" by blast
-  have f0:"3 = length ?l_bin1" using d0_1 by simp
+  have f0:"3 = length ?l_bin1" using d0_1 x64_encode_def by simp
 
   have d3:"list_in_list ?l_bin2 (0 + length ?l_bin1) ?l_bin" using d1 d2 c1
     by blast
@@ -377,7 +354,7 @@ proof-
     using d3 by blast
   then obtain sz2 xins2 where d4_0:"x64_decode (0 + length ?l_bin1) ?l_bin = Some (sz2,xins2)" by auto
   hence d4_1:"(sz2,xins2) =(length ?l_bin2,Ppushl_r RAX)" using x64_encode_decode_consistency c1 d0 option.sel d3 by metis
-  hence d4_2:"sz2 = 1 " using bitfield_insert_u8_def Let_def construct_rex_to_u8_def by simp
+  hence d4_2:"sz2 = 1 " using bitfield_insert_u8_def Let_def construct_rex_to_u8_def x64_encode_def by simp
   have f1:"1 = length ?l_bin2" using d4_2 d4_1 by blast
   let "?len" = "length (let rex = construct_rex_to_u8 False False False False; op = bitfield_insert_u8 0 3 80 0 in if rex = 64 then [op] else [rex, op])" 
   have fn:"?len = 1" by(unfold Let_def construct_rex_to_u8_def bitfield_insert_u8_def,simp_all)
@@ -387,8 +364,8 @@ proof-
   then obtain st2 where d4_3:"exec_instr xins2 (of_nat sz2) xpc1 xrs1 m1 = st2" by auto
   hence "\<exists> xpc2 xrs2 m2. Next xpc2 xrs2 m2 = st2"
     apply(unfold exec_instr_def)
-    apply(cases xins2,simp_all) using d4_1 d4_2 d4_3 fn
-           apply(unfold exec_push_def Let_def,simp_all)
+    apply(cases xins2,simp_all add: x64_encode_def) using d4_1 d4_2 d4_3 fn 
+           apply(unfold exec_push_def Let_def,simp_all add: x64_encode_def)
     subgoal for x3 
       apply(unfold storev_def sp_block_def,simp_all)
       by (metis (no_types, lifting) option.simps(5))
@@ -399,7 +376,7 @@ proof-
   hence "\<exists> sz3 xins3. x64_decode (0 + length ?l_bin1+length ?l_bin2) ?l_bin = Some (sz3,xins3)" using c1 x64_encode_decode_consistency by blast
   then obtain sz3 xins3 where d5_1:"x64_decode (0 + length ?l_bin1+length ?l_bin2) ?l_bin = Some (sz3,xins3)" by auto
   have d6:"(sz3,xins3) = (length ?l_bin3, Pmovq_rr RAX RDX)" using x64_encode_decode_consistency c1 d3 option.sel d0 d5 d5_1 by metis
-  hence d7:"sz3 = 3" by auto
+  hence d7:"sz3 = 3" using x64_encode_def by auto
   have f2:"length ?l_bin3 = 3" using d6 d7 by simp
   have "\<exists> xpc3 xrs3 m3. exec_instr xins3 (of_nat sz3) xpc2 xrs2 m2 = Next xpc3 xrs3 m3" 
     using d6 d7 apply(unfold exec_instr_def) 
@@ -412,8 +389,8 @@ proof-
     using c1 x64_encode_decode_consistency by blast
   then obtain sz4 xins4 where d8_1:"x64_decode (0 + length ?l_bin1+length ?l_bin2+length ?l_bin3) ?l_bin = Some (sz4,xins4)" by auto
   have d9:"(sz4,xins4) = (length ?l_bin4, Pmulq_r R11)" using x64_encode_decode_consistency c1 d3 option.sel d0 d5 d8 d8_1 by metis
-  hence d10:"sz4 = 3" by auto
-  have f3:"length ?l_bin5 = 3" using d10 d8_1 by simp
+  hence d10:"sz4 = 3" using x64_encode_def by auto
+  have f3:"length ?l_bin5 = 3" using d10 d8_1 x64_encode_def by simp
   have "\<exists> xpc4 xrs4 m4. exec_instr xins4 (of_nat sz4) xpc3 xrs3 m3 = Next xpc4 xrs4 m4" 
     using d9 d10 apply(unfold exec_instr_def)
     by(cases xins4,simp_all)  
@@ -425,8 +402,8 @@ proof-
     using c1 x64_encode_decode_consistency by blast
   then obtain sz5 xins5 where d11_1:"x64_decode (0 + length ?l_bin1+length ?l_bin2+length ?l_bin3+length ?l_bin4) ?l_bin = Some (sz5,xins5)" by auto
   have d12:"(sz5,xins5) = (length ?l_bin5, Pmovq_rr RDX RAX)" using x64_encode_decode_consistency c1 d3 option.sel d0 d5 d8 d9 d11 d11_1 by metis
-  hence d13:"sz5 = 3" by auto
-  have f4:"length ?l_bin5 = 3" using d13 d11_1 by simp
+  hence d13:"sz5 = 3" using x64_encode_def by auto
+  have f4:"length ?l_bin5 = 3" using d13 d11_1 x64_encode_def by simp
   have "\<exists> xpc5 xrs5 m5. exec_instr xins5 (of_nat sz5) xpc4 xrs4 m4 = Next xpc5 xrs5 m5"
     using d12 d13 apply(unfold exec_instr_def)
     by(cases xins5,simp_all)  
@@ -438,7 +415,7 @@ proof-
     using c1 x64_encode_decode_consistency by blast
   then obtain sz6 xins6 where d14_1:"x64_decode (0 + length ?l_bin1+length ?l_bin2+length ?l_bin3+length ?l_bin4+length ?l_bin5) ?l_bin = Some (sz6,xins6)" by auto
   have d15:"(sz6,xins6) = (length ?l_bin6, Ppopl RAX)" using x64_encode_decode_consistency c1 d3 option.sel d0 d5 d8 d9 d11 d14 d14_1 by metis
-  hence d16:"sz6 = 1" apply(cases xins6,simp_all)using bitfield_insert_u8_def Let_def construct_rex_to_u8_def by simp
+  hence d16:"sz6 = 1" apply(cases xins6,simp_all)using bitfield_insert_u8_def Let_def construct_rex_to_u8_def x64_encode_def by simp
   have f5:"length ?l_bin6 = 1" using d16 d14_1 by (metis d15 prod.inject)
   have "\<exists> st6. exec_instr xins6 (of_nat sz6) xpc5 xrs5 m5 = st6"
     using d15 d16 by(cases xins6,simp_all) 
@@ -495,8 +472,8 @@ proof-
     have c3:"?st' = x64_sem (Suc(Suc(Suc(Suc(Suc 0))))) ?l_bin (Next xpc1 xrs1 m1)" 
       using c3_1 c3_2 d3_0 b3 by auto
 
-    have c4_0:"xpc1 = of_nat (length ?l_bin1)" using d0_1 b3 exec_instr_def by(cases xins1,simp_all)
-    have c4_4:"unat xpc1 = of_nat (0+length ?l_bin1)" using d3_0 of_nat_def c4_0 by simp
+    have c4_0:"xpc1 = of_nat (length ?l_bin1)" using d0_1 b3 exec_instr_def x64_encode_def by(cases xins1,simp_all)
+    have c4_4:"unat xpc1 = of_nat (0+length ?l_bin1)" using d3_0 of_nat_def c4_0 x64_encode_def by simp
     hence c4_1:"x64_decode (unat xpc1) ?l_bin \<noteq> None" using d4_0 by simp     
     have c4_2:"?st' = (case x64_decode (unat xpc1) ?l_bin of
                   None \<Rightarrow> Stuck |
@@ -567,9 +544,9 @@ proof-
 
     have c7_0:" x64_sem (Suc(Suc 0)) ?l_bin tempst' = ?st'" using c6_4 by auto
     have c7_1:"xpc4 =  xpc3 + of_nat(length ?l_bin3)" using b6 d9
-      by(unfold exec_instr_def,simp_all)
-    hence c7_2:"xpc4 = of_nat(length ?l_bin1+length ?l_bin2+length ?l_bin3+length ?l_bin4)" using c6_2 by auto
-    have "length ?l_bin1+length ?l_bin2+length ?l_bin3+length ?l_bin4 = 10" using f0 f1 f2 f3 by simp
+      by(unfold exec_instr_def,simp_all add: x64_encode_def)
+    hence c7_2:"xpc4 = of_nat(length ?l_bin1+length ?l_bin2+length ?l_bin3+length ?l_bin4)" using c6_2 x64_encode_def by auto
+    have "length ?l_bin1+length ?l_bin2+length ?l_bin3+length ?l_bin4 = 10" using f0 f1 f2 f3 x64_encode_def by simp
     hence c7_3:"unat xpc4 = (0 + length ?l_bin1+length ?l_bin2+length ?l_bin3+length ?l_bin4)" using of_nat_def c7_2 by auto
     have "\<exists> tempst'. x64_sem (Suc 0) ?l_bin (Next xpc4 xrs4 m4) = tempst' \<and>
     x64_sem (Suc 0) ?l_bin tempst' = ?st'" using x64_sem_add 
@@ -591,7 +568,7 @@ proof-
     have c8_1:"xpc5 =  xpc4 + of_nat(length ?l_bin5)" using b7 d12
       by(unfold exec_instr_def,simp_all)
     hence c8_2:"xpc5 = of_nat(length ?l_bin1+length ?l_bin2+length ?l_bin3+length ?l_bin4+length ?l_bin5)" using c7_2 by auto
-    have "length ?l_bin1+length ?l_bin2+length ?l_bin3+length ?l_bin4+length ?l_bin5 = 13" using  f0 f1 f2 f3 f4 by simp
+    have "length ?l_bin1+length ?l_bin2+length ?l_bin3+length ?l_bin4+length ?l_bin5 = 13" using  f0 f1 f2 f3 f4 x64_encode_def by simp
     hence c8_3:"unat xpc5 = (0 + length ?l_bin1+length ?l_bin2+length ?l_bin3+length ?l_bin4+length ?l_bin5)" using of_nat_def c8_2 by auto
     have "\<exists> tempst'. x64_sem (Suc 0) ?l_bin (Next xpc5 xrs5 m5) = tempst' \<and>
     x64_sem 0 ?l_bin tempst' = ?st'" using x64_sem_add 

@@ -621,4 +621,25 @@ lemma store_load_consistency: "storev M64 m place v = Some m' \<Longrightarrow> 
   using store_load_consistency2_aux
   by metis
 
+
+lemma store_load_other:"storev M64 m (Vptr 1 off) x = Some m' \<Longrightarrow>
+  loadv mc m (Vlong place) = Some v \<Longrightarrow> loadv mc m' (Vlong place) = Some v"
+  using store_load_consistency 
+  apply(unfold storev_def loadv_def)
+  apply(cases "(Vptr 1 off)",simp_all)
+  subgoal for x61
+    apply(cases x,simp_all)
+    subgoal for x5
+      apply(cases mc,simp_all) 
+         apply (smt (z3) n_not_Suc_n option.inject)
+      prefer 2  apply (smt (z3) One_nat_def option.inject zero_neq_one)
+       prefer 2 apply (smt (z3) One_nat_def option.inject zero_neq_one)
+      by (smt (z3) One_nat_def option.inject zero_neq_one)
+    done
+  done
+
+lemma storev_stack_some: "\<exists> m'. storev M64 m (Vptr sp_block ofs) (Vlong v) = Some m'"
+  apply (simp add: storev_def sp_block_def)
+  by metis
+
 end

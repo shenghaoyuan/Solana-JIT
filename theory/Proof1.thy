@@ -25,8 +25,9 @@ lemma list_in_list_prop:"list_in_list l 0 l"
 
 lemma x64_encode_decode_consistency:
  "list_in_list l_bin pc l \<Longrightarrow>
-   l_bin = x64_encode ins \<Longrightarrow>
-   x64_decode pc l = Some (length l_bin, ins)"
+  l_bin = x64_encode ins \<Longrightarrow>
+  length l_bin = n \<Longrightarrow>
+   x64_decode pc l = Some (n, ins)"
   sorry
   (*using list_in_list_prop
   apply(cases ins,simp_all)

@@ -71,15 +71,17 @@ lemma addq_subgoal_rr_generic:
        a1:"per_jit_add_reg64_1 dst src = Some (n, off, l_bin)" and
        a3:"x64_decode 0 l_bin = Some (length l_bin, xins)" and
        a4:"sbpf_step prog (SBPF_OK pc rs m) = (SBPF_OK pc' rs' m')" and
-       a5:"Next spc' reg' xm' = exec_instr xins sz spc reg xm" and
        a6:"match_state (SBPF_OK pc rs m) (pc,(Next spc reg xm)) " and
        a7:"prog!(unat pc) = bins"
-  shows "match_state (SBPF_OK pc' rs' m') (pc',(Next spc' reg' xm')) "
+     shows "match_state (SBPF_OK pc' rs' m') (pc',exec_instr xins sz spc reg xm) "
 proof -
     have b0:"xins = Paddq_rr (bpf_to_x64_reg dst) (bpf_to_x64_reg src)" 
       using x64_encode_decode_consistency per_jit_add_reg64_1_def a1 a3 list_in_list_prop
     by (smt (verit, ccfv_SIG) Pair_inject map_option_eq_Some option.inject)
-    moreover have b1:"(\<forall> r. (rs r) = reg (IR (bpf_to_x64_reg r)))" using a6 spec match_state_def match_reg_def by simp
+  have "\<exists> spc' reg' xm'. Next spc' reg' xm' = exec_instr xins sz spc reg xm" using exec_instr_def b0 by simp
+  then obtain spc' reg' xm' where a5:"Next spc' reg' xm' = exec_instr xins sz spc reg xm" by auto
+
+  moreover have b1:"(\<forall> r. (rs r) = reg (IR (bpf_to_x64_reg r)))" using a6 spec match_state_def match_reg_def by simp
     moreover have b2:"(rs src) = reg (IR (bpf_to_x64_reg src))" using a6 spec b1 by simp
     hence b3:"(rs' dst) = reg' (IR (bpf_to_x64_reg dst))" using aluq_subgoal_rr_aux1 b0 b1 b2 a0 a4 a5 a7 by metis
     have b4:"\<forall> r \<noteq> dst. reg' (IR (bpf_to_x64_reg r)) = reg (IR (bpf_to_x64_reg r))" using b0 a5 aluq_subgoal_rr_aux2 by blast
@@ -89,16 +91,73 @@ proof -
     have b8:"match_stack reg' xm'" using stack_is_not_changed_by_add a6 match_state_def a5 b0 by simp
     have b9:"match_mem m' xm'" using mem_is_not_changed mem_is_not_changed_by_add match_state_def a6
       using a4 a5 b0 outcome.simps(4) sbpf_state.simps(9) by fastforce
-    (*have b10:"pc = spc" using match_state_def a6 by simp
-    have "pc' = pc+1" using a4 a7 a0 
-      apply(cases bins,simp_all) 
-      subgoal for x91 apply(split if_splits,simp_all) 
-        using eval_alu_def
-        by (smt (verit) binop.simps(133) bpf_instruction.simps(369) option.simps(5) sbpf_state.distinct(3) sbpf_state.inject(1) snd_op.simps(6))
-      done
-    have "spc' = spc+sz" using a5 apply(unfold exec_instr_def,simp_all) using b0 by(cases xins,simp_all)*)
-    thus ?thesis using b3 b7 match_state_def b8 b9 match_reg_def by fastforce
+
+    thus ?thesis using b3 b7 match_state_def b8 b9 match_reg_def
+      using a0 a1 a3 a4 a5 a6 a7
+      by (smt (verit, del_insts) fst_conv outcome.simps(4) sbpf_state.simps(9) snd_conv)
   qed
+
+lemma addq_one_step1:
+ assumes a0:"s' = sbpf_step prog s" and
+  a1:"s = (SBPF_OK pc rs m)" and
+  a2:"s' = (SBPF_OK pc' rs' m')" and
+  a3:"xst = (Next xpc xrs xm)" and
+  a4:"match_state s (pc,xst)" and
+  a5:"jitper prog = Some x64_prog" and                      
+  a6:"prog \<noteq> [] \<and> unat pc < length prog \<and> unat pc \<ge> 0" and
+  a8:"prog!(unat pc) = BPF_ALU64 BPF_ADD dst (SOReg src)" 
+shows "\<exists> xst'. x64_sem1 1 x64_prog (pc,xst) = (pc',xst') \<and> 
+  match_state s' (pc',xst')"
+  apply simp
+
+(* 1. as BPF_ADD generates a single list of jited x64 assembly, so we only need one step  *)
+  apply(subgoal_tac "\<exists>xst'::outcome. one_step x64_prog (pc, xst) = (pc', xst') \<and> match_state s' (pc', xst')")
+  subgoal
+    by auto
+  subgoal
+    apply (unfold one_step_def Let_def)
+(* 2. according to the code structure of JITPer, removing the first case statement *)
+    apply(subgoal_tac "x64_prog ! unat (fst (pc, xst)) = the (per_jit_add_reg64_1 dst src)")
+     prefer 2
+    subgoal
+      using a5 a6 a8 aux5 per_jit_ins_def by fastforce
+    subgoal
+      apply (subgoal_tac "the (per_jit_add_reg64_1 dst src) = (1, 0, x64_encode (Paddq_rr (bpf_to_x64_reg dst) (bpf_to_x64_reg src)))")
+       prefer 2
+      subgoal by (simp add: per_jit_add_reg64_1_def)
+      subgoal
+        unfolding a3
+        apply simp
+        apply (erule subst)
+        apply (erule subst)
+(* 3. here we get a simplified version, next step is to remove another case statement *)
+        apply (subgoal_tac "x64_decode 0 (x64_encode (Paddq_rr (bpf_to_x64_reg dst) (bpf_to_x64_reg src))) = Some (3, Paddq_rr (bpf_to_x64_reg dst) (bpf_to_x64_reg src))")
+         prefer 2
+        subgoal
+          apply (rule_tac l_bin = "(x64_encode (Paddq_rr (bpf_to_x64_reg dst) (bpf_to_x64_reg src)))" in x64_encode_decode_consistency)
+          subgoal by (rule list_in_list_prop)
+          subgoal by simp
+          subgoal using x64_encode_def
+            by fastforce
+          done
+        subgoal
+          apply simp
+          apply (erule subst)
+
+(* 4. now we get exec_instr (one step of x64 add assembly), we prove the \<and>, first left, then right *)
+          apply (rule conjI)
+          subgoal
+            by (metis a0 a1 a2 a5 a6 a8 corr_pc_aux2 insert_iff prod_cases3)
+
+          subgoal
+            unfolding a1 a2
+            by (metis a0 a1 a2 a3 a4 a8 addq_subgoal_rr_generic list_in_list_prop match_state_eqiv per_jit_add_reg64_1_def x64_encode_decode_consistency)
+          done
+        done
+      done
+    done
+  done
+
 
 lemma addq_one_step:
  assumes a0:"s' = sbpf_step prog s" and
@@ -151,6 +210,5 @@ shows "\<exists> xst'. x64_sem1 1 x64_prog (pc,xst) = (pc',xst') \<and>
       using a8 c3_2 a0 a1 a2 a3 a5 a6 x64_sem1_pc_aux1 c7 c8 c_aux by (metis insertCI)
     thus ?thesis by simp
   qed
-
 
 end

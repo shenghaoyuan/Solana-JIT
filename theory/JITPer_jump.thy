@@ -37,7 +37,7 @@ proof -
   have d0:"list_in_list (?l_bin1@?l_bin2) (0::nat) l_bin" using list_in_list_prop b0_1 by metis
   have d0_0:"list_in_list l_bin 0 l_bin = list_in_list ?l_bin1 0 l_bin \<and> list_in_list ?l_bin2 (0 + length ?l_bin1) l_bin" 
        using list_in_list_concat d0 b0_1 list_in_list_prop by blast
-  have d0_1:"list_in_list ?l_bin1 0 l_bin" using d0 d0_0 by auto
+  have d0_1:"list_in_list ?l_bin1 0 l_bin" using d0 d0_0 x64_encode_def by auto
   hence b0:"xins = Pcmpq_rr (bpf_to_x64_reg dst) (bpf_to_x64_reg src)"
       using x64_encode_decode_consistency a3 by (metis Pair_inject option.sel)
     
@@ -102,12 +102,12 @@ proof-
     have d0:"list_in_list (?l_bin1@?l_bin2) (0::nat) ?l_bin" using list_in_list_prop c1 by metis
     have d0_0:"list_in_list ?l_bin 0 ?l_bin = list_in_list ?l_bin1 0 ?l_bin \<and> list_in_list ?l_bin2 (0 + length ?l_bin1) ?l_bin" 
        using list_in_list_concat d0 c1 list_in_list_prop by blast
-    have d0_1:"list_in_list ?l_bin1 0 ?l_bin" using d0 d0_0 by auto
+    have d0_1:"list_in_list ?l_bin1 0 ?l_bin" using d0 d0_0 x64_encode_def by auto
     have d0_2:"list_in_list ?l_bin2 (0+length ?l_bin1) ?l_bin" using d0 d0_0 by auto
     hence "\<exists> xins1 sz1. x64_decode 0 ?l_bin = Some (sz1, xins1)" 
       by (metis c1 d0 list_in_list_concat x64_encode_decode_consistency)
     then obtain xins1 sz1 where d1:"x64_decode 0 ?l_bin = Some (sz1, xins1)" by auto
-    have d2:"(sz1,xins1) = (3, Pcmpq_rr (bpf_to_x64_reg dst) (bpf_to_x64_reg src))"  using d0_1 x64_encode_decode_consistency d1 by fastforce
+    have d2:"(sz1,xins1) = (3, Pcmpq_rr (bpf_to_x64_reg dst) (bpf_to_x64_reg src))"  using d0_1 x64_encode_decode_consistency d1 x64_encode_def by fastforce
     have c4:"?st = exec_instr xins1 (of_nat sz1) 0 xrs xm" using c3_1 d2 c1 c2 a3 d1 e3_1 by auto 
     have c6:"\<exists> xrs' xpc' xm'. ?st = Next xpc' xrs' xm'" using exec_instr_def spec c4 d2 by simp
     obtain xrs' xpc' xm' where c7:"?st = Next xpc' xrs' xm'" using c6 by auto
