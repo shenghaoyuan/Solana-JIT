@@ -475,9 +475,150 @@ lemma store_load_consistency_aux: "Some m' = storev M32 m place v \<Longrightarr
 lemma store_load_consistency1: "storev M32 m place v = Some m' \<Longrightarrow> loadv M32 m' place = Some v"
   using store_load_consistency_aux by metis
 
+lemma u64_shift_u8_eq: "
+  or (ucast ((ucast (and (x4 >> 56) 255)) ::u8) << 56)
+ (or (ucast ((ucast (and (x4 >> 48) 255)) ::u8) << 48)
+ (or (ucast ((ucast (and (x4 >> 40) 255)) ::u8) << 40)
+ (or (ucast ((ucast (and (x4 >> 32) 255)) ::u8) << 32)
+ (or (ucast ((ucast (and (x4 >> 24) 255)) ::u8) << 24)
+ (or (ucast ((ucast (and (x4 >> 16) 255)) ::u8) << 16)
+ (or (ucast ((ucast (and (x4 >> 8) 255)) ::u8) << 8)
+     (ucast ((ucast (and x4 255)) ::u8) ))))))) =
+    (x4::u64)
+"
+  apply (simp add: bit_eq_iff [of _ x4])
+  apply (simp add: bit_simps)
+  apply (rule allI)
+  subgoal for n
+    apply (cases "56 \<le> n"; simp)
+    subgoal
+      apply (cases "bit x4 n"; simp)
+      apply (rule impI)
+      apply (subgoal_tac "n - 56 < 64 \<and> n - 56 < 8 \<and> n - 56 < 64 \<and> bit (255::int) (n - 56)")
+      subgoal by simp
+      subgoal using int_255_8_eq
+        by auto
+      done
+  
+    subgoal
+      apply (cases "48 \<le> n"; simp)
+      subgoal
+        apply (cases "bit x4 n"; simp)
+        apply (subgoal_tac "n - 48 < 64 \<and> n - 48 < 8 \<and> n - 48 < 64 \<and> bit (255::int) (n - 48)")
+        subgoal by simp
+        subgoal using int_255_8_eq
+          by auto
+        done
+  
+      subgoal
+        apply (cases "40 \<le> n"; simp)
+        subgoal
+          apply (cases "bit x4 n"; simp)
+          apply (subgoal_tac "n - 40 < 64 \<and> n - 40 < 8 \<and> n - 40 < 64 \<and> bit (255::int) (n - 40)")
+          subgoal by simp
+          subgoal using int_255_8_eq
+            by auto
+          done
+  
+        subgoal
+          apply (cases "32 \<le> n"; simp)
+          subgoal
+            apply (cases "bit x4 n"; simp)
+            apply (subgoal_tac "n - 32 < 64 \<and> n - 32 < 8 \<and> n - 32 < 64 \<and> bit (255::int) (n - 32)")
+            subgoal by simp
+            subgoal using int_255_8_eq
+              by auto
+            done
+  
+          subgoal
+            apply (cases "24 \<le> n"; simp)
+            subgoal
+              apply (cases "bit x4 n"; simp)
+              apply (subgoal_tac "n - 24 < 64 \<and> n - 24 < 8 \<and> n - 24 < 32 \<and> bit (255::int) (n - 24)")
+              subgoal by simp
+              subgoal using int_255_8_eq
+                by auto
+              done
+          
+            subgoal
+              apply (cases "16 \<le> n"; simp)
+              subgoal
+                apply (cases "bit x4 n"; simp)
+                apply (subgoal_tac "n - 16 < 64 \<and> n - 16 < 8 \<and> n - 16 < 32 \<and> bit (255::int) (n - 16)")
+                subgoal by simp
+                subgoal using int_255_8_eq
+                  by auto
+                done
 
+              subgoal
+                apply (cases "8 \<le> n"; simp)
+                subgoal
+                  apply (drule Orderings.linorder_class.not_le_imp_less)
+                  subgoal using int_255_8_eq
+                    by auto
+                  done
+                subgoal
+                  apply (drule Orderings.linorder_class.not_le_imp_less)
+                  apply (cases "bit x4 n"; simp)
+                  using int_255_8_eq
+                  using le_255_int by blast
+                done
+              done
+            done
+          done
+        done
+      done
+    done
+  done
+      
+
+
+lemma store_load_consistency2_aux: "Some m' = storev M64 m place v \<Longrightarrow> loadv M64 m' place = Some v"
+  apply (simp add: storev_def loadv_def option_val_of_u64_def option_u64_of_u8_4_def)
+  apply (cases v; simp add: Let_def memory_chunk_value_of_u64_def u8_list_of_u64_def)
+       apply(cases place,simp_all)
+  subgoal for x61 x62
+    apply(split if_splits,simp_all)
+    done
+
+  subgoal for x2 apply(cases place,simp_all)
+    subgoal for x61 x62
+      apply(split if_splits,simp_all)
+      done
+    done
+
+  subgoal for x3
+    apply(cases place,simp_all)
+    subgoal for x61 x62
+      apply(split if_splits,simp_all)
+      done
+    done
+
+  subgoal for x4
+    apply(cases place,simp_all)
+    subgoal for x61 x62
+      apply (cases "x61 = 0"; simp)
+      done
+    done
+
+  subgoal for x5
+    apply(cases place,simp_all add: u8_list_of_u64_def Let_def option_val_of_u64_def option_u64_of_u8_8_def memory_chunk_value_of_u64_def) 
+    subgoal for x5a
+      using u64_shift_u8_eq by blast
+    subgoal for x61 x62 
+      apply (cases "x61 = 0"; simp add: u8_list_of_u64_def Let_def option_val_of_u64_def option_u64_of_u8_8_def memory_chunk_value_of_u64_def)
+      using u64_shift_u8_eq by blast
+    done
+  subgoal for x61 x62 
+    apply(cases place,simp_all) 
+    subgoal for x61a x62a
+      apply(split if_splits,simp_all)
+      done
+    done
+  done
 
 lemma store_load_consistency: "storev M64 m place v = Some m' \<Longrightarrow> loadv M64 m' place = Some v"
-  sorry
+  using store_load_consistency2_aux
+  by metis
 
 end
