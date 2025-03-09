@@ -40,6 +40,30 @@ fun eval_snd_op_i64 :: "snd_op \<Rightarrow> reg_map \<Rightarrow> i64" where
 "eval_snd_op_i64 (SOImm i) _ = scast i" |
 "eval_snd_op_i64 (SOReg r) rs = scast (rs r)"
 
+
+fun eval_snd_op_u32 :: "snd_op \<Rightarrow> reg_map \<Rightarrow> u32" where
+"eval_snd_op_u32 (SOImm i) _ = ucast i" |
+"eval_snd_op_u32 (SOReg r) rs = ucast (rs r)"
+
+
+definition eval_alu64_aux2 :: "binop \<Rightarrow> dst_ty \<Rightarrow> snd_op \<Rightarrow> reg_map \<Rightarrow> reg_map option" where
+"eval_alu64_aux2 bop dst sop rs = (
+  let dv :: u64 = eval_reg dst rs in (
+  let sv :: u32 = and (eval_snd_op_u32 sop rs) 63 in (
+  case bop of
+  BPF_LSH \<Rightarrow> Some (rs#dst <-- (dv << unat sv)) |  \<comment> \<open> to unat \<close>
+  BPF_RSH \<Rightarrow> Some (rs#dst <-- (dv >> unat sv))    \<comment> \<open> to unat \<close>
+)))" 
+
+definition eval_alu64_aux3 :: "binop \<Rightarrow> dst_ty \<Rightarrow> snd_op \<Rightarrow> reg_map \<Rightarrow> reg_map option" where
+"eval_alu64_aux3 bop dst sop rs = (
+  let dv :: i64 = scast (eval_reg dst rs) in (
+  let sv :: u32 = and (eval_snd_op_u32 sop rs) 63 in (
+  case bop of
+  BPF_ARSH \<Rightarrow> Some (rs#dst <-- (ucast (arsh64 dv (unat sv))::u64)) 
+)))"
+
+
 definition eval_alu :: "binop \<Rightarrow> dst_ty \<Rightarrow> snd_op \<Rightarrow> reg_map \<Rightarrow> reg_map option" where
 "eval_alu bop dst sop rs = (
   case sop of (SOImm x) \<Rightarrow> None | SOReg x \<Rightarrow> 
@@ -48,6 +72,9 @@ definition eval_alu :: "binop \<Rightarrow> dst_ty \<Rightarrow> snd_op \<Righta
   case bop of
   BPF_ADD   \<Rightarrow> Some (rs#dst <-- (dv+sv)) |
   BPF_MUL   \<Rightarrow> Some (rs#dst <-- (dv*sv)) |
+  BPF_LSH   \<Rightarrow>  eval_alu64_aux2 bop dst sop rs |
+  BPF_RSH   \<Rightarrow>  eval_alu64_aux2 bop dst sop rs |
+  BPF_ARSH  \<Rightarrow>  eval_alu64_aux3 bop dst sop rs |
   _ \<Rightarrow> None
 )))"
 
@@ -72,6 +99,20 @@ definition eval_jmp :: "condition \<Rightarrow> dst_ty \<Rightarrow> snd_op \<Ri
 )"
 
 
+definition eval_load :: "memory_chunk \<Rightarrow> dst_ty \<Rightarrow> src_ty \<Rightarrow> off_ty \<Rightarrow> reg_map \<Rightarrow> mem \<Rightarrow> reg_map option" where
+"eval_load chk dst sop off rs mem = (
+  let sv :: u64 = eval_snd_op_u64 (SOReg sop) rs in (
+  let vm_addr :: val = Vlong (sv + (scast off)) in (  
+  let v = loadv chk mem vm_addr in (
+    case v of 
+    None \<Rightarrow> None |
+    Some Vundef \<Rightarrow>  None | 
+    Some (Vlong v) \<Rightarrow>  Some (rs#dst <-- v) |
+    Some (Vint v) \<Rightarrow> Some (rs#dst <-- (ucast v)) |
+    Some (Vshort v) \<Rightarrow> Some (rs#dst <-- (ucast v)) |
+    Some (Vbyte v) \<Rightarrow> Some (rs#dst <-- (ucast v))
+))))"
+
 (*BPF_JA off \<Rightarrow> SBPF_OK (pc+1+scast off) rs m | *)
 fun sbpf_step :: "ebpf_asm \<Rightarrow> sbpf_state \<Rightarrow> sbpf_state" where
 "sbpf_step prog (SBPF_OK pc rs m) = (
@@ -91,11 +132,30 @@ fun sbpf_step :: "ebpf_asm \<Rightarrow> sbpf_state \<Rightarrow> sbpf_state" wh
         None \<Rightarrow> SBPF_Err |
         Some rs' \<Rightarrow> SBPF_OK (pc+1) rs' m
       ) |
+      BPF_LSH \<Rightarrow> (
+        case eval_alu bop d sop rs of
+        None \<Rightarrow> SBPF_Err |
+        Some rs' \<Rightarrow> SBPF_OK (pc+1) rs' m
+      ) |
+      BPF_RSH \<Rightarrow> (
+        case eval_alu bop d sop rs of
+        None \<Rightarrow> SBPF_Err |
+        Some rs' \<Rightarrow> SBPF_OK (pc+1) rs' m
+      ) |
+      BPF_ARSH \<Rightarrow> (
+        case eval_alu bop d sop rs of
+        None \<Rightarrow> SBPF_Err |
+        Some rs' \<Rightarrow> SBPF_OK (pc+1) rs' m
+      ) |
     _ \<Rightarrow> SBPF_Err) |
     BPF_JUMP cond dst snd_op off \<Rightarrow> 
       (case snd_op of (SOImm x) \<Rightarrow> SBPF_Err | SOReg x \<Rightarrow> 
       if eval_jmp cond dst snd_op rs then SBPF_OK (pc+1+scast off) rs m 
       else SBPF_OK (pc + 1) rs m) | 
+    BPF_LDX chk dst sop off \<Rightarrow> (
+      case eval_load chk dst sop off rs m of
+        None \<Rightarrow> SBPF_Err |
+        Some rs' \<Rightarrow> SBPF_OK (pc+1) rs' m ) |
     BPF_EXIT \<Rightarrow> SBPF_Success (rs BR0) |
     _ \<Rightarrow> SBPF_Err
 ))" |

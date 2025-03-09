@@ -80,7 +80,95 @@ Paddq_rr rd r1 \<Rightarrow>
       ) in
     let (op:: u8) = 0x39 in
     let (rop::u8) = construct_modsib_to_u8 0b11 (u8_of_ireg r1) (u8_of_ireg r2) in
-      [rex, op, rop])"
+      [rex, op, rop] |
+  Pxchgq_rr rd r1 \<Rightarrow>
+    let (rex:: u8) = (construct_rex_to_u8  \<comment> \<open> `1R0B` \<close>
+      True \<comment> \<open> W \<close>
+      (and (u8_of_ireg r1) 0b1000 \<noteq> 0) \<comment> \<open> R \<close>
+      False \<comment> \<open> X \<close>
+      (and (u8_of_ireg rd) 0b1000 \<noteq> 0) \<comment> \<open> B \<close>
+      ) in
+    let (op::u8) = 0x87 in
+    let (rop::u8) = construct_modsib_to_u8 0b11 (u8_of_ireg r1) (u8_of_ireg rd) in
+      [rex, op, rop] |
+    \<comment> \<open> P2890 `SHR qwrodregister by CL`   -> ` 0100 100B 1101 001w : 11 101 reg ` \<close>
+  Pshrq_r rd  \<Rightarrow>
+    let (rex:: u8) = (construct_rex_to_u8  \<comment> \<open> `100B` \<close>
+      True \<comment> \<open> W \<close>
+      False \<comment> \<open> R \<close>
+      False \<comment> \<open> X \<close>
+      (and (u8_of_ireg rd) 0b1000 \<noteq> 0) \<comment> \<open> B \<close>
+      ) in
+    let (op:: u8) = 0xd3 in
+    let (rop::u8) = construct_modsib_to_u8 0b11 0b101 (u8_of_ireg rd) in
+      [ rex, op, rop ] |
+   \<comment> \<open> P2888 `SAR qwordregister by CL`     -> ` 0100 100B 1101 001w : 11 111 reg ` \<close>
+  Psarq_r rd  \<Rightarrow>
+    let (rex:: u8) = (construct_rex_to_u8  \<comment> \<open> `100B` \<close>
+      True \<comment> \<open> W \<close>
+      False \<comment> \<open> R \<close>
+      False \<comment> \<open> X \<close>
+      (and (u8_of_ireg rd) 0b1000 \<noteq> 0) \<comment> \<open> B \<close>
+      ) in
+    let (op:: u8) = 0xd3 in
+    let (rop::u8) = construct_modsib_to_u8 0b11 0b111 (u8_of_ireg rd) in
+      [ rex, op, rop ] |
+   \<comment> \<open> P2889 `SHL qwordregister by CL`              -> ` 0100 100B 1101 001w : 11 100 reg ` \<close>
+  Pshlq_r rd  \<Rightarrow>
+    let (rex:: u8) = (construct_rex_to_u8  \<comment> \<open> `100B` \<close>
+      True \<comment> \<open> W \<close>
+      False \<comment> \<open> R \<close>
+      False \<comment> \<open> X \<close>
+      (and (u8_of_ireg rd) 0b1000 \<noteq> 0) \<comment> \<open> B \<close>
+      ) in
+    let (op:: u8) = 0xd3 in
+    let (rop::u8) = construct_modsib_to_u8 0b11 0b100 (u8_of_ireg rd) in
+      [ rex, op, rop ] |
+   \<comment> \<open> P2882 ` MOV: qwordregister to memory64` ->  `0100 1RXB 1000 1001 : mod qwordreg r/m` \<close>
+  Pmov_mr  a r1 c \<Rightarrow> (
+    case a of Addrmode (Some rb) None dis \<Rightarrow> 
+      let (rex::u8) = ( construct_rex_to_u8 \<comment> \<open> WRXB \<close>
+        (c = M64) \<comment> \<open> W \<close>
+        (and (u8_of_ireg r1) 0b1000 \<noteq> 0) \<comment> \<open> R \<close>
+        False \<comment> \<open> X \<close>
+        (and (u8_of_ireg rb) 0b1000 \<noteq> 0) \<comment> \<open> B \<close>
+        ) in
+      if dis \<le> 127 \<or> dis \<ge> -128  then   \<comment> \<open> displacement8 : mod 01 \<close>
+        let (dis::u8) = scast dis in
+        let (rop::u8) = construct_modsib_to_u8 0b01 (u8_of_ireg r1) (u8_of_ireg rb) in
+        if rex = 0x40 then(
+          case c of 
+            M8  \<Rightarrow> [0x88, rop, dis] |
+            M16 \<Rightarrow> [0x66, 0x89, rop, dis] |
+            M32 \<Rightarrow> [0x89, rop, dis] )
+        else (
+          case c of 
+            M8  \<Rightarrow> [rex, 0x88, rop, dis] |
+            M16 \<Rightarrow> [0x66,rex, 0x89, rop, dis] |
+            M32 \<Rightarrow> [rex, 0x89, rop, dis] |
+            M64 \<Rightarrow> [rex, 0x89, rop, dis])
+      else  \<comment> \<open> displacement8 : mod 10, (and (u8_of_ireg rb) 0b0111 \<noteq> 0b100) \<close>       
+        let (rop::u8) = construct_modsib_to_u8 0b10 (u8_of_ireg r1) (u8_of_ireg rb) in
+        if rex = 0x40 then(
+          case c of 
+            M32 \<Rightarrow> ([0x89, rop] @ (u8_list_of_u32 dis)))
+        else (
+          case c of 
+            M32 \<Rightarrow> ([rex, 0x89, rop] @ (u8_list_of_u32 dis)) |
+            M64 \<Rightarrow> ([rex, 0x89, rop] @ (u8_list_of_u32 dis)))
+    |  Addrmode (Some rb) (Some (ri,scale)) dis \<Rightarrow>
+          \<comment> \<open> ! scale > 3 | c \<noteq> M64 then None\<close>
+          let (rex::u8) = ( construct_rex_to_u8 \<comment> \<open> 1RXB \<close>
+            True \<comment> \<open> W \<close>
+            (and (u8_of_ireg r1) 0b1000 \<noteq> 0) \<comment> \<open> R \<close>
+            (and (u8_of_ireg ri) 0b1000 \<noteq> 0) \<comment> \<open> X \<close>
+            (and (u8_of_ireg rb) 0b1000 \<noteq> 0) \<comment> \<open> B \<close>
+            ) in
+        let (op:: u8) = 0x89 in
+        let (rop::u8) = construct_modsib_to_u8 0b10 (u8_of_ireg r1) 0b100 in
+        let (sib::u8) = construct_modsib_to_u8 scale (u8_of_ireg ri) (u8_of_ireg rb) in
+            ([rex, op, rop, sib] @ (u8_list_of_u32 dis))
+))"
 
 (*Pjmp d \<Rightarrow>
     let (op:: u8) = 0xe9 in

@@ -90,8 +90,8 @@ proof -
     have b7:"(\<forall> r \<noteq> dst. (rs' r) = reg' (IR (bpf_to_x64_reg r)))" using b1 b4 b5 by presburger
     have b8:"match_stack reg' xm'" using stack_is_not_changed_by_add a6 match_state_def a5 b0 by simp
     have b9:"match_mem m' xm'" using mem_is_not_changed mem_is_not_changed_by_add match_state_def a6
-      using a4 a5 b0 outcome.simps(4) sbpf_state.simps(9) by fastforce
-
+      using a4 a5 b0 outcome.simps(4) sbpf_state.simps(9) 
+      by (smt (verit) a0 a7 binop.simps(133) bpf_instruction.simps(369) option.case_eq_if sbpf_state.distinct(3) sbpf_state.inject(1) sbpf_step.elims snd_conv)
     thus ?thesis using b3 b7 match_state_def b8 b9 match_reg_def
       using a0 a1 a3 a4 a5 a6 a7
       by (smt (verit, del_insts) fst_conv outcome.simps(4) sbpf_state.simps(9) snd_conv)
@@ -125,6 +125,10 @@ shows "\<exists> xst'. x64_sem1 1 x64_prog (pc,xst) = (pc',xst') \<and>
       apply (subgoal_tac "the (per_jit_add_reg64_1 dst src) = (1, 0, x64_encode (Paddq_rr (bpf_to_x64_reg dst) (bpf_to_x64_reg src)))")
        prefer 2
       subgoal by (simp add: per_jit_add_reg64_1_def)
+      apply (subgoal_tac "(x64_encode (Paddq_rr (bpf_to_x64_reg dst) (bpf_to_x64_reg src))) !1 \<noteq> 0x39")
+       prefer 2
+      subgoal apply(unfold x64_encode_def) 
+        by(cases "Paddq_rr (bpf_to_x64_reg dst) (bpf_to_x64_reg src)",simp_all) 
       subgoal
         unfolding a3
         apply simp
@@ -147,8 +151,7 @@ shows "\<exists> xst'. x64_sem1 1 x64_prog (pc,xst) = (pc',xst') \<and>
 (* 4. now we get exec_instr (one step of x64 add assembly), we prove the \<and>, first left, then right *)
           apply (rule conjI)
           subgoal
-            by (metis a0 a1 a2 a5 a6 a8 corr_pc_aux2 insert_iff prod_cases3)
-
+            using a0 a1 a2 a5 a6 a8 corr_pc_aux2 insert_iff prod_cases3 by metis
           subgoal
             unfolding a1 a2
             by (metis a0 a1 a2 a3 a4 a8 addq_subgoal_rr_generic list_in_list_prop match_state_eqiv per_jit_add_reg64_1_def x64_encode_decode_consistency)
@@ -190,6 +193,10 @@ shows "\<exists> xst'. x64_sem1 1 x64_prog (pc,xst) = (pc',xst') \<and>
 (*2. using consistency to ensure that x64_sem1 (or x64_sem) runs x64_ins assembly *)
     have "\<exists> num off l. x64_prog!(unat pc) = (num,off,l)" by (metis split_pairs)
     then obtain num off l where c_aux:"x64_prog!(unat pc) = (num,off,l)" by auto
+    have "l = x64_encode ?x64_ins" using aux5 a6 a5 a8 c_aux c3_0 per_jit_add_reg64_1_def by simp
+    hence c3_4:"l!1 \<noteq> 0x39" using c1 apply(unfold x64_encode_def) 
+      apply(cases "Paddq_rr (bpf_to_x64_reg dst) (bpf_to_x64_reg src)",simp_all) 
+      done
 
     have c3_1:"num = 1" using per_jit_add_reg64_1_def c3_0 c_aux by simp
     have c3_2:"off = 0" using per_jit_add_reg64_1_def c3_0 c_aux by simp
@@ -197,7 +204,7 @@ shows "\<exists> xst'. x64_sem1 1 x64_prog (pc,xst) = (pc',xst') \<and>
     hence c3:"x64_decode 0 ?l_bin = Some (length ?l_bin, ?x64_ins) " 
       using x64_encode_decode_consistency a3 c1 list_in_list_prop c3_1 by blast
 
-    have c3_3:"?xst1 = x64_sem num l (Next 0 xrs xm)" using c2_1 c3_2 a3 by (simp add: c_aux one_step_def)
+    have c3_3:"?xst1 = x64_sem num l (Next 0 xrs xm)" using c2_1 c3_2 a3 c3_4 by (simp add: c_aux one_step_def)
 
     have c4:"?xst1 = exec_instr ?x64_ins (of_nat (length ?l_bin)) 0 xrs xm" using c3 a8 a3 c_aux c3_3 c_aux c3_0 per_jit_ins_def c3_1 by simp
 
@@ -207,7 +214,7 @@ shows "\<exists> xst'. x64_sem1 1 x64_prog (pc,xst) = (pc',xst') \<and>
     have c8:"x64_sem num l (Next 0 xrs xm) = ?xst1 \<and> match_state s' (pc',?xst1)"
       using addq_subgoal_rr_generic a0 a1 a2 c7 a4 a3 per_jit_add_reg64_1_def a8 c4 c3 c2 c_aux c3_1 c1 c3_3 match_state_eqiv by metis
     have "x64_sem1 1 x64_prog (pc,xst) = (pc',(Next xpc' xrs' xm')) \<and> match_state s' (pc', Next xpc' xrs' xm')" 
-      using a8 c3_2 a0 a1 a2 a3 a5 a6 x64_sem1_pc_aux1 c7 c8 c_aux by (metis insertCI)
+      using a8 c3_2 a0 a1 a2 a3 a5 a6 x64_sem1_pc_aux1 c7 c8 c3_4 c_aux by (metis insertCI)
     thus ?thesis by simp
   qed
 

@@ -194,6 +194,11 @@ datatype instruction =
   | Pmulq_r ireg
   | Pjcc testcond i32
   | Pcmpq_rr ireg ireg
+  | Pmov_mr addrmode ireg memory_chunk
+  | Pxchgq_rr ireg ireg
+  | Pshrq_r ireg
+  | Pshlq_r ireg
+  | Psarq_r ireg
 
 type_synonym x64_asm = "instruction list"
 type_synonym x64_bin = "u8 list"

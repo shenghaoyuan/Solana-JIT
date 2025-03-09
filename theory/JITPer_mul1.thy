@@ -31,7 +31,7 @@ lemma mulq_one_step_match_mem:
     prog \<noteq> [] \<and> unat pc < length prog \<and> unat pc \<ge> 0 \<Longrightarrow>
     prog!(unat pc) = BPF_ALU64 BPF_MUL dst (SOReg src) \<Longrightarrow>
     (bpf_to_x64_reg dst) = RDX \<Longrightarrow>
-storev M64 xm (Vptr sp_block (xrs (IR SP) - u64_of_memory_chunk M64)) (Vlong (xrs (IR RAX))) = Some m1 \<Longrightarrow>
+    storev M64 xm (Vptr sp_block (xrs (IR SP) - u64_of_memory_chunk M64)) (Vlong (xrs (IR RAX))) = Some m1 \<Longrightarrow>
     loadv M64 m1 (Vptr sp_block (xrs (IR SP) - u64_of_memory_chunk M64)) = Some (Vlong (xrs (IR RAX))) \<Longrightarrow> match_mem m' m1"
   apply (simp add: match_state_def match_mem_def eval_alu_def eval_reg_def)
   using sp_block_def store_load_other by auto
@@ -43,7 +43,7 @@ lemma mulq_one_step_match_stack:
     prog \<noteq> [] \<and> unat pc < length prog \<and> unat pc \<ge> 0 \<Longrightarrow>
     prog!(unat pc) = BPF_ALU64 BPF_MUL dst (SOReg src) \<Longrightarrow>
     (bpf_to_x64_reg dst) = RDX \<Longrightarrow>
-storev M64 xm (Vptr sp_block (xrs (IR SP) - u64_of_memory_chunk M64)) (Vlong (xrs (IR RAX))) = Some m1 \<Longrightarrow>
+    storev M64 xm (Vptr sp_block (xrs (IR SP) - u64_of_memory_chunk M64)) (Vlong (xrs (IR RAX))) = Some m1 \<Longrightarrow>
     loadv M64 m1 (Vptr sp_block (xrs (IR SP) - u64_of_memory_chunk M64)) = Some (Vlong (xrs (IR RAX))) \<Longrightarrow>
     match_stack
      ((\<lambda>a::preg.
@@ -82,10 +82,13 @@ shows "\<exists> xst'. x64_sem1 1 x64_prog (pc,xst) = (pc',xst') \<and>
     subgoal
       using a5 a6 a8 aux5 per_jit_ins_def by fastforce
     subgoal
-      apply (subgoal_tac "the (per_jit_mul_reg64 dst src) = (6, 0, x64_encode (Pmovq_rr R11 (bpf_to_x64_reg src))@(x64_encode (Ppushl_r RAX)) @ (x64_encode (Pmovq_rr RAX RDX)) 
-                  @ (x64_encode (Pmulq_r R11))@ (x64_encode (Pmovq_rr RDX RAX))@ (x64_encode (Ppopl RAX)))")
+      apply (subgoal_tac "the (per_jit_mul_reg64 dst src) = (6, 0, x64_encode (Pmovq_rr R11 (bpf_to_x64_reg src))@(x64_encode (Ppushl_r RAX)) @
+           (x64_encode (Pmovq_rr RAX RDX)) @ (x64_encode (Pmulq_r R11))@ (x64_encode (Pmovq_rr RDX RAX))@ (x64_encode (Ppopl RAX)))")
        prefer 2
       subgoal using per_jit_mul_reg64_def a9 by simp
+      apply(subgoal_tac "((x64_encode (Pmovq_rr REG_SCRATCH (bpf_to_x64_reg src)) @ x64_encode (Ppushl_r RAX) @ 
+          x64_encode (Pmovq_rr RAX RDX) @ x64_encode (Pmulq_r REG_SCRATCH) @ x64_encode (Pmovq_rr RDX RAX) @ x64_encode (Ppopl RAX)))!1 \<noteq> 0x39")
+        prefer 2 subgoal apply(unfold per_jit_mul_reg64_def x64_encode_def) by simp
       subgoal
         unfolding a3
         apply simp
@@ -250,9 +253,9 @@ shows "\<exists> xst'. x64_sem1 1 x64_prog (pc,xst) = (pc',xst') \<and>
         apply simp
 
 (* 4. now we get exec_instr (one step of x64 add assembly), we prove the \<and>, first left, then right *)
-        apply (rule conjI)
+         apply (rule conjI)
         subgoal
-          by (metis a0 a1 a2 a5 a6 a8 corr_pc_aux2 insert_iff prod_cases3)
+          using a0 a1 a2 a5 a6 a8 corr_pc_aux2 insert_iff prod_cases3 by metis
 
         unfolding a1 a2
         apply (simp add: match_state_def)
@@ -264,12 +267,12 @@ shows "\<exists> xst'. x64_sem1 1 x64_prog (pc,xst) = (pc',xst') \<and>
         apply (rule conjI)
 (* 4.2  match_mem *)
         subgoal using mulq_one_step_match_mem a0 a1 a2 a3 a4 a6 a8 a9 by simp
-(* 4.2  match_stack *)
+(* 4.3  match_stack *)
         subgoal using mulq_one_step_match_stack a0 a1 a2 a3 a4 a6 a8 a9 by simp
         done
       done
     done
   done
-  done
+  done 
 
 end

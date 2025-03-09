@@ -86,6 +86,27 @@ definition eval_testcond :: "testcond \<Rightarrow> regset \<Rightarrow> bool op
   Cond_np \<Rightarrow> (Some (rs (CR PF) = 0))
 )"
 
+definition eval_addrmode64 :: "addrmode \<Rightarrow> regset \<Rightarrow> u64" where
+"eval_addrmode64 a rs = 
+  (case a of Addrmode base ofs const \<Rightarrow>
+    (case base of None \<Rightarrow> 0 | 
+                  Some r \<Rightarrow> (rs (IR r)))
+    +
+      ((case ofs of None \<Rightarrow> 0 |
+                    Some (r2, sc) \<Rightarrow> (rs (IR r2)) << (unat sc)) 
+    + (scast const)) 
+)"
+
+definition exec_load :: "usize \<Rightarrow> u64 \<Rightarrow> memory_chunk \<Rightarrow> mem \<Rightarrow> addrmode \<Rightarrow> regset \<Rightarrow> preg \<Rightarrow> outcome" where
+"exec_load pc sz chunk m a rs rd = (
+  let addr =  eval_addrmode64 a rs in
+    case Mem.loadv chunk m (Vlong addr) of
+      None \<Rightarrow> Stuck | 
+      Some ra \<Rightarrow> 
+        (case ra of Vlong v \<Rightarrow> Next (pc+sz) (rs#rd <- v) m | 
+                          _ \<Rightarrow> Stuck)
+)"
+
 (*
 definition exec_jcc::"usize \<Rightarrow> u64 \<Rightarrow> regset \<Rightarrow> mem \<Rightarrow> testcond \<Rightarrow> i32 \<Rightarrow> outcome" where
 "exec_jcc pc sz rs m t d \<equiv> 
@@ -140,7 +161,14 @@ definition exec_instr :: "instruction \<Rightarrow> u64 \<Rightarrow> u64 \<Righ
                           if b then Next (scast d) rs m 
                           else Next (pc+sz) rs m | 
                         None \<Rightarrow> Stuck) |
-  Pcmpq_rr rd r1 \<Rightarrow> Next (pc+sz)(compare_longs (rs (IR r1)) (rs (IR rd)) rs) m
+  Pcmpq_rr rd r1 \<Rightarrow> Next (pc+sz)(compare_longs (rs (IR r1)) (rs (IR rd)) rs) m |
+  Pmov_mr  a r1 c \<Rightarrow> exec_load  pc sz c m a rs (IR r1) |                    \<comment> \<open> store reg to mem \<close>
+  Pxchgq_rr rd r1 \<Rightarrow> let tmp = rs (IR rd) in
+                     let rs1 = (rs#(IR rd)<- (rs (IR r1))) in
+                       Next (pc + sz) (rs1#(IR r1)<- tmp) m |
+  Pshlq_r   rd    \<Rightarrow> Next (pc + sz) (rs#(IR rd) <- ((rs (IR rd))<<(unat (rs(IR RCX))))) m |
+  Pshrq_r   rd    \<Rightarrow> Next (pc + sz) (rs#(IR rd) <- ((rs (IR rd))>> (unat(rs(IR RCX))))) m |
+  Psarq_r   rd    \<Rightarrow> Next (pc + sz) (rs#(IR rd) <- (ucast (((scast (rs (IR rd)))::i64) >> (unat (rs (IR RCX)))))) m 
 )"
 
 
@@ -193,7 +221,7 @@ definition one_step:: " (nat \<times> u64 \<times> x64_bin) list \<Rightarrow> h
   let (num,off,l) = lt!(unat pc) in
     case xst of
     Next xpc rs m \<Rightarrow> (
-      if off \<noteq> 0 then 
+      if l!1 = (0x39::u8) then 
         let xst_temp = Next 0 rs m; xst' = x64_sem num l xst_temp in
           case xst' of
           Next xpc' rs' m' \<Rightarrow>

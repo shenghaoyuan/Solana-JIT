@@ -157,7 +157,8 @@ lemma mulq_match_mem_aux1:
   bins = BPF_ALU64 BPF_MUL dst (SOReg src) \<Longrightarrow>
   prog!(unat pc) = bins \<Longrightarrow>
   m = m'"
-  using mem_is_not_changed by blast
+  using mem_is_not_changed 
+  by (metis bpf_instruction.simps(68))
 
 lemma mulq_match_mem_aux2_1: 
    "\<forall> x1 x2. x1 = x2 \<longrightarrow> match_mem x1 x2 " using match_mem_def by simp
@@ -454,9 +455,10 @@ proof-
   have c15_1:"?st' = snd (one_step x64_prog (pc,xst))" 
     by (metis One_nat_def prod.collapse x64_sem1.simps(1) x64_sem1.simps(2))
   have c15_2:"off = 0" using c_aux corr_pc_aux1_1 a5 a6 a8 by fastforce
-  have c15_3:"?st' = x64_sem num l (Next 0 xrs xm)" using c15_2 a3 c15_1 by (simp add: c_aux one_step_def)
-  
   have c16:"l = ?l_bin" using a6 c0 a5 aux5 c_aux by fastforce
+  have c16_1:"l!1 \<noteq> 0x39" using c_aux c16 c1 apply(unfold per_jit_mul_reg64_def x64_encode_def) by simp
+  have c15_3:"?st' = x64_sem num l (Next 0 xrs xm)" using c15_2 a3 c15_1 c16_1 by (simp add: c_aux one_step_def)
+  
   have "x64_prog!(unat pc) = the (per_jit_ins ?bpf_ins)" using aux5 a5 a6 by blast
   then have c5:"x64_prog!(unat pc) = the (per_jit_mul_reg64 dst src)" using a8 per_jit_ins_def by simp
   have c17:"num = length ?xins" using per_jit_mul_reg64_def a9
@@ -607,7 +609,7 @@ proof-
   have e11: "1 + pc = pc'" using corr_pc_aux2 a5 a6 a8 a0 a2 a2 a3 c_aux a1
     by (metis add.commute insertCI)
   have "x64_sem1 1 x64_prog (pc,xst) = (pc',(Next xpc6 xrs6 m6)) \<and> match_state s' (pc', Next xpc6 xrs6 m6)" 
-      using a8 e11 c15_2 e10 a0 a1 a2 a3 a5 a6 x64_sem1_pc_aux1 c7 c8 c_aux match_state_eqiv cn  by (simp add: add.commute one_step_def)
+      using a8 e11 c15_2 e10 a0 a1 a2 a3 a5 a6 x64_sem1_pc_aux1 c7 c8 c_aux match_state_eqiv cn c16_1 by (simp add: add.commute one_step_def)
   then show ?thesis by blast 
 qed
 

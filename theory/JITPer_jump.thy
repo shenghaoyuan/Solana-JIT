@@ -87,13 +87,16 @@ proof-
     have c3_0:"per_jit_jcc cond dst src (scast x) = Some (num,off,l)" using c_aux c3 c1_1 per_jit_jcc_def by auto
     then have c3_1:"num = 1" using per_jit_jcc_def c1_1 c_aux by simp
 
-    have e3_0:"off = scast x + 1" using c_aux per_jit_jcc_def c3 c1_1 by simp
-    have e3:"off\<noteq>0" sorry
+    have e3_0:"l!1 = 0x39" using c_aux c3 c1_1 
+      apply(unfold per_jit_jcc_def Let_def) 
+      apply(cases cond,simp_all)
+      apply(unfold x64_encode_def,simp_all) by auto
+
     have "?st = snd (let xst_temp = Next 0 xrs xm; xst' = x64_sem num l xst_temp in
         case xst' of Next xpc' rs' m' \<Rightarrow>
           if rs' (CR ZF) = 1 then (off+pc, xst')
           else (pc+1, xst') |
-         Stuck \<Rightarrow> (pc, Stuck))" using c2_1 e3 a3 one_step_def c_aux by simp
+         Stuck \<Rightarrow> (pc, Stuck))" using c2_1 a3 one_step_def c_aux e3_0 by simp
     hence e3_1:"?st = x64_sem num ?l_bin (Next 0 xrs xm)" using c2_1 c_aux one_step_def e3 a3
       by (smt (verit, ccfv_threshold) c2 outcome.exhaust outcome.simps(4) outcome.simps(5) snd_conv) 
 
@@ -132,7 +135,7 @@ proof-
       using jcc_subgoal_rr_generic a0 a1 a2 c7 per_jit_jcc_def a8  c1_1 d1 c2 e3_1 c3_0 c3 c_aux e0_1 c4 cn_1 by metis
       
     have "x64_sem1 1 x64_prog (pc,xst) = (pc', Next xpc' xrs' xm')"
-      using a8 e1 e2 cn a0 a1 a2 a3 a4 a5 a6 x64_sem1_pc_aux1 c_aux match_state_eqiv e3 c7 x64_sem1_pc_aux2 by auto
+      using a8 e1 e2 cn a0 a1 a2 a3 a4 a5 a6 x64_sem1_pc_aux1 c_aux match_state_eqiv e3_0 c7 x64_sem1_pc_aux2 by auto
     then show ?thesis using a8 c2 match_state_eqiv c7 cn by fastforce
     qed
 
