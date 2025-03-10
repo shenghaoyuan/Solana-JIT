@@ -145,10 +145,13 @@ definition per_jit_shift_arsh_reg64 :: "bpf_ireg \<Rightarrow> bpf_ireg \<Righta
     in Some (len, 0, l_bin)
 )"
 
+
 definition per_jit_load_reg64 :: "bpf_ireg \<Rightarrow> bpf_ireg \<Rightarrow> memory_chunk \<Rightarrow> off_ty \<Rightarrow> (nat \<times> u64 \<times> x64_bin) option" where
 "per_jit_load_reg64 dst src chk off = (
-  let ins = Pmov_mr (Addrmode (Some (bpf_to_x64_reg src)) None (scast off)) (bpf_to_x64_reg dst) chk in
-    Some (1, 0, x64_encode ins)
+  let l_bin = 
+    x64_encode (Pmovq_ri R11 (scast off))@x64_encode (Paddq_rr R11 (bpf_to_x64_reg src))@
+    x64_encode (Pmov_mr (Addrmode (Some R11) None 0) (bpf_to_x64_reg dst) chk) in
+    Some (3, 0, l_bin)
 )"
 
 definition per_jit_ins ::" bpf_instruction \<Rightarrow> (nat \<times> u64 \<times> x64_bin) option" where

@@ -162,6 +162,7 @@ definition exec_instr :: "instruction \<Rightarrow> u64 \<Rightarrow> u64 \<Righ
                           else Next (pc+sz) rs m | 
                         None \<Rightarrow> Stuck) |
   Pcmpq_rr rd r1 \<Rightarrow> Next (pc+sz)(compare_longs (rs (IR r1)) (rs (IR rd)) rs) m |
+  Pmovq_ri rd n  \<Rightarrow> Next (pc + sz) (rs#(IR rd) <- n) m |
   Pmov_mr  a r1 c \<Rightarrow> exec_load  pc sz c m a rs (IR r1) |                    \<comment> \<open> store reg to mem \<close>
   Pxchgq_rr rd r1 \<Rightarrow> let tmp = rs (IR rd) in
                      let rs1 = (rs#(IR rd)<- (rs (IR r1))) in

@@ -191,6 +191,7 @@ datatype instruction =
   | Ppushl_r ireg
   | Ppopl  ireg
   | Pmovq_rr ireg ireg       (**r [mov] (integer) *)
+  | Pmovq_ri ireg u64      (**r [mov] (integer) *)
   | Pmulq_r ireg
   | Pjcc testcond i32
   | Pcmpq_rr ireg ireg
