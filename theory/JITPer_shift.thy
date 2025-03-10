@@ -7,9 +7,6 @@ imports
 
 begin
 
-lemma this:"unat(and (ucast (x)) (63::32 word)) = unat x"
-  sorry
-
 
 value "and (0b1111111000000::32 word) (0b111111::32 word)"
 lemma shiftq_lsh_one_step_match_reg:
@@ -21,14 +18,11 @@ lemma shiftq_lsh_one_step_match_reg:
     (bpf_to_x64_reg dst) \<noteq> RCX \<Longrightarrow>
     (bpf_to_x64_reg dst) \<noteq> RSP \<Longrightarrow>
      match_reg rs' 
-    ((\<lambda>a::preg. 
-        if a = IR (bpf_to_x64_reg dst) then xrs (IR (bpf_to_x64_reg dst)) << unat (xrs (IR (bpf_to_x64_reg src))) 
-        else if a = IR RCX then xrs (IR (bpf_to_x64_reg src)) 
-        else if a = IR SP then xrs (IR SP) - u64_of_memory_chunk M64 
-        else xrs a)
-    (IR SP := xrs (IR SP), IR RCX := xrs (IR RCX)))"
-  apply (simp add: match_state_def match_reg_def eval_alu_def eval_alu64_aux2_def eval_reg_def)
-  using this by metis
+     ((\<lambda>a::preg. 
+        if a = IR (bpf_to_x64_reg dst) then xrs (IR (bpf_to_x64_reg dst)) << unat (and (ucast (xrs (IR (bpf_to_x64_reg src)))) (63::32 word)) 
+        else if a = IR RCX then xrs (IR (bpf_to_x64_reg src)) else if a = IR SP then xrs (IR SP) - u64_of_memory_chunk M64 else xrs a)
+      (IR SP := xrs (IR SP), IR RCX := xrs (IR RCX)))"
+  by (simp add: match_state_def match_reg_def eval_alu_def eval_alu64_aux2_def eval_reg_def)
   
 
 lemma shiftq_lsh_one_step_match_mem:
@@ -55,7 +49,7 @@ lemma shiftq_lsh_one_step_match_stack:
     storev M64 xm (Vptr sp_block (xrs (IR SP) - u64_of_memory_chunk M64)) (Vlong (xrs (IR RCX))) = Some m1 \<Longrightarrow> 
     loadv M64 m1 (Vptr sp_block (xrs (IR SP) - u64_of_memory_chunk M64)) = Some (Vlong (xrs (IR RCX))) \<Longrightarrow>
     match_stack ((\<lambda>a::preg. 
-      if a = IR (bpf_to_x64_reg dst) then xrs (IR (bpf_to_x64_reg dst)) << unat (xrs (IR (bpf_to_x64_reg src))) 
+      if a = IR (bpf_to_x64_reg dst) then xrs (IR (bpf_to_x64_reg dst)) << unat (and (ucast (xrs (IR (bpf_to_x64_reg src)))) (63::32 word))
       else if a = IR RCX then xrs (IR (bpf_to_x64_reg src)) 
       else if a = IR SP then xrs (IR SP) - u64_of_memory_chunk M64 else xrs a)
     (IR SP := xrs (IR SP), IR RCX := xrs (IR RCX))) m1"
@@ -264,13 +258,13 @@ lemma shiftq_rsh_one_step_match_reg:
     (bpf_to_x64_reg dst) \<noteq> RSP \<Longrightarrow>
      match_reg rs' 
     ((\<lambda>a::preg. 
-        if a = IR (bpf_to_x64_reg dst) then xrs (IR (bpf_to_x64_reg dst)) >> unat (xrs (IR (bpf_to_x64_reg src))) 
+        if a = IR (bpf_to_x64_reg dst) then xrs (IR (bpf_to_x64_reg dst)) >> unat (and (ucast (xrs (IR (bpf_to_x64_reg src)))) (63::32 word))
         else if a = IR RCX then xrs (IR (bpf_to_x64_reg src)) 
         else if a = IR SP then xrs (IR SP) - u64_of_memory_chunk M64 
         else xrs a)
     (IR SP := xrs (IR SP), IR RCX := xrs (IR RCX)))"
-  apply (simp add: match_state_def match_reg_def eval_alu_def eval_alu64_aux2_def eval_reg_def)
-  using this by metis
+  by (simp add: match_state_def match_reg_def eval_alu_def eval_alu64_aux2_def eval_reg_def)
+ 
   
 
 lemma shiftq_rsh_one_step_match_mem:
@@ -297,7 +291,7 @@ lemma shiftq_rsh_one_step_match_stack:
     storev M64 xm (Vptr sp_block (xrs (IR SP) - u64_of_memory_chunk M64)) (Vlong (xrs (IR RCX))) = Some m1 \<Longrightarrow> 
     loadv M64 m1 (Vptr sp_block (xrs (IR SP) - u64_of_memory_chunk M64)) = Some (Vlong (xrs (IR RCX))) \<Longrightarrow>
     match_stack ((\<lambda>a::preg. 
-      if a = IR (bpf_to_x64_reg dst) then xrs (IR (bpf_to_x64_reg dst)) >> unat (xrs (IR (bpf_to_x64_reg src))) 
+      if a = IR (bpf_to_x64_reg dst) then xrs (IR (bpf_to_x64_reg dst)) >> unat (and (ucast (xrs (IR (bpf_to_x64_reg src)))) (63::32 word))
       else if a = IR RCX then xrs (IR (bpf_to_x64_reg src)) 
       else if a = IR SP then xrs (IR SP) - u64_of_memory_chunk M64 else xrs a)
     (IR SP := xrs (IR SP), IR RCX := xrs (IR RCX))) m1"
@@ -494,5 +488,7 @@ shows "\<exists> xst'. x64_sem1 1 x64_prog (pc,xst) = (pc',xst') \<and>
     done
   done
   done
+
+
 
 end
