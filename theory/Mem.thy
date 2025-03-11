@@ -6,7 +6,7 @@ imports
   rBPFCommType Val
 begin
 
-type_synonym mem = "nat \<Rightarrow> (u64, u8) map"
+type_synonym mem = "nat \<Rightarrow> (int, u8) map"
 
 (*type_synonym mem = "(u64, u8) map"*)
 
@@ -14,6 +14,15 @@ definition init_mem :: "mem" where
 "init_mem = (\<lambda> _ _ . None)"
 
 datatype memory_chunk = M8 | M16 | M32 | M64 
+
+definition memory_chunk_to_byte_int :: "memory_chunk \<Rightarrow> int" where
+"memory_chunk_to_byte_int mc = (
+  case mc of
+  M8 \<Rightarrow> 0 |
+  M16 \<Rightarrow> 1 |
+  M32 \<Rightarrow> 3 |
+  M64 \<Rightarrow> 7
+)"
 
 type_synonym addr_type = val
 (*type_synonym addr_type = u64*)
@@ -117,19 +126,19 @@ definition loadv :: "memory_chunk \<Rightarrow> mem \<Rightarrow> addr_type \<Ri
         if b = 0 then None
         else 
           ( option_val_of_u64 mc (case mc of
-            M8  \<Rightarrow> option_u64_of_u8_1 (m b off) |
-            M16 \<Rightarrow> option_u64_of_u8_2 (m b off) (m b (off+1))|
-            M32 \<Rightarrow> option_u64_of_u8_4 (m b off) (m b (off+1)) (m b (off+2)) (m b (off+3))|
-            M64 \<Rightarrow> option_u64_of_u8_8 (m b off) (m b (off+1)) (m b (off+2)) (m b (off+3))
-                        (m b (off+4)) (m b (off+5)) (m b (off+6)) (m b (off+7))
+            M8  \<Rightarrow> option_u64_of_u8_1 (m b (uint off)) |
+            M16 \<Rightarrow> option_u64_of_u8_2 (m b (uint off)) (m b ((uint off)+1))|
+            M32 \<Rightarrow> option_u64_of_u8_4 (m b (uint off)) (m b ((uint off)+1)) (m b ((uint off)+2)) (m b ((uint off)+3))|
+            M64 \<Rightarrow> option_u64_of_u8_8 (m b (uint off)) (m b ((uint off)+1)) (m b ((uint off)+2)) (m b ((uint off)+3))
+                        (m b ((uint off)+4)) (m b ((uint off)+5)) (m b ((uint off)+6)) (m b ((uint off)+7))
     ))|
     Vlong off \<Rightarrow> (option_val_of_u64 mc (
         case mc of
-          M8  \<Rightarrow> option_u64_of_u8_1 (m 0 off) |
-          M16 \<Rightarrow> option_u64_of_u8_2 (m 0 off) (m 0 (off+1))|
-          M32 \<Rightarrow> option_u64_of_u8_4 (m 0 off) (m 0 (off+1)) (m 0 (off+2)) (m 0 (off+3))|
-          M64 \<Rightarrow> option_u64_of_u8_8 (m 0 off) (m 0 (off+1)) (m 0 (off+2)) (m 0 (off+3))
-                        (m 0 (off+4)) (m 0 (off+5)) (m 0 (off+6)) (m 0 (off+7))
+          M8  \<Rightarrow> option_u64_of_u8_1 (m 0 (uint off)) |
+          M16 \<Rightarrow> option_u64_of_u8_2 (m 0 (uint off)) (m 0 ((uint off)+1))|
+          M32 \<Rightarrow> option_u64_of_u8_4 (m 0 (uint off)) (m 0 ((uint off)+1)) (m 0 ((uint off)+2)) (m 0 ((uint off)+3))|
+          M64 \<Rightarrow> option_u64_of_u8_8 (m 0 (uint off)) (m 0 ((uint off)+1)) (m 0 ((uint off)+2)) (m 0 ((uint off)+3))
+                        (m 0 ((uint off)+4)) (m 0 ((uint off)+5)) (m 0 ((uint off)+6)) (m 0 ((uint off)+7))
     ))|
     _ \<Rightarrow> None)"
 
@@ -187,38 +196,38 @@ definition storev :: "memory_chunk \<Rightarrow> mem \<Rightarrow> addr_type \<R
         (case mc of
           M8  \<Rightarrow> (
              case v of
-                Vbyte n \<Rightarrow> Some (\<lambda> x i. if x = b \<and> i = off then Some n else m x i ) |
+                Vbyte n \<Rightarrow> Some (\<lambda> x i. if x = b \<and> i = (uint off) then Some n else m x i ) |
                 _ \<Rightarrow> None) |
           M16 \<Rightarrow> (
              case v of
                 Vshort n \<Rightarrow>
                   let l = u8_list_of_u16 n in
-                    Some (\<lambda> x i. if x = b \<and> i = off      then Some (l!(0)) else
-                                 if x = b \<and> i = (off+1)  then Some (l!(1)) else
+                    Some (\<lambda> x i. if x = b \<and> i = (uint off)      then Some (l!(0)) else
+                                 if x = b \<and> i = ((uint off)+1)  then Some (l!(1)) else
                            m x i) |
                 _ \<Rightarrow> None) |
          M32 \<Rightarrow> (
             case v of
               Vint n \<Rightarrow>
                 let l = u8_list_of_u32 n in
-                  Some (\<lambda> x i. if x = b \<and> i = off      then Some (l!(0)) else
-                             if x = b \<and> i = (off+1)    then Some (l!(1)) else
-                             if x = b \<and> i = (off+2)    then Some (l!(2)) else
-                             if x = b \<and> i = (off+3)    then Some (l!(3)) else
+                  Some (\<lambda> x i. if x = b \<and> i = (uint off)      then Some (l!(0)) else
+                             if x = b \<and> i = ((uint off)+1)    then Some (l!(1)) else
+                             if x = b \<and> i = ((uint off)+2)    then Some (l!(2)) else
+                             if x = b \<and> i = ((uint off)+3)    then Some (l!(3)) else
                              m x i) |
               _ \<Rightarrow> None) |
         M64 \<Rightarrow> (
           case v of
             Vlong n \<Rightarrow>
               let l = u8_list_of_u64 n in
-                Some (\<lambda> x i. if x = b \<and> i = off    then Some (l!(0)) else
-                             if x = b \<and> i = (off+1)  then Some (l!(1)) else
-                             if x = b \<and> i = (off+2)  then Some (l!(2)) else
-                             if x = b \<and> i = (off+3)  then Some (l!(3)) else
-                             if x = b \<and> i = (off+4)  then Some (l!(4)) else
-                             if x = b \<and> i = (off+5)  then Some (l!(5)) else
-                             if x = b \<and> i = (off+6)  then Some (l!(6)) else
-                             if x = b \<and> i = (off+7)  then Some (l!(7)) else
+                Some (\<lambda> x i. if x = b \<and> i = (uint off)    then Some (l!(0)) else
+                             if x = b \<and> i = ((uint off)+1)  then Some (l!(1)) else
+                             if x = b \<and> i = ((uint off)+2)  then Some (l!(2)) else
+                             if x = b \<and> i = ((uint off)+3)  then Some (l!(3)) else
+                             if x = b \<and> i = ((uint off)+4)  then Some (l!(4)) else
+                             if x = b \<and> i = ((uint off)+5)  then Some (l!(5)) else
+                             if x = b \<and> i = ((uint off)+6)  then Some (l!(6)) else
+                             if x = b \<and> i = ((uint off)+7)  then Some (l!(7)) else
                               m x i) |
             _ \<Rightarrow> None))|
 
@@ -226,45 +235,45 @@ definition storev :: "memory_chunk \<Rightarrow> mem \<Rightarrow> addr_type \<R
       (case mc of
           M8  \<Rightarrow> (
             case v of
-              Vbyte n \<Rightarrow> Some (\<lambda> x i. if x = 0 \<and> i = off then Some n else m 0 i) |
+              Vbyte n \<Rightarrow> Some (\<lambda> x i. if x = 0 \<and> i = (uint off) then Some n else m 0 i) |
               _ \<Rightarrow> None) |
           M16 \<Rightarrow> (
              case v of
               Vshort n \<Rightarrow>
                 let l = u8_list_of_u16 n in
-                Some (\<lambda> x i. if x = 0 \<and> i = off    then Some (l!(0)) else
-                   if x = 0 \<and> i = off+1  then Some (l!(1)) else
+                Some (\<lambda> x i. if x = 0 \<and> i = (uint off)    then Some (l!(0)) else
+                   if x = 0 \<and> i = (uint off)+1  then Some (l!(1)) else
                       m 0 i) |
               _ \<Rightarrow> None) |
         M32 \<Rightarrow> (
             case v of
               Vint n \<Rightarrow>
                 let l = u8_list_of_u32 n in
-                Some (\<lambda> x i. if x = 0 \<and> i = off    then Some (l!(0)) else
-                   if x = 0 \<and> i = off+1  then Some (l!(1)) else
-                   if x = 0 \<and> i = off+2  then Some (l!(2)) else
-                   if x = 0 \<and> i = off+3  then Some (l!(3)) else
+                Some (\<lambda> x i. if x = 0 \<and> i = (uint off)    then Some (l!(0)) else
+                   if x = 0 \<and> i = (uint off)+1  then Some (l!(1)) else
+                   if x = 0 \<and> i = (uint off)+2  then Some (l!(2)) else
+                   if x = 0 \<and> i = (uint off)+3  then Some (l!(3)) else
                       m 0 i) |
              _ \<Rightarrow> None) |
        M64 \<Rightarrow> (
           case v of
             Vlong n \<Rightarrow>
               let l = u8_list_of_u64 n in
-               Some (\<lambda> x i. if x = 0 \<and> i = off    then Some (l!(0)) else
-                   if x = 0 \<and> i = off+1  then Some (l!(1)) else
-                   if x = 0 \<and> i = off+2  then Some (l!(2)) else
-                   if x = 0 \<and> i = off+3  then Some (l!(3)) else
-                   if x = 0 \<and> i = off+4  then Some (l!(4)) else
-                   if x = 0 \<and> i = off+5  then Some (l!(5)) else
-                   if x = 0 \<and> i = off+6  then Some (l!(6)) else
-                   if x = 0 \<and> i = off+7  then Some (l!(7)) else
+               Some (\<lambda> x i. if x = 0 \<and> i = (uint off)    then Some (l!(0)) else
+                   if x = 0 \<and> i = (uint off)+1  then Some (l!(1)) else
+                   if x = 0 \<and> i = (uint off)+2  then Some (l!(2)) else
+                   if x = 0 \<and> i = (uint off)+3  then Some (l!(3)) else
+                   if x = 0 \<and> i = (uint off)+4  then Some (l!(4)) else
+                   if x = 0 \<and> i = (uint off)+5  then Some (l!(5)) else
+                   if x = 0 \<and> i = (uint off)+6  then Some (l!(6)) else
+                   if x = 0 \<and> i = (uint off)+7  then Some (l!(7)) else
                       m 0 i) |
            _ \<Rightarrow> None))|
   _ \<Rightarrow> None
 )"
 
 definition init_mem2 :: "mem" where
-"init_mem2 = (\<lambda> x i. if x = 1 \<and> i = (0b0000000000000000000000000000000000000000000000000000000000000001::u64) then Some 0 else None)"
+"init_mem2 = (\<lambda> x i. if x = 1 \<and> i = (0b0000000000000000000000000000000000000000000000000000000000000001::int) then Some 0 else None)"
 
 
 value "loadv M16 init_mem2 ((Vptr 1 1)::val)"
@@ -621,22 +630,308 @@ lemma store_load_consistency: "storev M64 m place v = Some m' \<Longrightarrow> 
   using store_load_consistency2_aux
   by metis
 
-
-lemma store_load_other:"storev M64 m (Vptr 1 off) x = Some m' \<Longrightarrow>
-  loadv mc m (Vlong place) = Some v \<Longrightarrow> loadv mc m' (Vlong place) = Some v"
+lemma store_load_other_blk_if:"storev mc m (Vptr blk off) x = Some m' \<Longrightarrow>
+  loadv mc1 m (Vlong place) = Some v \<Longrightarrow> loadv mc1 m' (Vlong place) = Some v"
   using store_load_consistency 
-  apply(unfold storev_def loadv_def)
-  apply(cases "(Vptr 1 off)",simp_all)
-  subgoal for x61
-    apply(cases x,simp_all)
-    subgoal for x5
-      apply(cases mc,simp_all) 
-         apply (smt (z3) n_not_Suc_n option.inject)
-      prefer 2  apply (smt (z3) One_nat_def option.inject zero_neq_one)
-       prefer 2 apply (smt (z3) One_nat_def option.inject zero_neq_one)
-      by (smt (z3) One_nat_def option.inject zero_neq_one)
+  apply(simp add: storev_def loadv_def)
+  apply(cases "blk = 0"; simp)
+  apply(cases mc; cases x; simp add: Let_def option_val_of_u64_def
+        option_u64_of_u8_1_def option_u64_of_u8_2_def
+        option_u64_of_u8_4_def option_u64_of_u8_8_def)
+  subgoal for x2
+    using n_not_Suc_n option.inject
+    apply force
+    done
+  subgoal
+    using One_nat_def option.inject zero_neq_one
+    by auto
+  subgoal
+    using One_nat_def option.inject zero_neq_one
+    by auto
+  subgoal
+    using One_nat_def option.inject zero_neq_one
+    by auto
+  done
+
+lemma store_load_other_blk_only_if:"storev mc m (Vptr blk off) x = Some m' \<Longrightarrow>
+  loadv mc1 m' (Vlong place) = Some v \<Longrightarrow> loadv mc1 m (Vlong place) = Some v"
+  using store_load_consistency 
+  apply(simp add: storev_def loadv_def)
+  apply(cases "blk = 0"; simp)
+  apply(cases mc; cases x; simp add: Let_def option_val_of_u64_def
+        option_u64_of_u8_1_def option_u64_of_u8_2_def
+        option_u64_of_u8_4_def option_u64_of_u8_8_def)
+  subgoal for x2
+    using n_not_Suc_n option.inject
+    apply (cases mc1; force)
+    done
+  subgoal
+    using One_nat_def option.inject zero_neq_one not_gr_zero memory_chunk_value_of_u64_def
+    apply (cases mc1)
+    apply force
+    apply force
+    apply force
+    apply force
+    done
+  subgoal
+    using One_nat_def option.inject zero_neq_one memory_chunk_value_of_u64_def
+    apply (cases mc1)
+    apply force
+    apply force
+    apply force
+    apply force
+    done
+  subgoal
+    using One_nat_def option.inject zero_neq_one memory_chunk_value_of_u64_def
+    apply (cases mc1)
+    apply force
+    apply force
+    apply force
+    apply force
     done
   done
+
+lemma store_load_other_blk:"storev mc m (Vptr blk off) x = Some m' \<Longrightarrow>
+  loadv mc1 m' (Vlong place) = Some v \<longleftrightarrow> loadv mc1 m (Vlong place) = Some v"
+  using store_load_other_blk_only_if store_load_other_blk_if by blast
+
+lemma store_load_other_blk2_0:"blk \<noteq> blk1 \<Longrightarrow>
+  Some m' = storev mc m (Vptr blk off) x  \<Longrightarrow>
+  loadv mc1 m (Vptr blk1 off1) = Some v \<Longrightarrow> loadv mc1 m' (Vptr blk1 off1) = Some v"
+  apply(simp add: storev_def loadv_def memory_chunk_to_byte_int_def)
+  apply(cases "blk = 0"; simp add: Let_def option_val_of_u64_def
+        option_u64_of_u8_1_def option_u64_of_u8_2_def
+        option_u64_of_u8_4_def option_u64_of_u8_8_def memory_chunk_value_of_u64_def)
+  apply(cases mc; cases x; simp)
+  subgoal for x2
+    apply (cases "blk1 = 0"; simp)
+    using n_not_Suc_n option.inject
+    apply (cases mc1; simp add: option_u64_of_u8_1_def option_u64_of_u8_2_def
+      option_u64_of_u8_4_def option_u64_of_u8_8_def memory_chunk_value_of_u64_def option_val_of_u64_def; auto)
+    done
+  subgoal for x3
+    apply (cases "blk1 = 0"; simp)
+    using  option.inject zero_neq_one
+    apply (cases mc1; simp add: option_u64_of_u8_1_def option_u64_of_u8_2_def
+      option_u64_of_u8_4_def option_u64_of_u8_8_def memory_chunk_value_of_u64_def
+      u8_list_of_u16_def Let_def)
+    using not_gr_zero option_u64_of_u8_1_def option_val_of_u64_def apply fastforce
+    apply (metis option_u64_of_u8_2_def option_val_of_u64_def)
+    using nat_neq_iff option_u64_of_u8_4_def option_val_of_u64_def apply fastforce
+    using linorder_neq_iff option_u64_of_u8_8_def option_val_of_u64_def by fastforce
+
+  subgoal for x4
+    apply (cases "blk1 = 0"; simp)
+    using  option.inject zero_neq_one
+    apply (cases mc1; simp add: option_u64_of_u8_1_def option_u64_of_u8_2_def
+      option_u64_of_u8_4_def option_u64_of_u8_8_def memory_chunk_value_of_u64_def
+      u8_list_of_u16_def Let_def)
+    using not_gr_zero option_u64_of_u8_1_def option_val_of_u64_def apply fastforce
+    apply (metis option_u64_of_u8_2_def option_val_of_u64_def)
+    using nat_neq_iff option_u64_of_u8_4_def option_val_of_u64_def apply fastforce
+    using linorder_neq_iff option_u64_of_u8_8_def option_val_of_u64_def by fastforce
+
+  subgoal for x5
+    apply (cases "blk1 = 0"; simp)
+    using  option.inject zero_neq_one
+    apply (cases mc1; simp add: option_u64_of_u8_1_def option_u64_of_u8_2_def
+      option_u64_of_u8_4_def option_u64_of_u8_8_def memory_chunk_value_of_u64_def
+      u8_list_of_u16_def Let_def)
+    using not_gr_zero option_u64_of_u8_1_def option_val_of_u64_def apply fastforce
+    apply (metis option_u64_of_u8_2_def option_val_of_u64_def)
+    using nat_neq_iff option_u64_of_u8_4_def option_val_of_u64_def apply fastforce
+    using linorder_neq_iff option_u64_of_u8_8_def option_val_of_u64_def by fastforce
+  done
+
+lemma store_load_other_blk2_0_0:"blk \<noteq> blk1 \<Longrightarrow>
+  Some m' = storev mc m (Vptr blk off) x  \<Longrightarrow>
+  loadv mc1 m' (Vptr blk1 off1) = Some v \<Longrightarrow> loadv mc1 m (Vptr blk1 off1) = Some v"
+  apply(simp add: storev_def loadv_def memory_chunk_to_byte_int_def)
+  apply(cases "blk = 0"; simp add: Let_def option_val_of_u64_def
+        option_u64_of_u8_1_def option_u64_of_u8_2_def
+        option_u64_of_u8_4_def option_u64_of_u8_8_def memory_chunk_value_of_u64_def)
+  apply(cases mc; cases x; simp)
+  subgoal for x2
+    apply (cases "blk1 = 0"; simp)
+    using n_not_Suc_n option.inject
+    apply (cases mc1; simp add: option_u64_of_u8_1_def option_u64_of_u8_2_def
+      option_u64_of_u8_4_def option_u64_of_u8_8_def memory_chunk_value_of_u64_def option_val_of_u64_def; auto)
+    done
+  subgoal for x3
+    apply (cases "blk1 = 0"; simp)
+    using  option.inject zero_neq_one
+    apply (cases mc1; simp add: option_u64_of_u8_1_def option_u64_of_u8_2_def
+      option_u64_of_u8_4_def option_u64_of_u8_8_def memory_chunk_value_of_u64_def
+      u8_list_of_u16_def Let_def)
+    using not_gr_zero option_u64_of_u8_1_def option_val_of_u64_def apply fastforce
+    apply (metis option_u64_of_u8_2_def option_val_of_u64_def)
+    using nat_neq_iff option_u64_of_u8_4_def option_val_of_u64_def apply fastforce
+    using linorder_neq_iff option_u64_of_u8_8_def option_val_of_u64_def by fastforce
+
+  subgoal for x4
+    apply (cases "blk1 = 0"; simp)
+    using  option.inject zero_neq_one
+    apply (cases mc1; simp add: option_u64_of_u8_1_def option_u64_of_u8_2_def
+      option_u64_of_u8_4_def option_u64_of_u8_8_def memory_chunk_value_of_u64_def
+      u8_list_of_u16_def Let_def)
+    using not_gr_zero option_u64_of_u8_1_def option_val_of_u64_def apply fastforce
+    apply (metis option_u64_of_u8_2_def option_val_of_u64_def)
+    using nat_neq_iff option_u64_of_u8_4_def option_val_of_u64_def apply fastforce
+    using linorder_neq_iff option_u64_of_u8_8_def option_val_of_u64_def by fastforce
+
+  subgoal for x5
+    apply (cases "blk1 = 0"; simp)
+    using  option.inject zero_neq_one
+    apply (cases mc1; simp add: option_u64_of_u8_1_def option_u64_of_u8_2_def
+      option_u64_of_u8_4_def option_u64_of_u8_8_def memory_chunk_value_of_u64_def
+      u8_list_of_u16_def Let_def)
+    using not_gr_zero option_u64_of_u8_1_def option_val_of_u64_def apply fastforce
+    apply (metis option_u64_of_u8_2_def option_val_of_u64_def)
+    using nat_neq_iff option_u64_of_u8_4_def option_val_of_u64_def apply fastforce
+    using linorder_neq_iff option_u64_of_u8_8_def option_val_of_u64_def by fastforce
+  done
+
+lemma store_load_other_blk2_1:"((uint off) + memory_chunk_to_byte_int mc < (uint off1)) \<Longrightarrow>
+  Some m' = storev mc m (Vptr blk off) x  \<Longrightarrow>
+  loadv mc1 m (Vptr blk off1) = Some v \<Longrightarrow> loadv mc1 m' (Vptr blk off1) = Some v"
+  apply(simp add: storev_def loadv_def memory_chunk_to_byte_int_def)
+  apply(cases "blk = 0"; simp add: Let_def option_val_of_u64_def
+        option_u64_of_u8_1_def option_u64_of_u8_2_def
+        option_u64_of_u8_4_def option_u64_of_u8_8_def memory_chunk_value_of_u64_def)
+  apply(cases mc; cases x; simp)
+  subgoal for x2
+    using n_not_Suc_n option.inject
+    apply (cases mc1; simp add: option_u64_of_u8_1_def option_u64_of_u8_2_def
+      option_u64_of_u8_4_def option_u64_of_u8_8_def memory_chunk_value_of_u64_def)
+    done
+  subgoal for x3
+    using  option.inject zero_neq_one
+    apply (cases mc1; cases "m blk (uint off1)"; simp add: option_u64_of_u8_1_def option_u64_of_u8_2_def
+      option_u64_of_u8_4_def option_u64_of_u8_8_def memory_chunk_value_of_u64_def
+      u8_list_of_u16_def Let_def)
+    done
+  subgoal for x3
+    using  option.inject zero_neq_one
+    apply (cases mc1; cases "m blk (uint off1)"; simp add: option_u64_of_u8_1_def option_u64_of_u8_2_def
+      option_u64_of_u8_4_def option_u64_of_u8_8_def memory_chunk_value_of_u64_def
+      u8_list_of_u16_def Let_def)
+    done
+  subgoal for x3
+    using  option.inject zero_neq_one
+    apply (cases mc1; cases "m blk (uint off1)"; simp add: option_u64_of_u8_1_def option_u64_of_u8_2_def
+      option_u64_of_u8_4_def option_u64_of_u8_8_def memory_chunk_value_of_u64_def
+      u8_list_of_u16_def Let_def)
+    done
+  done
+
+lemma store_load_other_blk2_1_0:"((uint off) + memory_chunk_to_byte_int mc < (uint off1)) \<Longrightarrow>
+  Some m' = storev mc m (Vptr blk off) x  \<Longrightarrow>
+  loadv mc1 m' (Vptr blk off1) = Some v \<Longrightarrow> loadv mc1 m (Vptr blk off1) = Some v"
+  apply(simp add: storev_def loadv_def memory_chunk_to_byte_int_def)
+  apply(cases "blk = 0"; simp add: Let_def option_val_of_u64_def
+        option_u64_of_u8_1_def option_u64_of_u8_2_def
+        option_u64_of_u8_4_def option_u64_of_u8_8_def memory_chunk_value_of_u64_def)
+  apply(cases mc; cases x; simp)
+  subgoal for x2
+    using n_not_Suc_n option.inject
+    apply (cases mc1; simp add: option_u64_of_u8_1_def option_u64_of_u8_2_def
+      option_u64_of_u8_4_def option_u64_of_u8_8_def memory_chunk_value_of_u64_def)
+    done
+  subgoal for x3
+    using  option.inject zero_neq_one
+    apply (cases mc1; cases "m blk (uint off1)"; simp add: option_u64_of_u8_1_def option_u64_of_u8_2_def
+      option_u64_of_u8_4_def option_u64_of_u8_8_def memory_chunk_value_of_u64_def
+      u8_list_of_u16_def Let_def)
+    done
+  subgoal for x3
+    using  option.inject zero_neq_one
+    apply (cases mc1; cases "m blk (uint off1)"; simp add: option_u64_of_u8_1_def option_u64_of_u8_2_def
+      option_u64_of_u8_4_def option_u64_of_u8_8_def memory_chunk_value_of_u64_def
+      u8_list_of_u16_def Let_def)
+    done
+  subgoal for x3
+    using  option.inject zero_neq_one
+    apply (cases mc1; cases "m blk (uint off1)"; simp add: option_u64_of_u8_1_def option_u64_of_u8_2_def
+      option_u64_of_u8_4_def option_u64_of_u8_8_def memory_chunk_value_of_u64_def
+      u8_list_of_u16_def Let_def)
+    done
+  done
+
+lemma store_load_other_blk2_2:"((uint off1) + memory_chunk_to_byte_int mc1 < (uint off)) \<Longrightarrow>
+  Some m' = storev mc m (Vptr blk off) x  \<Longrightarrow>
+  loadv mc1 m (Vptr blk off1) = Some v \<Longrightarrow> loadv mc1 m' (Vptr blk off1) = Some v"
+  apply(simp add: storev_def loadv_def memory_chunk_to_byte_int_def)
+  apply(cases "blk = 0"; simp add: Let_def option_val_of_u64_def
+        option_u64_of_u8_1_def option_u64_of_u8_2_def
+        option_u64_of_u8_4_def option_u64_of_u8_8_def memory_chunk_value_of_u64_def)
+  apply(cases mc; cases x; simp)
+  subgoal for x2
+    using n_not_Suc_n option.inject
+    apply (cases mc1; simp add: option_u64_of_u8_1_def option_u64_of_u8_2_def
+      option_u64_of_u8_4_def option_u64_of_u8_8_def memory_chunk_value_of_u64_def)
+    done
+  subgoal for x3
+    using  option.inject zero_neq_one
+    apply (cases mc1; cases "m blk (uint off1)"; simp add: option_u64_of_u8_1_def option_u64_of_u8_2_def
+      option_u64_of_u8_4_def option_u64_of_u8_8_def memory_chunk_value_of_u64_def
+      u8_list_of_u16_def Let_def)
+    done
+  subgoal for x3
+    using  option.inject zero_neq_one
+    apply (cases mc1; cases "m blk (uint off1)"; simp add: option_u64_of_u8_1_def option_u64_of_u8_2_def
+      option_u64_of_u8_4_def option_u64_of_u8_8_def memory_chunk_value_of_u64_def
+      u8_list_of_u16_def Let_def)
+    done
+  subgoal for x3
+    using  option.inject zero_neq_one
+    apply (cases mc1; cases "m blk (uint off1)"; simp add: option_u64_of_u8_1_def option_u64_of_u8_2_def
+      option_u64_of_u8_4_def option_u64_of_u8_8_def memory_chunk_value_of_u64_def
+      u8_list_of_u16_def Let_def)
+    done
+  done
+
+lemma store_load_other_blk2_2_0:"((uint off1) + memory_chunk_to_byte_int mc1 < (uint off)) \<Longrightarrow>
+  Some m' = storev mc m (Vptr blk off) x  \<Longrightarrow>
+  loadv mc1 m' (Vptr blk off1) = Some v \<Longrightarrow> loadv mc1 m (Vptr blk off1) = Some v"
+  apply(simp add: storev_def loadv_def memory_chunk_to_byte_int_def)
+  apply(cases "blk = 0"; simp add: Let_def option_val_of_u64_def
+        option_u64_of_u8_1_def option_u64_of_u8_2_def
+        option_u64_of_u8_4_def option_u64_of_u8_8_def memory_chunk_value_of_u64_def)
+  apply(cases mc; cases x; simp)
+  subgoal for x2
+    using n_not_Suc_n option.inject
+    apply (cases mc1; simp add: option_u64_of_u8_1_def option_u64_of_u8_2_def
+      option_u64_of_u8_4_def option_u64_of_u8_8_def memory_chunk_value_of_u64_def)
+    done
+  subgoal for x3
+    using  option.inject zero_neq_one
+    apply (cases mc1; cases "m blk (uint off1)"; simp add: option_u64_of_u8_1_def option_u64_of_u8_2_def
+      option_u64_of_u8_4_def option_u64_of_u8_8_def memory_chunk_value_of_u64_def
+      u8_list_of_u16_def Let_def)
+    done
+  subgoal for x3
+    using  option.inject zero_neq_one
+    apply (cases mc1; cases "m blk (uint off1)"; simp add: option_u64_of_u8_1_def option_u64_of_u8_2_def
+      option_u64_of_u8_4_def option_u64_of_u8_8_def memory_chunk_value_of_u64_def
+      u8_list_of_u16_def Let_def)
+    done
+  subgoal for x3
+    using  option.inject zero_neq_one
+    apply (cases mc1; cases "m blk (uint off1)"; simp add: option_u64_of_u8_1_def option_u64_of_u8_2_def
+      option_u64_of_u8_4_def option_u64_of_u8_8_def memory_chunk_value_of_u64_def
+      u8_list_of_u16_def Let_def)
+    done
+  done
+
+
+lemma store_load_other_blk2:" (blk \<noteq> blk1) \<or>
+  (blk = blk1 \<and>(uint off) + memory_chunk_to_byte_int mc < (uint off1)) \<or>
+  (blk = blk1 \<and>(uint off1) + memory_chunk_to_byte_int mc1 < (uint off)) \<Longrightarrow>
+  Some m' = storev mc m (Vptr blk off) x  \<Longrightarrow>
+  loadv mc1 m (Vptr blk1 off1) = Some v \<longleftrightarrow> loadv mc1 m' (Vptr blk1 off1) = Some v"
+  using store_load_other_blk2_0 store_load_other_blk2_1 store_load_other_blk2_2
+  store_load_other_blk2_0_0 store_load_other_blk2_1_0 store_load_other_blk2_2_0
+  by metis 
 
 lemma storev_stack_some: "\<exists> m'. storev M64 m (Vptr sp_block ofs) (Vlong v) = Some m'"
   apply (simp add: storev_def sp_block_def)
