@@ -16,7 +16,8 @@ imports
   rBPFCommType rBPFSyntax rBPFSem
   x64Syntax x64Semantics x64Assembler
    x64DecodeProofAux
-  JITPer_add JITPer_mul_rax JITPer_mul_rdx JITPer_exit JITPer_jump
+  JITPer_add JITPer_mul_rax JITPer_mul_rdx JITPer_mul_other
+  JITPer_exit JITPer_jump
 
 begin
 
@@ -56,7 +57,7 @@ proof-
         next
           case False
             have c3:"(bpf_to_x64_reg dst) \<notin> {RAX, RDX}" using c2 False by blast
-            then show ?thesis sorry
+            then show ?thesis using mulq_one_step_other a0 a1 a2 a3 a4 a5 a6 False c1 c0 by blast
         qed   
       qed 
     next

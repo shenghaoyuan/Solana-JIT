@@ -33,7 +33,8 @@ lemma mulq_one_step_match_mem:
 storev M64 xm (Vptr sp_block (xrs (IR SP) - u64_of_memory_chunk M64)) (Vlong (xrs (IR RDX))) = Some m1 \<Longrightarrow>
     loadv M64 m1 (Vptr sp_block (xrs (IR SP) - u64_of_memory_chunk M64)) = Some (Vlong (xrs (IR RDX))) \<Longrightarrow> match_mem m' m1"
   apply (simp add: match_state_def match_mem_def eval_alu_def eval_reg_def)
-  using sp_block_def store_load_other by auto
+  using sp_block_def store_load_other_blk
+  by metis
   
 lemma mulq_one_step_match_stack:
   " (SBPF_OK pc' rs' m') = sbpf_step prog (SBPF_OK pc rs m) \<Longrightarrow>
@@ -52,7 +53,7 @@ storev M64 xm (Vptr sp_block (xrs (IR SP) - u64_of_memory_chunk M64)) (Vlong (xr
       (IR SP := xrs (IR SP), IR RDX := xrs (IR RDX)))
      m1"
   apply (simp add: match_state_def match_stack_def eval_alu_def eval_reg_def)
-  by (metis sp_block_def store_load_other)
+  by (metis store_load_other_blk)
 
 lemma mulq_one_step_rax:
 assumes a0:"s' = sbpf_step prog s" and
@@ -84,7 +85,7 @@ shows "\<exists> xst'. x64_sem1 1 x64_prog (pc,xst) = (pc',xst') \<and>
        prefer 2
       subgoal using per_jit_mul_reg64_def a9 by simp
       apply(subgoal_tac "(x64_encode (Pmovq_rr R11 (bpf_to_x64_reg src))@(x64_encode (Ppushl_r RDX)) @ (x64_encode (Pmulq_r R11)) @ (x64_encode (Ppopl RDX)))!1 \<noteq> 0x39")
-        prefer 2 subgoal apply(unfold per_jit_mul_reg64_def x64_encode_def) by simp
+        prefer 2 subgoal using per_jit_mul_reg64_def x64_encode_def by auto
       subgoal
         unfolding a3
         apply simp
