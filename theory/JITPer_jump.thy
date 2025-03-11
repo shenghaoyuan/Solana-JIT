@@ -47,7 +47,8 @@ proof -
   have b4:"(\<forall> r. (rs' r) = reg' (IR (bpf_to_x64_reg r)))" using b1 b2 b3 by presburger
   have b8:"match_stack reg' xm'" using a6 match_state_def a5 b0 apply (simp add: exec_instr_def compare_longs_def) by(simp add:match_stack_def)
   have b9:"match_mem m' xm'" using match_state_def a6 a5 b0 apply (simp add: exec_instr_def) 
-    using a4 mem_is_not_changed by blast
+    using a4 mem_is_not_changed
+    by (metis a0 a7 bpf_instruction.distinct(63))
   thus ?thesis using b4  match_state_def b8 b9 match_reg_def by fastforce
 qed
 
@@ -97,7 +98,7 @@ proof-
           if rs' (CR ZF) = 1 then (off+pc, xst')
           else (pc+1, xst') |
          Stuck \<Rightarrow> (pc, Stuck))" using c2_1 a3 one_step_def c_aux e3_0 by simp
-    hence e3_1:"?st = x64_sem num ?l_bin (Next 0 xrs xm)" using c2_1 c_aux one_step_def e3 a3
+    hence e3_1:"?st = x64_sem num ?l_bin (Next 0 xrs xm)" using c2_1 c_aux one_step_def a3
       by (smt (verit, ccfv_threshold) c2 outcome.exhaust outcome.simps(4) outcome.simps(5) snd_conv) 
 
     let "?l_bin1" = "x64_encode (Pcmpq_rr (bpf_to_x64_reg dst) (bpf_to_x64_reg src))"

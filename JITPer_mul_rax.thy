@@ -83,8 +83,6 @@ shows "\<exists> xst'. x64_sem1 1 x64_prog (pc,xst) = (pc',xst') \<and>
       apply (subgoal_tac "the (per_jit_mul_reg64 dst src) = (4, 0, (x64_encode (Pmovq_rr R11 (bpf_to_x64_reg src))@(x64_encode (Ppushl_r RDX)) @ (x64_encode (Pmulq_r R11)) @ (x64_encode (Ppopl RDX))))")
        prefer 2
       subgoal using per_jit_mul_reg64_def a9 by simp
-      apply(subgoal_tac "(x64_encode (Pmovq_rr R11 (bpf_to_x64_reg src))@(x64_encode (Ppushl_r RDX)) @ (x64_encode (Pmulq_r R11)) @ (x64_encode (Ppopl RDX)))!1 \<noteq> 0x39")
-        prefer 2 subgoal apply(unfold per_jit_mul_reg64_def x64_encode_def) by simp
       subgoal
         unfolding a3
         apply simp

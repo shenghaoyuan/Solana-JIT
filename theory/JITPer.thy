@@ -16,7 +16,7 @@ imports
   rBPFCommType rBPFSyntax rBPFSem
   x64Syntax x64Semantics x64Assembler
    x64DecodeProofAux
-  JITPer_add JITPer_mul JITPer_exit JITPer_jump
+  JITPer_add JITPer_mul_rax JITPer_mul_rdx JITPer_exit JITPer_jump
 
 begin
 
@@ -45,14 +45,14 @@ proof-
       then show ?thesis
       proof(cases "(bpf_to_x64_reg dst) = RDX")
         case True   
-          then show ?thesis using mulq_one_step a0 a1 a2 a3 a4 a5 a6 True c1 c0 by blast
+          then show ?thesis using mulq_one_step_rdx a0 a1 a2 a3 a4 a5 a6 True c1 c0 by blast
         next
         case False
           have c2:"(bpf_to_x64_reg dst) = RAX \<or> (bpf_to_x64_reg dst) \<notin> {RAX, RDX}" using c1 False by simp
           thus ?thesis
         proof (cases "(bpf_to_x64_reg dst) = RAX")
           case True
-            then show ?thesis sorry
+            then show ?thesis using mulq_one_step_rax a0 a1 a2 a3 a4 a5 a6 False c1 c0 by blast
         next
           case False
             have c3:"(bpf_to_x64_reg dst) \<notin> {RAX, RDX}" using c2 False by blast

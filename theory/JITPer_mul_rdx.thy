@@ -1,4 +1,4 @@
-theory JITPer_mul1
+theory JITPer_mul_rdx
 imports
   Main
   rBPFCommType rBPFSyntax rBPFSem
@@ -56,7 +56,7 @@ lemma mulq_one_step_match_stack:
   apply (simp add: match_state_def match_stack_def eval_alu_def eval_reg_def)
   by (metis sp_block_def store_load_other)
 
-lemma mulq_one_step1:
+lemma mulq_one_step_rdx:
 assumes a0:"s' = sbpf_step prog s" and
   a1:"s = (SBPF_OK pc rs m)" and
   a2:"s' = (SBPF_OK pc' rs' m')" and
