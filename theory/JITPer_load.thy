@@ -51,10 +51,11 @@ proof-
     using option.exhaust by fastforce 
   then obtain x where b0:"Mem.loadv chk m (Vlong ((rs src) + (scast off)))= Some x"by auto
   let "?off" = " ((rs src) + (scast off))"
-  have b1:"Mem.loadv chk m (Vlong ?off) = (option_val_of_u64 chk (option_u64_of_u8_8 (m 0 ?off) (m 0 (?off+1)) (m 0 (?off+2)) (m 0 (?off+3))
-                        (m 0 (?off+4)) (m 0 (?off+5)) (m 0 (?off+6)) (m 0 (?off+7)) ))"using a5 loadv_def by simp
-  let "?tmpres" = "(option_val_of_u64 chk (option_u64_of_u8_8 (m 0 ?off) (m 0 (?off+1)) (m 0 (?off+2)) (m 0 (?off+3))
-                        (m 0 (?off+4)) (m 0 (?off+5)) (m 0 (?off+6)) (m 0 (?off+7))))"
+  let "?uoff" = " uint((rs src) + (scast off))"
+  have b1:"Mem.loadv chk m (Vlong ?off) = (option_val_of_u64 chk (option_u64_of_u8_8 (m 0 ?uoff) (m 0 (?uoff+1)) (m 0 (?uoff+2)) (m 0 (?uoff+3))
+                        (m 0 (?uoff+4)) (m 0 (?uoff+5)) (m 0 (?uoff+6)) (m 0 (?uoff+7)) ))"using a5 loadv_def by simp
+  let "?tmpres" = "(option_val_of_u64 chk (option_u64_of_u8_8 (m 0 ?uoff) (m 0 (?uoff+1)) (m 0 (?uoff+2)) (m 0 (?uoff+3))
+                        (m 0 (?uoff+4)) (m 0 (?uoff+5)) (m 0 (?uoff+6)) (m 0 (?uoff+7))))"
   have b2_1:"?tmpres \<noteq> None" using b1 b0 option_val_of_u64_def memory_chunk_value_of_u64_def
     by (metis option.distinct(1))
   have b2:"\<exists> v. ?tmpres = Some (Vlong v)" using b2_1 memory_chunk_value_of_u64_def a5 
@@ -156,10 +157,9 @@ lemma load_M64_one_step_match_stack:
       if a = IR REG_SCRATCH then scast off + xrs (IR (bpf_to_x64_reg src)) 
       else if a = IR REG_SCRATCH then scast off 
       else xrs a)
-     (IR (bpf_to_x64_reg dst) := x5)) xm"
+     (IR (bpf_to_x64_reg dst) := x5)) "
   apply (simp add: match_state_def match_stack_def eval_alu_def eval_reg_def)
   using reg_rsp_consist by blast
-
 
 
 

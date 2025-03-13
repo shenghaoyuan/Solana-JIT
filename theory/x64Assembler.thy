@@ -177,7 +177,45 @@ Paddq_rr rd r1 \<Rightarrow>
         let (op:: u8) = 0x89 in
         let (rop::u8) = construct_modsib_to_u8 0b10 (u8_of_ireg r1) 0b100 in
         let (sib::u8) = construct_modsib_to_u8 scale (u8_of_ireg ri) (u8_of_ireg rb) in
-            ([rex, op, rop, sib] @ (u8_list_of_u32 dis))
+            ([rex, op, rop, sib] @ (u8_list_of_u32 dis))) |
+ \<comment> \<open> P2882 ` MOV: memory64 to qwordregister` ->  `0100 1RXB : 1000 1011 : mod qwordreg r/m`\<close>
+  Pmov_rm rd a c \<Rightarrow>( 
+    case a of Addrmode (Some rb) None dis \<Rightarrow> 
+      let (rex::u8) =  construct_rex_to_u8 \<comment> \<open> WRXB \<close>
+        (c = M64) \<comment> \<open> W \<close>
+        (and (u8_of_ireg rd) 0b1000 \<noteq> 0) \<comment> \<open> R \<close>
+        False \<comment> \<open> X \<close>
+        (and (u8_of_ireg rb) 0b1000 \<noteq> 0) \<comment> \<open> B \<close> in  
+      if dis \<le> 127 \<or> dis \<ge> -128 then   \<comment> \<open> displacement8 : mod 01\<close>
+        let (dis::u8) = scast dis in
+        let (rop::u8) = construct_modsib_to_u8 0b01 (u8_of_ireg rd) (u8_of_ireg rb) in
+        if rex = 0x40 then    
+          case c of 
+            M32 \<Rightarrow> [0x8b, rop, dis] 
+        else 
+          case c of 
+            M32 \<Rightarrow> [rex, 0x8b, rop, dis] |
+            M64 \<Rightarrow> [rex, 0x8b, rop, dis] 
+        else
+          let (rop::u8) = construct_modsib_to_u8 0b10 (u8_of_ireg rd) (u8_of_ireg rb) in
+          if rex = 0x40 then    
+            case c of 
+              M32 \<Rightarrow> ([0x8b, rop] @ (u8_list_of_u32 dis))
+          else 
+            (case c of 
+              M32 \<Rightarrow> ([rex, 0x8b, rop] @ (u8_list_of_u32 dis)) |
+              M64 \<Rightarrow> ([rex, 0x8b, rop] @ (u8_list_of_u32 dis)) )
+    |  Addrmode (Some rb) (Some (ri,scale)) dis \<Rightarrow>(
+                let (rex::u8) = ( construct_rex_to_u8 \<comment> \<open> 1RXB \<close>
+                  True \<comment> \<open> W \<close>
+                  (and (u8_of_ireg rd) 0b1000 \<noteq> 0) \<comment> \<open> R \<close>
+                  (and (u8_of_ireg ri) 0b1000 \<noteq> 0) \<comment> \<open> X \<close>
+                  (and (u8_of_ireg rb) 0b1000 \<noteq> 0) \<comment> \<open> B \<close>
+                ) in
+                  let (op:: u8) = 0x8b in
+                  let (rop::u8) = construct_modsib_to_u8 0b10 (u8_of_ireg rd) 0b100 in
+                  let (sib::u8) = construct_modsib_to_u8 scale (u8_of_ireg ri) (u8_of_ireg rb) in
+                  ([rex, op, rop, sib] @ (u8_list_of_u32 dis)))
 ))"
 (*if dis \<le> 127 \<or> dis \<ge> -128  then   \<comment> \<open> displacement8 : mod 01 \<close>
         let (dis::u8) = scast dis in

@@ -18,6 +18,8 @@ imports
    x64DecodeProofAux
   JITPer_add JITPer_mul_rax JITPer_mul_rdx JITPer_mul_other
   JITPer_exit JITPer_jump
+  JITPer_load JITPer_shift
+  JITPer_store 
 
 begin
 
@@ -35,9 +37,23 @@ shows "\<exists> xst'. x64_sem1 1 x64_prog (pc,xst) = (pc',xst') \<and>
 (* \<and> snd xst' = unat (pc+1)*)
 proof-
   let "?bpf_ins" = "prog!(unat pc)"
-  have b1:"(\<exists> src dst. ?bpf_ins = BPF_ALU64 BPF_ADD dst (SOReg src) \<or> ?bpf_ins = BPF_ALU64 BPF_MUL dst (SOReg src))
-  \<or> (\<exists> src dst x cond. ?bpf_ins = BPF_JUMP cond dst (SOReg src) x)" using a0 a1 a2 a6 aux1 by fast
-  obtain src dst x cond where b2:"?bpf_ins = BPF_ALU64 BPF_ADD dst (SOReg src) \<or> ?bpf_ins = BPF_ALU64 BPF_MUL dst (SOReg src) \<or> ?bpf_ins = BPF_JUMP cond dst (SOReg src) x" using b1 by auto
+  have b1:"(\<exists> dst src. prog!(unat pc) = BPF_ALU64 BPF_ADD dst (SOReg src) \<or> 
+    prog!(unat pc) = BPF_ALU64 BPF_MUL dst (SOReg src) \<or> 
+    prog!(unat pc) = BPF_ALU64 BPF_LSH dst (SOReg src) \<or> 
+    prog!(unat pc) = BPF_ALU64 BPF_RSH dst (SOReg src) \<or> 
+    prog!(unat pc) = BPF_ALU64 BPF_ARSH dst (SOReg src)) \<or> 
+  (\<exists> dst src chk off. prog!(unat pc) = BPF_LDX chk dst src off) \<or>
+  (\<exists> dst src chk off. prog!(unat pc) = BPF_ST chk dst (SOReg src) off) \<or>
+  (\<exists> x cond dst src. prog!(unat pc) = BPF_JUMP cond dst (SOReg src) x)" using a0 a1 a2 a6 aux1 by fast
+  obtain src dst x cond chk off where 
+    b2:"?bpf_ins = BPF_ALU64 BPF_ADD dst (SOReg src) \<or> 
+        ?bpf_ins = BPF_ALU64 BPF_MUL dst (SOReg src) \<or> 
+        ?bpf_ins = BPF_ALU64 BPF_LSH dst (SOReg src) \<or> 
+        ?bpf_ins = BPF_ALU64 BPF_RSH dst (SOReg src) \<or> 
+        ?bpf_ins = BPF_ALU64 BPF_ARSH dst (SOReg src) \<or> 
+        ?bpf_ins = BPF_LDX chk dst src off \<or> 
+        ?bpf_ins = BPF_ST chk dst (SOReg src) off \<or> 
+        ?bpf_ins = BPF_JUMP cond dst (SOReg src) x" using b1 by auto
   show ?thesis
   proof (cases "?bpf_ins = BPF_ALU64 BPF_MUL dst (SOReg src) ")
     case True
@@ -62,15 +78,80 @@ proof-
       qed 
     next
     case False
-      have c4:"?bpf_ins = BPF_ALU64 BPF_ADD dst (SOReg src) \<or> (?bpf_ins = BPF_JUMP cond dst (SOReg src) x)" using False b2 by blast
+      have c4:"?bpf_ins = BPF_ALU64 BPF_ADD dst (SOReg src) \<or> 
+        ?bpf_ins = BPF_ALU64 BPF_LSH dst (SOReg src) \<or> 
+        ?bpf_ins = BPF_ALU64 BPF_RSH dst (SOReg src) \<or> 
+        ?bpf_ins = BPF_ALU64 BPF_ARSH dst (SOReg src) \<or> 
+        ?bpf_ins = BPF_LDX chk dst src off \<or> 
+        ?bpf_ins = BPF_ST chk dst (SOReg src) off \<or> 
+        ?bpf_ins = BPF_JUMP cond dst (SOReg src) x" using False b2 by blast
       thus ?thesis 
       proof(cases "(?bpf_ins = BPF_JUMP cond dst (SOReg src) x)")
         case True
           then show ?thesis using True False a0 a1 a2 a3 a4 a5 a6 jump_one_step by blast
         next
         case False
-          have c5:"?bpf_ins = BPF_ALU64 BPF_ADD dst (SOReg src)" using False c4 by simp
-          then show ?thesis using False a0 a1 a2 a3 a4 a5 a6 addq_one_step c5 by blast
+        have c5:"?bpf_ins = BPF_ALU64 BPF_ADD dst (SOReg src) \<or>  
+        ?bpf_ins = BPF_ALU64 BPF_LSH dst (SOReg src) \<or> 
+        ?bpf_ins = BPF_ALU64 BPF_RSH dst (SOReg src) \<or> 
+        ?bpf_ins = BPF_ALU64 BPF_ARSH dst (SOReg src) \<or> 
+        ?bpf_ins = BPF_LDX chk dst src off \<or> 
+        ?bpf_ins = BPF_ST chk dst (SOReg src) off" using False c4 by simp
+        thus ?thesis
+        proof(cases "?bpf_ins = BPF_ALU64 BPF_ADD dst (SOReg src)")
+          case True
+          then show ?thesis using False True a0 a1 a2 a3 a4 a5 a6 addq_one_step c5 by blast
+        next
+          case False
+          have c6:"?bpf_ins = BPF_ALU64 BPF_LSH dst (SOReg src) \<or> 
+          ?bpf_ins = BPF_ALU64 BPF_RSH dst (SOReg src) \<or> 
+          ?bpf_ins = BPF_ALU64 BPF_ARSH dst (SOReg src) \<or> 
+          ?bpf_ins = BPF_LDX chk dst src off \<or> 
+          ?bpf_ins = BPF_ST chk dst (SOReg src) off" using False c5 by simp
+          thus ?thesis
+          proof(cases "?bpf_ins = BPF_ALU64 BPF_LSH dst (SOReg src)")
+            case True
+            have "(bpf_to_x64_reg dst) \<noteq> RCX" sorry
+            then show ?thesis using True shiftq_lsh_one_step1 a0 a1 a2 a3 a4 a5 a6 True by blast
+          next
+            case False
+            have c7:"?bpf_ins = BPF_ALU64 BPF_RSH dst (SOReg src) \<or> 
+            ?bpf_ins = BPF_ALU64 BPF_ARSH dst (SOReg src) \<or> 
+            ?bpf_ins = BPF_LDX chk dst src off \<or> 
+            ?bpf_ins = BPF_ST chk dst (SOReg src) off" using c6 False by simp
+            then show ?thesis 
+            proof(cases "?bpf_ins = BPF_ALU64 BPF_RSH dst (SOReg src)")
+              case True
+              have "(bpf_to_x64_reg dst) \<noteq> RCX" sorry
+              then show ?thesis using shiftq_rsh_one_step1 a0 a1 a2 a3 a4 a5 a6 True by blast
+            next
+              case False
+              have c7:"?bpf_ins = BPF_ALU64 BPF_ARSH dst (SOReg src) \<or> 
+              ?bpf_ins = BPF_LDX chk dst src off \<or> 
+              ?bpf_ins = BPF_ST chk dst (SOReg src) off" using c7 False by simp
+              then show ?thesis 
+              proof(cases "?bpf_ins = BPF_ALU64 BPF_ARSH dst (SOReg src)")
+                case True
+                then show ?thesis sorry
+              next
+                case False
+                have c8:"?bpf_ins = BPF_LDX chk dst src off \<or> 
+                ?bpf_ins = BPF_ST chk dst (SOReg src) off" using c7 False by simp
+                then show ?thesis
+                proof(cases "?bpf_ins = BPF_LDX chk dst src off")
+                  case True
+                  have "chk = M64" sorry
+                  then show ?thesis using load_one_step1 a0 a1 a2 a3 a4 a5 a6 True by blast
+                next
+                  case False
+                  have "?bpf_ins = BPF_ST chk dst (SOReg src) off" using False c8 by simp
+                  have "chk = M64" sorry
+                  then show ?thesis using store_one_step1 a0 a1 a2 a3 a4 a5 a6 False c8 by blast
+                qed
+              qed
+            qed
+          qed
+        qed
       qed
     qed
   qed
@@ -130,7 +211,7 @@ next
   moreover have a1:"\<exists> pc1 rs1 m1. s1 = (SBPF_OK pc1 rs1 m1)"
     by (metis Suc.prems(3) bot_nat_0.not_eq_extremum intermediate_step_is_ok n_step_def sbpf_sem.simps(1) sbpf_state.simps(6))
   obtain pc1 rs1 m1 where a2:"s1 = (SBPF_OK pc1 rs1 m1)" using a1 by auto
-  have a3:"m1 = m" using mem_is_not_changed s1_eq assm2 a2 by blast
+  (*have a3:"m1 = m" using s1_eq assm2 a2 sorry*)
   
   have "\<exists> num off l. x64_prog!(unat pc) = (num,off,l)" by (metis split_pairs)
   then obtain num off l where a6:"x64_prog!(unat pc) = (num,off,l)" by auto

@@ -157,8 +157,16 @@ lemma mulq_match_mem_aux1:
   bins = BPF_ALU64 BPF_MUL dst (SOReg src) \<Longrightarrow>
   prog!(unat pc) = bins \<Longrightarrow>
   m = m'"
-  using mem_is_not_changed 
-  by (metis bpf_instruction.simps(68))
+ apply(cases "prog!(unat pc)", simp_all)
+  subgoal for x91
+    apply(cases x91, simp_all)
+    apply(split if_splits,simp_all)
+    apply(split if_splits,simp_all)
+    apply(unfold eval_alu_def Let_def)
+    apply(cases "SOReg src",simp_all)
+    done
+  done
+
 
 lemma mulq_match_mem_aux2_1: 
    "\<forall> x1 x2. x1 = x2 \<longrightarrow> match_mem x1 x2 " using match_mem_def by simp

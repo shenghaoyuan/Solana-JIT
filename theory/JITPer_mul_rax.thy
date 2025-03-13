@@ -43,7 +43,7 @@ lemma mulq_one_step_match_stack:
     prog \<noteq> [] \<and> unat pc < length prog \<and> unat pc \<ge> 0 \<Longrightarrow>
     prog!(unat pc) = BPF_ALU64 BPF_MUL dst (SOReg src) \<Longrightarrow>
     (bpf_to_x64_reg dst) = RAX \<Longrightarrow>
-storev M64 xm (Vptr sp_block (xrs (IR SP) - u64_of_memory_chunk M64)) (Vlong (xrs (IR RDX))) = Some m1 \<Longrightarrow>
+    storev M64 xm (Vptr sp_block (xrs (IR SP) - u64_of_memory_chunk M64)) (Vlong (xrs (IR RDX))) = Some m1 \<Longrightarrow>
     loadv M64 m1 (Vptr sp_block (xrs (IR SP) - u64_of_memory_chunk M64)) = Some (Vlong (xrs (IR RDX))) \<Longrightarrow>
     match_stack
      ((\<lambda>a::preg.
@@ -51,9 +51,8 @@ storev M64 xm (Vptr sp_block (xrs (IR SP) - u64_of_memory_chunk M64)) (Vlong (xr
                else if a = IR RAX then xrs (IR RAX) * xrs (IR (bpf_to_x64_reg src))
                     else if a = IR SP then xrs (IR SP) - u64_of_memory_chunk M64 else if a = IR REG_SCRATCH then xrs (IR (bpf_to_x64_reg src)) else xrs a)
       (IR SP := xrs (IR SP), IR RDX := xrs (IR RDX)))
-     m1"
-  apply (simp add: match_state_def match_stack_def eval_alu_def eval_reg_def)
-  by (metis store_load_other_blk)
+    "
+  by (simp add: match_state_def match_stack_def eval_alu_def eval_reg_def)
 
 lemma mulq_one_step_rax:
 assumes a0:"s' = sbpf_step prog s" and
@@ -192,7 +191,7 @@ shows "\<exists> xst'. x64_sem1 1 x64_prog (pc,xst) = (pc',xst') \<and>
         apply simp
         apply (erule subst [of _ "Some (Suc (0::nat), Ppopl RDX)"])
         apply (simp add: exec_instr_def exec_pop_def)
-        apply (frule store_load_consistency)
+        apply (frule store_load_consistency_m64)
         apply simp
 
 (* 4. now we get exec_instr (one step of x64 add assembly), we prove the \<and>, first left, then right *)

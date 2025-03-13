@@ -36,7 +36,7 @@ lemma shiftq_lsh_one_step_match_mem:
      loadv M64 m1 (Vptr sp_block (xrs (IR SP) - u64_of_memory_chunk M64)) = Some (Vlong (xrs (IR RCX))) \<Longrightarrow> 
      match_mem m' m1"
   apply (simp add: match_state_def match_mem_def eval_alu_def eval_alu64_aux2_def eval_reg_def)
-  using sp_block_def store_load_other by auto
+  using sp_block_def store_load_other_blk by presburger
 
 
 lemma shiftq_lsh_one_step_match_stack:
@@ -52,9 +52,8 @@ lemma shiftq_lsh_one_step_match_stack:
       if a = IR (bpf_to_x64_reg dst) then xrs (IR (bpf_to_x64_reg dst)) << unat (and (ucast (xrs (IR (bpf_to_x64_reg src)))) (63::32 word))
       else if a = IR RCX then xrs (IR (bpf_to_x64_reg src)) 
       else if a = IR SP then xrs (IR SP) - u64_of_memory_chunk M64 else xrs a)
-    (IR SP := xrs (IR SP), IR RCX := xrs (IR RCX))) m1"
-  apply (simp add: match_state_def match_stack_def eval_alu_def eval_alu64_aux2_def eval_reg_def)
-  using sp_block_def store_load_other by metis
+    (IR SP := xrs (IR SP), IR RCX := xrs (IR RCX)))"
+  by (simp add: match_state_def match_stack_def eval_alu_def eval_alu64_aux2_def eval_reg_def)
 
 
 lemma shiftq_lsh_one_step1:
@@ -220,7 +219,7 @@ shows "\<exists> xst'. x64_sem1 1 x64_prog (pc,xst) = (pc',xst') \<and>
         apply simp
         apply (erule subst [of _ "Some (Suc (0::nat), Ppopl RCX)"])
         apply (simp add: exec_instr_def exec_pop_def)
-        apply (frule store_load_consistency)
+        apply (frule store_load_consistency_m64)
         apply simp
        
 
@@ -278,7 +277,7 @@ lemma shiftq_rsh_one_step_match_mem:
      loadv M64 m1 (Vptr sp_block (xrs (IR SP) - u64_of_memory_chunk M64)) = Some (Vlong (xrs (IR RCX))) \<Longrightarrow> 
      match_mem m' m1"
   apply (simp add: match_state_def match_mem_def eval_alu_def eval_alu64_aux2_def eval_reg_def)
-  using sp_block_def store_load_other by auto
+  using sp_block_def store_load_other_blk by auto
 
 
 lemma shiftq_rsh_one_step_match_stack:
@@ -294,9 +293,8 @@ lemma shiftq_rsh_one_step_match_stack:
       if a = IR (bpf_to_x64_reg dst) then xrs (IR (bpf_to_x64_reg dst)) >> unat (and (ucast (xrs (IR (bpf_to_x64_reg src)))) (63::32 word))
       else if a = IR RCX then xrs (IR (bpf_to_x64_reg src)) 
       else if a = IR SP then xrs (IR SP) - u64_of_memory_chunk M64 else xrs a)
-    (IR SP := xrs (IR SP), IR RCX := xrs (IR RCX))) m1"
-  apply (simp add: match_state_def match_stack_def eval_alu_def eval_alu64_aux2_def eval_reg_def)
-  using sp_block_def store_load_other by metis
+    (IR SP := xrs (IR SP), IR RCX := xrs (IR RCX)))"
+  by (simp add: match_state_def match_stack_def eval_alu_def eval_alu64_aux2_def eval_reg_def)
 
 
 lemma shiftq_rsh_one_step1:
@@ -462,7 +460,7 @@ shows "\<exists> xst'. x64_sem1 1 x64_prog (pc,xst) = (pc',xst') \<and>
         apply simp
         apply (erule subst [of _ "Some (Suc (0::nat), Ppopl RCX)"])
         apply (simp add: exec_instr_def exec_pop_def)
-        apply (frule store_load_consistency)
+        apply (frule store_load_consistency_m64)
         apply simp
        
 

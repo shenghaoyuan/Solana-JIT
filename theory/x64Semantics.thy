@@ -107,6 +107,17 @@ definition exec_load :: "usize \<Rightarrow> u64 \<Rightarrow> memory_chunk \<Ri
                           _ \<Rightarrow> Stuck)
 )"
 
+(*preg list?*)
+definition exec_store :: "usize \<Rightarrow> u64 \<Rightarrow> memory_chunk \<Rightarrow> mem \<Rightarrow> addrmode \<Rightarrow> regset \<Rightarrow> preg \<Rightarrow> outcome" where
+"exec_store pc sz chunk m a rs r1 = (
+  let addr =  eval_addrmode64 a rs in (
+    case Mem.storev chunk m (Vlong addr) (Vlong (rs r1)) of
+      None \<Rightarrow> Stuck |
+      Some m' \<Rightarrow> Next (pc+ sz) rs m'
+  )
+)"
+
+
 (*
 definition exec_jcc::"usize \<Rightarrow> u64 \<Rightarrow> regset \<Rightarrow> mem \<Rightarrow> testcond \<Rightarrow> i32 \<Rightarrow> outcome" where
 "exec_jcc pc sz rs m t d \<equiv> 
@@ -169,7 +180,8 @@ definition exec_instr :: "instruction \<Rightarrow> u64 \<Rightarrow> u64 \<Righ
                        Next (pc + sz) (rs1#(IR r1)<- tmp) m |
   Pshlq_r   rd    \<Rightarrow> Next (pc + sz) (rs#(IR rd) <- ((rs (IR rd))<< (unat (and ( (ucast (rs(IR RCX)))::u32) (63::u32))))) m |
   Pshrq_r   rd    \<Rightarrow> Next (pc + sz) (rs#(IR rd) <- ((rs (IR rd))>> (unat (and ( (ucast (rs(IR RCX)))::u32) (63::u32))))) m |
-  Psarq_r   rd    \<Rightarrow> Next (pc + sz) (rs#(IR rd) <- (ucast (((scast (rs (IR rd)))::i64) >> (unat (and ( (ucast (rs(IR RCX)))::u32) (63::u32)))))) m 
+  Psarq_r   rd    \<Rightarrow> Next (pc + sz) (rs#(IR rd) <- (ucast (((scast (rs (IR rd)))::i64) >> (unat (and ( (ucast (rs(IR RCX)))::u32) (63::u32)))))) m |
+  Pmov_rm  rd a c \<Rightarrow> exec_store pc sz c m a rs (IR rd) 
 )"
 
 

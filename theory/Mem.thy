@@ -60,6 +60,8 @@ definition option_u64_of_u8_4 :: "u8 option \<Rightarrow> u8 option \<Rightarrow
 
 definition sp_block ::"nat" where "sp_block = 1"
 
+definition MIN_SP_SIZE ::"u64" where "MIN_SP_SIZE = 0x1000"
+
 
 definition option_u64_of_u8_8 :: "u8 option \<Rightarrow> u8 option \<Rightarrow> u8 option \<Rightarrow> u8 option \<Rightarrow>
   u8 option \<Rightarrow> u8 option \<Rightarrow> u8 option \<Rightarrow> u8 option \<Rightarrow>  u64 option" where
@@ -481,8 +483,37 @@ lemma store_load_consistency_aux: "Some m' = storev M32 m place v \<Longrightarr
   done
 
 
-lemma store_load_consistency1: "storev M32 m place v = Some m' \<Longrightarrow> loadv M32 m' place = Some v"
+
+lemma store_load_consistenc_m8_1: "storev M8 m place v = Some m' \<Longrightarrow> loadv M8 m' place = Some v"
+  sorry
+
+
+lemma store_load_consistency_m8_2:
+  "storev M8 xm place v = Some xm' \<Longrightarrow> 
+  storev M8  m place v = Some m' \<Longrightarrow> 
+  loadv M8 m' place = Some v \<and>  loadv M8 xm' place = Some v"
+  using store_load_consistenc_m8_1 by blast
+
+lemma store_load_consistenc_m16_1: "storev M16 m place v = Some m' \<Longrightarrow> loadv M16 m' place = Some v"
+  sorry
+
+
+lemma store_load_consistency_m16_2:
+  "storev M16 xm place v = Some xm' \<Longrightarrow> 
+  storev M16  m place v = Some m' \<Longrightarrow> 
+  loadv M16 m' place = Some v \<and>  loadv M16 xm' place = Some v"
+  using store_load_consistenc_m16_1 by blast
+
+
+lemma store_load_consistenc_m32_1: "storev M32 m place v = Some m' \<Longrightarrow> loadv M32 m' place = Some v"
   using store_load_consistency_aux by metis
+
+
+lemma store_load_consistency_m32_2:
+  "storev M32 xm place v = Some xm' \<Longrightarrow> 
+  storev M32 m place v = Some m' \<Longrightarrow> 
+  loadv M32 m' place = Some v \<and>  loadv M32 xm' place = Some v"
+  using store_load_consistenc_m32_1 by blast
 
 lemma u64_shift_u8_eq: "
   or (ucast ((ucast (and (x4 >> 56) 255)) ::u8) << 56)
@@ -626,13 +657,24 @@ lemma store_load_consistency2_aux: "Some m' = storev M64 m place v \<Longrightar
     done
   done
 
-lemma store_load_consistency: "storev M64 m place v = Some m' \<Longrightarrow> loadv M64 m' place = Some v"
+lemma store_load_consistency_m64: "storev M64 m place v = Some m' \<Longrightarrow> loadv M64 m' place = Some v"
   using store_load_consistency2_aux
   by metis
 
+lemma store_load_consistency_m32: "storev M32 m place v = Some m' \<Longrightarrow> loadv M32 m' place = Some v"
+  sorry
+
+lemma store_load_consistency_m8: "storev M8 m place v = Some m' \<Longrightarrow> loadv M8 m' place = Some v"
+  sorry
+
+lemma store_load_consistency_m16: "storev M16 m place v = Some m' \<Longrightarrow> loadv M16 m' place = Some v"
+  sorry
+
+
+
 lemma store_load_other_blk_if:"storev mc m (Vptr blk off) x = Some m' \<Longrightarrow>
   loadv mc1 m (Vlong place) = Some v \<Longrightarrow> loadv mc1 m' (Vlong place) = Some v"
-  using store_load_consistency 
+  using store_load_consistency_m64 
   apply(simp add: storev_def loadv_def)
   apply(cases "blk = 0"; simp)
   apply(cases mc; cases x; simp add: Let_def option_val_of_u64_def
@@ -655,7 +697,7 @@ lemma store_load_other_blk_if:"storev mc m (Vptr blk off) x = Some m' \<Longrigh
 
 lemma store_load_other_blk_only_if:"storev mc m (Vptr blk off) x = Some m' \<Longrightarrow>
   loadv mc1 m' (Vlong place) = Some v \<Longrightarrow> loadv mc1 m (Vlong place) = Some v"
-  using store_load_consistency 
+  using store_load_consistency_m64 
   apply(simp add: storev_def loadv_def)
   apply(cases "blk = 0"; simp)
   apply(cases mc; cases x; simp add: Let_def option_val_of_u64_def
@@ -937,4 +979,60 @@ lemma storev_stack_some: "\<exists> m'. storev M64 m (Vptr sp_block ofs) (Vlong 
   apply (simp add: storev_def sp_block_def)
   by metis
 
+lemma store_load_other_vlong_0_0:" (uint v0) + memory_chunk_to_byte_int mc < (uint v1)\<Longrightarrow>
+  Some m' = storev mc m (Vlong v0) x \<Longrightarrow>
+  loadv mc1 m (Vlong v1) = Some v\<Longrightarrow> loadv mc1 m' (Vlong v1) = Some v"
+  apply(simp add: storev_def loadv_def memory_chunk_to_byte_int_def)
+  apply(cases mc; cases x; cases mc1; simp add: Let_def option_val_of_u64_def
+        option_u64_of_u8_1_def option_u64_of_u8_2_def
+        option_u64_of_u8_4_def option_u64_of_u8_8_def memory_chunk_value_of_u64_def)
+  done
+
+lemma store_load_other_vlong_0_1:" (uint v1) + memory_chunk_to_byte_int mc1 < (uint v0)\<Longrightarrow>
+  Some m' = storev mc m (Vlong v0) x \<Longrightarrow>
+  loadv mc1 m (Vlong v1) = Some v\<Longrightarrow> loadv mc1 m' (Vlong v1) = Some v"
+  apply(simp add: storev_def loadv_def memory_chunk_to_byte_int_def)
+  apply(cases mc; cases x; cases mc1; simp add: Let_def option_val_of_u64_def
+        option_u64_of_u8_1_def option_u64_of_u8_2_def
+        option_u64_of_u8_4_def option_u64_of_u8_8_def memory_chunk_value_of_u64_def)
+  done
+
+lemma store_load_other_vlong_1_0:" (uint v0) + memory_chunk_to_byte_int mc < (uint v1)\<Longrightarrow>
+  Some m' = storev mc m (Vlong v0) x \<Longrightarrow>
+  loadv mc1 m' (Vlong v1) = Some v\<Longrightarrow> loadv mc1 m (Vlong v1) = Some v"
+  apply(simp add: storev_def loadv_def memory_chunk_to_byte_int_def)
+  apply(cases mc; cases x; cases mc1; simp add: Let_def option_val_of_u64_def
+        option_u64_of_u8_1_def option_u64_of_u8_2_def
+        option_u64_of_u8_4_def option_u64_of_u8_8_def memory_chunk_value_of_u64_def)
+  done
+
+lemma store_load_other_vlong_1_1:" (uint v1) + memory_chunk_to_byte_int mc1 < (uint v0)\<Longrightarrow>
+  Some m' = storev mc m (Vlong v0) x \<Longrightarrow>
+  loadv mc1 m' (Vlong v1) = Some v \<Longrightarrow> loadv mc1 m (Vlong v1) = Some v"
+  apply(simp add: storev_def loadv_def memory_chunk_to_byte_int_def)
+  apply(cases mc; cases x; cases mc1; simp add: Let_def option_val_of_u64_def
+        option_u64_of_u8_1_def option_u64_of_u8_2_def
+        option_u64_of_u8_4_def option_u64_of_u8_8_def memory_chunk_value_of_u64_def)
+  done
+
+lemma store_load_other_vlong:" ((uint v0) + memory_chunk_to_byte_int mc < (uint v1)) \<or>
+  ((uint v1) + memory_chunk_to_byte_int mc1 < (uint v0))\<Longrightarrow>
+  Some m' = storev mc m (Vlong v0) x \<Longrightarrow>
+  loadv mc1 m (Vlong v1) = Some v \<longleftrightarrow> loadv mc1 m' (Vlong v1) = Some v"
+  using store_load_other_vlong_0_0 store_load_other_vlong_0_1
+    store_load_other_vlong_1_0 store_load_other_vlong_1_1
+  by meson 
+
+lemma store_load_other_vlong2:" \<forall> chk v1 v. ((uint v0) + memory_chunk_to_byte_int mc < (uint v1)) \<or>
+  ((uint v1) + memory_chunk_to_byte_int mc1 < (uint v0)) \<longrightarrow>                                     
+  Some m' = storev mc m (Vlong v0) x \<longrightarrow>
+  loadv mc1 m (Vlong v1) = Some v \<longleftrightarrow> loadv mc1 m' (Vlong v1) = Some v"
+  using store_load_other_vlong_0_0 store_load_other_vlong_0_1
+    store_load_other_vlong_1_0 store_load_other_vlong_1_1
+  by meson 
+
+
+
+
 end
+

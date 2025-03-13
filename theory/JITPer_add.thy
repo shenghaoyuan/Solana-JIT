@@ -50,15 +50,15 @@ lemma aluq_subgoal_rr_aux3:"bins = BPF_ALU64 BPF_ADD dst (SOReg src) \<Longright
   done
 
 lemma stack_is_not_changed_by_add:"Next spc' reg' m' = exec_instr xins sz spc reg m \<Longrightarrow> xins = Paddq_rr (bpf_to_x64_reg dst) (bpf_to_x64_reg src) 
-   \<Longrightarrow> match_stack reg m \<Longrightarrow> match_stack reg' m'"
+   \<Longrightarrow> match_stack reg \<Longrightarrow> match_stack reg' "
 proof-
   assume a0:"Next spc' reg' m' = exec_instr xins sz spc reg m" and
   a1:"xins = Paddq_rr (bpf_to_x64_reg dst) (bpf_to_x64_reg src) " and
-  a2:"match_stack reg m"
+  a2:"match_stack reg"
   have b0:"bpf_to_x64_reg dst \<noteq> RSP" using bpf_to_x64_reg_def by (cases dst,simp_all)
   have b1:"reg (IR SP) = reg' (IR SP)" using exec_instr_def a0 a1 exec_instr_def b0 by simp
   have b2:"m = m'" using a0 a1 exec_instr_def by force
-  have "match_stack reg' m'" using b1 b2 a2 match_stack_def by auto
+  have "match_stack reg' " using b1 b2 a2 match_stack_def by auto
   thus ?thesis by blast
 qed
 
@@ -88,8 +88,8 @@ proof -
     have b5:"\<forall> r \<noteq> dst. (rs' r) = (rs r)" using aluq_subgoal_rr_aux3 a0 a4 a7 by force
     have b6:"\<forall> r \<noteq> dst. (rs r) = reg (IR (bpf_to_x64_reg r))" using a6 using b1 by blast
     have b7:"(\<forall> r \<noteq> dst. (rs' r) = reg' (IR (bpf_to_x64_reg r)))" using b1 b4 b5 by presburger
-    have b8:"match_stack reg' xm'" using stack_is_not_changed_by_add a6 match_state_def a5 b0 by simp
-    have b9:"match_mem m' xm'" using mem_is_not_changed mem_is_not_changed_by_add match_state_def a6
+    have b8:"match_stack reg'" using stack_is_not_changed_by_add a6 match_state_def a5 b0 by simp
+    have b9:"match_mem m' xm'" using mem_is_not_changed_by_add match_state_def a6
       using a4 a5 b0 outcome.simps(4) sbpf_state.simps(9) 
       by (smt (verit) a0 a7 binop.simps(133) bpf_instruction.simps(369) option.case_eq_if sbpf_state.distinct(3) sbpf_state.inject(1) sbpf_step.elims snd_conv)
     thus ?thesis using b3 b7 match_state_def b8 b9 match_reg_def

@@ -66,19 +66,68 @@ lemma mulq_one_step_match_stack:
                else if a = IR SP then xrs (IR SP) - u64_of_memory_chunk M64
                     else if a = IR RDX then xrs (IR (bpf_to_x64_reg dst)) * xrs (IR (bpf_to_x64_reg src)) div (4294967296::64 word)
                          else if a = IR RAX then xrs (IR (bpf_to_x64_reg dst)) * xrs (IR (bpf_to_x64_reg src))
-                              else if a = IR SP then xrs (IR SP) - (2::64 word) * u64_of_memory_chunk M64
-                                   else if a = IR RAX then xrs (IR (bpf_to_x64_reg dst))
-                                        else if a = IR SP then xrs (IR SP) - u64_of_memory_chunk M64 else if a = IR REG_SCRATCH then xrs (IR (bpf_to_x64_reg src)) else xrs a)
-      (IR SP := xrs (IR SP), IR RAX := xrs (IR RAX)))
-     m2"
-  apply (simp add: match_state_def match_stack_def eval_alu_def eval_reg_def)
-  by (metis store_load_other_blk)
+                              else if a = IR SP then xrs (IR SP) - (2::64 word) * u64_of_memory_chunk M64 
+                                  else if a = IR RAX then xrs (IR (bpf_to_x64_reg dst))
+                                     else if a = IR SP then xrs (IR SP) - u64_of_memory_chunk M64 
+                                        else if a = IR REG_SCRATCH then xrs (IR (bpf_to_x64_reg src)) else xrs a)
+      (IR SP := xrs (IR SP), IR RAX := xrs (IR RAX)))"
+  by (simp add: match_state_def match_stack_def eval_alu_def eval_reg_def)
 
-lemma todo_stack_overflow: "uint (xrs (IR SP) - (2::64 word) * u64_of_memory_chunk M64) + memory_chunk_to_byte_int M64 < uint (xrs (IR SP) - u64_of_memory_chunk M64)"
-  apply (simp add: u64_of_memory_chunk_def memory_chunk_to_byte_int_def)
-  sorry
+value "uint (2::u4)- uint (1::u4)"
 
-lemma mul_push_mem_prop : "storev M64 xm (Vptr sp_block (xrs (IR SP) - u64_of_memory_chunk M64)) (Vlong (xrs (IR RAX))) = Some m1 \<Longrightarrow>
+value "uint (2-1::u4)"
+
+
+lemma uint_aux1:"x\<ge>y \<Longrightarrow> y \<ge> 0 \<Longrightarrow> ((uint (x::u64)) - (uint y)) = uint(x-y)"
+  by (metis order_le_less uint_minus_simple_alt)
+  
+lemma  uint_aux2:"(x::u64) \<ge> y \<Longrightarrow> x \<ge> z \<Longrightarrow> y > z \<Longrightarrow> x-y < x-z"
+  by (simp add: uint_minus_simple_alt word_less_def)
+  
+value "uint (0x40::u64)"
+
+lemma todo_stack_overflow: 
+  assumes assm:"match_stack xrs" 
+  shows "uint (xrs (IR SP) - (2::64 word) * u64_of_memory_chunk M64) + memory_chunk_to_byte_int M64 < uint (xrs (IR SP) - u64_of_memory_chunk M64)"
+proof-
+
+  let "?x" = "xrs (IR SP)"
+  let "?y" = "(2::64 word) * u64_of_memory_chunk M64"
+  let "?z" = "u64_of_memory_chunk M64"
+
+  have a0:"(2::64 word) * u64_of_memory_chunk M64 = 0x80" using u64_of_memory_chunk_def by auto
+  have a0_1:"u64_of_memory_chunk M64 = 0x40" using u64_of_memory_chunk_def by auto
+  have a1:"memory_chunk_to_byte_int M64 = 7" using memory_chunk_to_byte_int_def by auto
+
+  have a2:"(xrs (IR SP)) \<ge> 0x1000" using match_stack_def MIN_SP_SIZE_def a0 assms by force
+  have a2_0:"(xrs (IR SP)) - 0x1000 \<ge> 0" using match_stack_def MIN_SP_SIZE_def a0 assms by force
+  have a3:"0x1000 > (2::64 word) * u64_of_memory_chunk M64 " using a0 by simp
+  have a3_0:"0x1000 > u64_of_memory_chunk M64 " using a0_1 by simp
+  have a3_1:"0x1000 -(2::64 word) * u64_of_memory_chunk M64 > 0"using a0 by simp
+
+  have a4:"?x \<ge> ?y" using a3 a2 by simp
+  have b0:"uint ((xrs (IR SP))-(2::64 word) * u64_of_memory_chunk M64) \<ge> 0" using a4 by blast 
+  have b1:"?x \<ge> ?z" using a3_0 a2 a0_1 by order
+  have b2:"?y > ?z" using a0 a0_1 by auto
+
+  have b3:"?x-?y <?x-?z" using uint_aux2 a4 b0 b1 b2 by blast
+
+  have b4:"?x-?y \<ge>0" using a2_0 a3_1 by simp
+
+  have b5:"uint (?x-?z) - uint (?x-?y) = uint((?x-?z) - (?x-?y))" using uint_aux1 b3 b4 by simp
+
+  have "uint (?x-?z) - uint (?x-?y) = uint (?y-?z)" using b5 by simp
+  hence b6:"uint (?x-?z) - uint (?x-?y) = uint(0x40::u64)" using u64_of_memory_chunk_def a0_1 by auto
+  have b7:"memory_chunk_to_byte_int M64 < 64" using a1 u64_of_memory_chunk_def by simp
+
+  thus ?thesis using b6 b7 by simp
+qed
+  
+ (* apply (simp add: u64_of_memory_chunk_def memory_chunk_to_byte_int_def)
+  using MIN_SP_SIZE_def match_stack_def *)
+
+lemma mul_push_mem_prop : "match_stack xrs \<Longrightarrow>
+    storev M64 xm (Vptr sp_block (xrs (IR SP) - u64_of_memory_chunk M64)) (Vlong (xrs (IR RAX))) = Some m1 \<Longrightarrow>
     storev M64 m1 (Vptr sp_block (xrs (IR SP) - (2::64 word) * u64_of_memory_chunk M64)) (Vlong (xrs (IR RDX))) = Some m2 \<Longrightarrow>
     loadv M64 m2 (Vptr sp_block (xrs (IR SP) - (2::64 word) * u64_of_memory_chunk M64)) = Some (Vlong (xrs (IR RDX))) \<Longrightarrow>
     loadv M64 m1 (Vptr sp_block (xrs (IR SP) - u64_of_memory_chunk M64)) = Some (Vlong (xrs (IR RAX))) \<Longrightarrow>
@@ -91,6 +140,7 @@ lemma mul_push_mem_prop : "storev M64 xm (Vptr sp_block (xrs (IR SP) - u64_of_me
   apply (subgoal_tac "uint (xrs (IR SP) - (2::64 word) * u64_of_memory_chunk M64) + memory_chunk_to_byte_int M64 < uint (xrs (IR SP) - u64_of_memory_chunk M64)")
    apply simp
   using todo_stack_overflow by auto
+
 
 lemma mulq_one_step_other:
 assumes a0:"s' = sbpf_step prog s" and
@@ -308,7 +358,7 @@ shows "\<exists> xst'. x64_sem1 1 x64_prog (pc,xst) = (pc',xst') \<and>
         apply simp
         apply (erule subst [of _ "Some (Suc (0::nat), Ppopl RDX)"])
         apply (simp add: exec_instr_def exec_pop_def)
-        apply (frule store_load_consistency [of _ _ _ m2])
+        apply (frule store_load_consistency_m64 [of _ _ _ m2])
         apply simp
 (* 3.7 *)
         apply (subgoal_tac "Suc 1 = (2::nat)") prefer 2 subgoal by simp
@@ -367,9 +417,11 @@ shows "\<exists> xst'. x64_sem1 1 x64_prog (pc,xst) = (pc',xst') \<and>
         apply (subgoal_tac "loadv M64 m2 (Vptr sp_block (xrs (IR SP) - u64_of_memory_chunk M64)) = Some (Vlong (xrs (IR RAX)))")
         prefer 2
         subgoal
-          apply (frule store_load_consistency [of _ _ _ m1])
-          apply (frule store_load_consistency [of _ _ _ m2])
-          using mul_push_mem_prop by auto
+          apply (frule store_load_consistency_m64 [of _ _ _ m1])
+          apply (frule store_load_consistency_m64 [of _ _ _ m2])
+          apply(subgoal_tac "match_stack xrs")
+          prefer 2 using a4 a3 a1 match_state_def apply simp
+          using mul_push_mem_prop by blast
 
         apply simp
 

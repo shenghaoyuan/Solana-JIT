@@ -17,6 +17,17 @@ lemma jccq_subgoal_rr_aux3:"bins = BPF_JUMP cond dst (SOReg src) d \<Longrightar
   subgoal for x161 by(simp split:if_split_asm) 
   done
 
+lemma mem_is_not_changed_by_jump:
+  "prog!(unat pc1) = BPF_JUMP cond dst (SOReg src) d \<Longrightarrow> 
+  s2 = sbpf_step prog s1 \<Longrightarrow> s1 = (SBPF_OK pc1 rs1 m1) \<Longrightarrow> 
+  s2 = (SBPF_OK pc2 rs2 m2) \<Longrightarrow> m1 = m2"
+  apply(cases "prog!(unat pc1)", simp_all)
+  apply(split if_splits,simp_all)
+  apply(split if_splits,simp_all)
+  apply(unfold eval_jmp_def Let_def)
+  apply(unfold eval_reg_def eval_alu_def)
+  apply(split if_splits, simp_all)
+  done
 
 lemma jcc_subgoal_rr_generic:
   assumes a0:"bins = BPF_JUMP cond dst (SOReg src) d" and
@@ -45,9 +56,9 @@ proof -
   have b2:"\<forall> r. reg' (IR (bpf_to_x64_reg r)) = reg (IR (bpf_to_x64_reg r))" using b0 a5 by (simp add: exec_instr_def compare_longs_def)
   have b3:"\<forall> r. (rs' r) = (rs r)" using a0 a4 a7 jccq_subgoal_rr_aux3 by blast
   have b4:"(\<forall> r. (rs' r) = reg' (IR (bpf_to_x64_reg r)))" using b1 b2 b3 by presburger
-  have b8:"match_stack reg' xm'" using a6 match_state_def a5 b0 apply (simp add: exec_instr_def compare_longs_def) by(simp add:match_stack_def)
+  have b8:"match_stack reg' " using a6 match_state_def a5 b0 apply (simp add: exec_instr_def compare_longs_def) by(simp add:match_stack_def)
   have b9:"match_mem m' xm'" using match_state_def a6 a5 b0 apply (simp add: exec_instr_def) 
-    using a4 mem_is_not_changed
+    using a4 mem_is_not_changed_by_jump
     by (metis a0 a7 bpf_instruction.distinct(63))
   thus ?thesis using b4  match_state_def b8 b9 match_reg_def by fastforce
 qed

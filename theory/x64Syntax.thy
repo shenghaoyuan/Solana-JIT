@@ -200,6 +200,7 @@ datatype instruction =
   | Pshrq_r ireg
   | Pshlq_r ireg
   | Psarq_r ireg
+  | Pmov_rm ireg addrmode memory_chunk
 
 type_synonym x64_asm = "instruction list"
 type_synonym x64_bin = "u8 list"

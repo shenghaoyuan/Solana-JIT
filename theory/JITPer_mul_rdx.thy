@@ -52,10 +52,9 @@ lemma mulq_one_step_match_stack:
           else if a = IR RDX then xrs (IR RDX) * xrs (IR (bpf_to_x64_reg src)) div (4294967296::64 word)
                else if a = IR RAX then xrs (IR RDX) * xrs (IR (bpf_to_x64_reg src))
                     else if a = IR RAX then xrs (IR RDX) else if a = IR SP then xrs (IR SP) - u64_of_memory_chunk M64 else if a = IR REG_SCRATCH then xrs (IR (bpf_to_x64_reg src)) else xrs a)
-      (IR SP := xrs (IR SP), IR RAX := xrs (IR RAX)))
-     m1"
-  apply (simp add: match_state_def match_stack_def eval_alu_def eval_reg_def)
-  by (metis store_load_other_blk)
+      (IR SP := xrs (IR SP), IR RAX := xrs (IR RAX)))"
+  by (simp add: match_state_def match_stack_def eval_alu_def eval_reg_def)
+
 
 lemma mulq_one_step_rdx:
 assumes a0:"s' = sbpf_step prog s" and
@@ -250,7 +249,7 @@ shows "\<exists> xst'. x64_sem1 1 x64_prog (pc,xst) = (pc',xst') \<and>
         apply simp
         apply (erule subst [of _ "Some (Suc (0::nat), Ppopl RAX)"])
         apply (simp add: exec_instr_def exec_pop_def)
-        apply (frule store_load_consistency)
+        apply (frule store_load_consistency_m64)
         apply simp
 
 (* 4. now we get exec_instr (one step of x64 add assembly), we prove the \<and>, first left, then right *)
