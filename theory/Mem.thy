@@ -483,28 +483,6 @@ lemma store_load_consistency_aux: "Some m' = storev M32 m place v \<Longrightarr
   done
 
 
-
-lemma store_load_consistenc_m8_1: "storev M8 m place v = Some m' \<Longrightarrow> loadv M8 m' place = Some v"
-  sorry
-
-
-lemma store_load_consistency_m8_2:
-  "storev M8 xm place v = Some xm' \<Longrightarrow> 
-  storev M8  m place v = Some m' \<Longrightarrow> 
-  loadv M8 m' place = Some v \<and>  loadv M8 xm' place = Some v"
-  using store_load_consistenc_m8_1 by blast
-
-lemma store_load_consistenc_m16_1: "storev M16 m place v = Some m' \<Longrightarrow> loadv M16 m' place = Some v"
-  sorry
-
-
-lemma store_load_consistency_m16_2:
-  "storev M16 xm place v = Some xm' \<Longrightarrow> 
-  storev M16  m place v = Some m' \<Longrightarrow> 
-  loadv M16 m' place = Some v \<and>  loadv M16 xm' place = Some v"
-  using store_load_consistenc_m16_1 by blast
-
-
 lemma store_load_consistenc_m32_1: "storev M32 m place v = Some m' \<Longrightarrow> loadv M32 m' place = Some v"
   using store_load_consistency_aux by metis
 

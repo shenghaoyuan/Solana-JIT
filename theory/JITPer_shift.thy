@@ -35,8 +35,13 @@ lemma shiftq_lsh_one_step_match_mem:
      storev M64 xm (Vptr sp_block (xrs (IR SP) - u64_of_memory_chunk M64)) (Vlong (xrs (IR RCX))) = Some m1 \<Longrightarrow> 
      loadv M64 m1 (Vptr sp_block (xrs (IR SP) - u64_of_memory_chunk M64)) = Some (Vlong (xrs (IR RCX))) \<Longrightarrow> 
      match_mem m' m1"
-  apply (simp add: match_state_def match_mem_def eval_alu_def eval_alu64_aux2_def eval_reg_def)
-  using sp_block_def store_load_other_blk by presburger
+   apply (simp add: match_state_def)
+    apply(subgoal_tac "m = m'")
+   prefer 2 
+    subgoal
+      apply(cases "eval_alu BPF_LSH dst (SOReg src) rs ",simp_all)
+    done
+    using sp_block_def match_mem_def match_mem_store_1_equiv by metis
 
 
 lemma shiftq_lsh_one_step_match_stack:

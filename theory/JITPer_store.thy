@@ -110,10 +110,11 @@ lemma store_mem_one_step3:
     a2:"match_state (SBPF_OK pc rs m) (pc,xst)" and
     a3:"prog \<noteq> [] \<and> unat pc < length prog \<and> unat pc \<ge> 0" and
     a4:"prog!(unat pc) =  BPF_ST chk dst (SOReg src) off" and
-    a5:"storev chk xm (Vlong (scast off + xrs (IR (bpf_to_x64_reg dst)))) (Vlong (xrs (IR (bpf_to_x64_reg src)))) = Some xm'" 
+    a5:"storev chk xm (Vlong (scast off + xrs (IR (bpf_to_x64_reg dst)))) (Vlong (xrs (IR (bpf_to_x64_reg src)))) = Some xm'" and
+    a6:"chk = M64"
     shows "match_mem m' xm' "
 proof-        
-  have c_old_mem_eqiv:"\<forall> mc addr v. (Mem.loadv mc m (Vlong addr) = Some v) \<longrightarrow> (Mem.loadv mc xm (Vlong addr) = Some v)"
+  have c_old_mem_eqiv:"\<forall> addr v. m 0 addr = Some v \<longrightarrow> xm 0 addr = Some v"
     using a1 a2 match_state_def match_mem_def by simp
   have c_src_eqiv:"xrs (IR (bpf_to_x64_reg src)) = rs (src)" using match_state_def match_reg_def a2 a1 by simp
   have c_dst_eqiv:"xrs (IR (bpf_to_x64_reg dst)) = rs (dst)" using match_state_def match_reg_def a2 a1 by simp
@@ -135,71 +136,19 @@ proof-
   let "?x_val" = "xrs (IR (bpf_to_x64_reg src))"
 
   let "?b_val" = "rs src"
+  
+  have val_eqiv: "?x_val = ?b_val"
+    using c_src_eqiv by force
 
-  have c_upate_m_to_m':"Some m' = storev chk m (Vlong ?b_addr) (memory_chunk_value_of_u64 chk (rs src) )"  using b0 eval_reg_def by force
+  have "Some m' = storev chk m (Vlong ?b_addr) (memory_chunk_value_of_u64 chk (rs src) )"  using b0 eval_reg_def by force
+  hence b2:"Some m' = storev chk m (Vlong ?b_addr) (Vlong ?b_val)" using memory_chunk_value_of_u64_def a6 by simp
 
-
-  have d_old_places_of_m: "\<forall> addr v chk m'. ((uint ?b_addr) + memory_chunk_to_byte_int chk < (uint addr)) \<or>
-  ((uint addr) + memory_chunk_to_byte_int chk < (uint ?b_addr)) \<longrightarrow> 
-  Some m' = storev chk m (Vlong ?b_addr) (memory_chunk_value_of_u64 chk (rs src) ) \<longrightarrow>
-  loadv chk m (Vlong addr) = loadv chk m' (Vlong addr)"
-    using c_upate_m_to_m' storev_def store_load_other_vlong2 
-    by (smt (verit, ccfv_SIG) not_Some_eq store_load_other_vlong)
-
-  have d_old_places_of_xm:"\<forall> addr v chk xm'. ((uint ?x_addr) + memory_chunk_to_byte_int chk < (uint addr)) \<or>
-  ((uint addr) + memory_chunk_to_byte_int chk < (uint ?x_addr)) \<longrightarrow> 
-   storev chk xm (Vlong (scast off + xrs (IR (bpf_to_x64_reg dst)))) (Vlong (xrs (IR (bpf_to_x64_reg src)))) = Some xm' \<longrightarrow>
-  loadv chk xm (Vlong addr) = loadv chk xm' (Vlong addr)" using store_load_other_vlong2 c_upate_m_to_m'
-    by (smt (z3) add.commute loadv_def option.case_eq_if option_val_of_u64_def store_load_other_vlong val.simps(40))
-
-
-  have d_old_places_eqiv_aux:"\<forall> addr v chk m' xm'. ((uint ?x_addr) + memory_chunk_to_byte_int chk < (uint addr)) \<or>
-  ((uint addr) + memory_chunk_to_byte_int chk < (uint ?x_addr)) \<longrightarrow> 
-     Some m' = storev chk m (Vlong ?b_addr) (memory_chunk_value_of_u64 chk (rs src) ) \<longrightarrow>
-     Some xm' = storev chk xm (Vlong ?x_addr) (Vlong (xrs (IR (bpf_to_x64_reg src))))  \<longrightarrow> 
-   (Mem.loadv chk m' (Vlong addr) = Some v) \<longrightarrow> (Mem.loadv chk xm' (Vlong addr) = Some v)" 
-    using d_old_places_of_m d_old_places_of_xm c_old_mem_eqiv c_dst_eqiv c_src_eqiv a5
-    by (smt (verit, ccfv_SIG) store_load_other_vlong)
-
-
-  have d_old_places_eqiv:"\<forall> addr v. ((uint ?x_addr) + memory_chunk_to_byte_int chk < (uint addr)) \<or>
-  ((uint addr) + memory_chunk_to_byte_int chk < (uint ?x_addr)) \<longrightarrow> 
-     Some m' = storev chk m (Vlong ?x_addr) (memory_chunk_value_of_u64 chk (rs src) ) \<longrightarrow>
-     Some xm' = storev chk xm (Vlong ?x_addr) (Vlong (xrs (IR (bpf_to_x64_reg src))))  \<longrightarrow> 
-   (Mem.loadv chk m' (Vlong addr) = Some v) \<longrightarrow> (Mem.loadv chk xm' (Vlong addr) = Some v)" 
-    using d_old_places_eqiv_aux addr_eqiv by simp
-
-
- have d_new_places_eqiv_aux1:"loadv chk xm' (Vlong ?x_addr) = loadv chk m' (Vlong ?b_addr)" 
-    (*using store_load_consistency_m64 store_load_consistency_m32 store_load_consistency_m16 store_load_consistency_m8*)
-    using c_upate_m_to_m' c_dst_eqiv c_src_eqiv a5 storev_def apply(cases chk,simp_all) 
-    using store_load_consistency_m64 apply (simp add: storev_def)
-    by (simp add: add.commute memory_chunk_value_of_u64_def) 
-
-  have d_new_places_eqiv_aux2:"\<forall> v. (Mem.loadv chk xm' (Vlong ?x_addr) = Some v) \<longrightarrow> (Mem.loadv chk m' (Vlong ?x_addr) = Some v)"
-    using d_new_places_eqiv_aux1 addr_eqiv by simp
-
-  have d_new_places_eqiv:"\<forall> addr v. 
-  ((uint ?x_addr - memory_chunk_to_byte_int chk) \<le> (uint addr)) \<and> ((uint addr) \<le> (uint ?x_addr) + memory_chunk_to_byte_int chk) \<longrightarrow>
-  (Mem.loadv chk m' (Vlong addr) = Some v) \<longrightarrow> (Mem.loadv chk xm' (Vlong addr) = Some v)" 
-    using d_new_places_eqiv_aux1 c_dst_eqiv sorry
- 
-  have d_places_eqiv:"\<forall> addr v.
-     Some m' = storev chk m (Vlong ?b_addr) (memory_chunk_value_of_u64 chk (rs src) ) \<longrightarrow>
-     Some xm' = storev chk xm (Vlong ?x_addr) (Vlong (xrs (IR (bpf_to_x64_reg src))))  \<longrightarrow> 
-   (Mem.loadv chk m' (Vlong addr) = Some v) \<longrightarrow> (Mem.loadv chk xm' (Vlong addr) = Some v)" 
-    using d_old_places_eqiv d_new_places_eqiv 
-    by (smt (verit, ccfv_SIG) d_old_places_eqiv_aux)
- 
-  have "\<forall> addr v. (Mem.loadv chk m' (Vlong addr) = Some v) \<longrightarrow> (Mem.loadv chk xm' (Vlong addr) = Some v)"
-    using d_places_eqiv d_old_places_eqiv c_upate_m_to_m' a5 
+  have b1:"match_mem m xm"  using a1 a2 match_state_def match_mem_def by simp
+  have "match_mem m' xm'" using match_mem_store_equiv  a5 b2  b1 addr_eqiv val_eqiv 
     by (simp add: add.commute)
 
-  have "\<forall> addr v chk. (Mem.loadv chk m' (Vlong addr) = Some v) \<longrightarrow> (Mem.loadv chk xm' (Vlong addr) = Some v)" sorry
-
-  thus ?thesis using match_mem_def by presburger
+  thus ?thesis by simp
 qed
-
 
 
 value "uint (0::u64)"
@@ -224,10 +173,11 @@ lemma store_mem_one_step:
     match_state (SBPF_OK pc rs m) (pc,xst) \<Longrightarrow>
     prog \<noteq> [] \<and> unat pc < length prog \<and> unat pc \<ge> 0 \<Longrightarrow>
     prog!(unat pc) =  BPF_ST chk dst (SOReg src) off   \<Longrightarrow>
+    chk = M64 \<Longrightarrow>
     storev chk xm (Vlong (scast off + xrs (IR (bpf_to_x64_reg dst)))) (Vlong (xrs (IR (bpf_to_x64_reg src)))) = Some a \<Longrightarrow>
     match_reg rs' (\<lambda>a::preg. if a = IR REG_OTHER_SCRATCH then xrs (IR (bpf_to_x64_reg src)) else if a = IR REG_SCRATCH then scast off + xrs (IR (bpf_to_x64_reg dst)) else if a = IR REG_SCRATCH then scast off else xrs a) \<and>
     match_mem m' a \<and> match_stack(\<lambda>a::preg. if a = IR REG_OTHER_SCRATCH then xrs (IR (bpf_to_x64_reg src)) else if a = IR REG_SCRATCH then scast off + xrs (IR (bpf_to_x64_reg dst)) else if a = IR REG_SCRATCH then scast off else xrs a)"
-  using store_mem_one_step2 store_mem_one_step3 store_mem_one_step4 by simp
+  using store_mem_one_step2 store_mem_one_step3 store_mem_one_step4 by auto
 
 
 lemma store_one_step1:

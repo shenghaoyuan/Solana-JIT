@@ -33,9 +33,13 @@ lemma mulq_one_step_match_mem:
     (bpf_to_x64_reg dst) = RDX \<Longrightarrow>
     storev M64 xm (Vptr sp_block (xrs (IR SP) - u64_of_memory_chunk M64)) (Vlong (xrs (IR RAX))) = Some m1 \<Longrightarrow>
     loadv M64 m1 (Vptr sp_block (xrs (IR SP) - u64_of_memory_chunk M64)) = Some (Vlong (xrs (IR RAX))) \<Longrightarrow> match_mem m' m1"
-  apply (simp add: match_state_def match_mem_def eval_alu_def eval_reg_def)
-  using sp_block_def store_load_other_blk
-  by metis
+    apply (simp add: match_state_def)
+    apply(subgoal_tac "m = m'")
+    prefer 2 
+    subgoal
+    apply(cases "eval_alu BPF_MUL dst (SOReg src) rs",simp_all)
+    done
+    using sp_block_def match_mem_def match_mem_store_1_equiv by metis
   
 lemma mulq_one_step_match_stack:
   " (SBPF_OK pc' rs' m') = sbpf_step prog (SBPF_OK pc rs m) \<Longrightarrow>

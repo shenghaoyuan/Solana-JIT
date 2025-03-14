@@ -226,16 +226,14 @@ definition match_stack :: "regset \<Rightarrow> bool" where
 text \<open> because jited x64 code may use pop and push to save registers,
 then x64 memory has more info than sbpf memory \<close>
 
+(*\<forall> mc addr v. (Mem.loadv mc bm (Vlong addr) = Some v) \<longrightarrow> (Mem.loadv mc xm (Vlong addr) = Some v))*)
 definition match_mem :: "mem \<Rightarrow> mem \<Rightarrow> bool" where
 "match_mem bm xm = (
-  \<forall> mc addr v. (Mem.loadv mc bm (Vlong addr) = Some v) \<longrightarrow> (Mem.loadv mc xm (Vlong addr) = Some v))"
-
+  \<forall> addr v. bm 0 addr = Some v \<longrightarrow> xm 0 addr = Some v)"
+(*
 definition match_mem_byte :: "mem \<Rightarrow> mem \<Rightarrow> bool" where
 "match_mem_byte bm xm = (
-  \<forall> addr v. (Mem.loadv M8 bm (Vlong addr) = Some v) \<longrightarrow> (Mem.loadv M8 xm (Vlong addr) = Some v))"
-
-lemma "match_mem m1 m2 = match_mem_byte m1 m2"
-  sorry
+  \<forall> addr v. (Mem.loadv M8 bm (Vlong addr) = Some v) \<longrightarrow> (Mem.loadv M8 xm (Vlong addr) = Some v))"*)
 
 definition match_reg :: "reg_map \<Rightarrow> regset \<Rightarrow> bool" where
   "match_reg rm rs = (\<forall> r. (rm r) = rs (IR (bpf_to_x64_reg r)))"
@@ -282,7 +280,39 @@ definition match_state :: "sbpf_state \<Rightarrow> hybrid_state \<Rightarrow> b
 )"
 
 
-lemma sbpf_sem_induct: 
+
+
+lemma match_mem_store_equiv: "
+  match_mem m0 m1 \<Longrightarrow>
+  storev mc m0 (Vlong addr) v = Some m0' \<Longrightarrow> 
+  storev mc m1 (Vlong addr) v = Some m1' \<Longrightarrow>
+  match_mem m0' m1'"
+  apply (simp add: match_mem_def storev_def)
+  apply (cases mc; cases v; simp add: u8_list_of_u16_def Let_def; force)
+  done
+
+lemma match_mem_store_1_equiv: "
+  match_mem m0 m1 \<Longrightarrow>
+  storev M64 m1 (Vptr b ofs) v = Some m1' \<Longrightarrow>
+  match_mem m0 m1'"
+  apply (simp add: match_mem_def storev_def)
+  apply (cases " b = (0::nat)"; cases v; simp add: Let_def u8_list_of_u64_def)
+  by force
+  
+lemma match_mem_load_1_equiv: "
+  match_mem m0 m1 \<Longrightarrow>
+  loadv mc m0 (Vlong addr) = Some v1 \<Longrightarrow>
+  loadv mc m1 (Vlong addr) = Some v2 \<Longrightarrow>
+  v1 = v2"
+  apply (simp add: match_mem_def loadv_def)
+  apply (cases mc; simp add: Let_def option_val_of_u64_def)
+  apply (smt (verit, best) option_u64_of_u8_1_def memory_chunk.simps(13) option.collapse option.distinct(1) option.inject option.simps(4) val.simps(40))
+  apply (smt (verit, del_insts) option.case_eq_if option.collapse option.distinct(1) option.sel option_u64_of_u8_2_def)
+  using option_u64_of_u8_4_def apply (smt (verit, best) option.case_eq_if option.collapse option.distinct(1) option.inject) 
+  using option_u64_of_u8_8_def by (smt (z3) option.case_eq_if option.collapse option.distinct(1) option.inject)
+
+
+lemma sbpf_sem_induct:
   "sbpf_sem (m+n) prog s = s' \<Longrightarrow>
     \<exists> temps.
     sbpf_sem m prog s = temps \<and> 
@@ -320,7 +350,7 @@ lemma intermediate_step_is_ok:"sbpf_sem x prog s = s' \<Longrightarrow> x > 0 \<
   apply(induct x arbitrary: prog s s')
   apply simp 
   using err_is_still_err suc_success_is_err
-  by (metis sbpf_step.elims)
+  using sbpf_step.elims by metis
 
 lemma reg_r10_consist:"r = (bpf_to_x64_reg dst) \<Longrightarrow> r \<noteq> x64Syntax.R10"
   apply(cases dst) 

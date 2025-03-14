@@ -43,9 +43,13 @@ lemma load_m64_one_step_match_reg_1:
     a5:"chk = M64"
   shows "\<exists> somev. loadv M64 xm (Vlong (scast off + xrs (IR (bpf_to_x64_reg src)))) = Some (Vlong somev)"
 proof-
-  have c0:"\<forall> mc addr v. (Mem.loadv mc m (Vlong addr) = Some v) \<longrightarrow> (Mem.loadv mc xm (Vlong addr) = Some v)"
-    using a1 a2 match_state_def match_mem_def by simp
-  have c1:"xrs (IR (bpf_to_x64_reg src)) = rs (src)" using match_state_def match_reg_def a2 a1 by simp
+  have c0:"match_mem m xm" using a0 a1 a2 match_state_def by auto
+  have c1:"\<forall> addr v. m 0 addr = Some v \<longrightarrow> xm 0 addr = Some v" using a1 a2 match_state_def match_mem_def by simp
+  (*hence c0:"\<forall> addr v. (Mem.loadv chk m (Vlong addr) = Some v) \<longrightarrow> (Mem.loadv chk xm (Vlong addr) = Some v)" *)
+       
+  have c2:"xrs (IR (bpf_to_x64_reg src)) = rs (src)" using match_state_def match_reg_def a2 a1 by simp
+
+
   have "\<exists> x. Mem.loadv chk m (Vlong ((rs src) + (scast off)))= Some x" 
     using a0 a3 a4 a5 eval_load_def
     using option.exhaust by fastforce 
@@ -62,8 +66,11 @@ proof-
     by (metis (no_types, lifting) memory_chunk.simps(16) option.case_eq_if option_val_of_u64_def)
   then obtain v where b3:"?tmpres = Some (Vlong v)" by auto
   have b4:"Vlong v = x" using b3 b0 b1 by simp
-  have b5:"Mem.loadv chk xm (Vlong ?off) = Some (Vlong v)" using b4 c0 b0 by blast
-  have c2:"Mem.loadv chk xm (Vlong (xrs (IR (bpf_to_x64_reg src)) + (scast off))) = Some (Vlong v)" using b0 c1 b5 by presburger
+  have "Mem.loadv chk xm (Vlong ?off) \<noteq> None" using  b0 b4 c0
+    by (smt (z3) b2_1 loadv_def match_mem_def option.case_eq_if option.collapse option.simps(3) option_u64_of_u8_8_def option_val_of_u64_def val.case(5)) 
+  hence b5:"Mem.loadv chk xm (Vlong ?off) = Some x" using match_mem_load_1_equiv b0 b4 c0 by blast
+  have b6:"Mem.loadv chk xm (Vlong ?off) = Some (Vlong v)" using b5 b4 by blast
+  have "Mem.loadv chk xm (Vlong (xrs (IR (bpf_to_x64_reg src)) + (scast off))) = Some (Vlong v)" using b6 c2 by argo
   thus ?thesis using a5 add.commute by metis
 qed
 
@@ -127,8 +134,8 @@ lemma load_M64_one_step_match_reg:
         else xrs a)
     (IR (bpf_to_x64_reg dst) := x5)) "
   apply (simp add: match_state_def match_reg_def eval_load_def)
-  using bpf_to_x64_reg_corr reg_r11_consist reg_rsp_consist
-  by (smt (z3) add.commute fun_upd_apply match_mem_def option.case_eq_if option.collapse option.sel sbpf_state.distinct(3) sbpf_state.inject(1) val.simps(40)) 
+  using bpf_to_x64_reg_corr reg_r11_consist reg_rsp_consist 
+  by (smt (verit, best) add.commute fun_upd_apply match_mem_load_1_equiv option.case_eq_if option.collapse option.sel sbpf_state.inject(1) sbpf_state.simps(6) val.simps(40)) 
 
 
 lemma load_M64_one_step_match_mem:
