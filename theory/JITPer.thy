@@ -19,7 +19,7 @@ imports
   JITPer_add JITPer_mul_rax JITPer_mul_rdx JITPer_mul_other
   JITPer_exit JITPer_jump
   JITPer_load JITPer_shift
-  JITPer_store JITPer_call JITPer_Exit
+  JITPer_store JITPer_call JITPer_exit
 
 begin
 

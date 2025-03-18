@@ -1,5 +1,5 @@
 theory JITPer_call
-  imports JITPer_aux
+  imports JITPer_aux BitsOpMore3
 begin
 
 lemma mem_is_not_changed_by_call:
@@ -64,13 +64,8 @@ value "((ucast ((-1)::i32))::u32)"
 value "((ucast (ucast ((-1)::i32)::u32))::u64)"
 
 lemma pc_aux1:"(u32_of_u8_list(u8_list_of_u32 x)) = Some x "
-  apply(unfold u8_list_of_u32_def u32_of_u8_list_def)
-  apply(split if_splits,simp_all)
-  apply(subgoal_tac "or (and x (0xFF000000::32 word)) (or (and x (0x00FF0000::32 word)) (or (and x (0x0000FF00::32 word)) (and x (0x000000FF::32 word)))) = and x 0xFFFFFFFF")
-   apply(subgoal_tac "and (x::u32) 0xFFFFFFFF = x")
-    apply auto[1]
-  subgoal sorry
-  sorry
+  using u32_of_u8_list_same
+  by metis
   
 
 lemma pc_aux2:"(ucast((ucast (i::i32))::u32)::u64) = ((ucast i)::u64)"

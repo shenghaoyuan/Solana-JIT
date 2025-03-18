@@ -28,7 +28,7 @@ definition init_func_map :: "func_map" where
 "init_func_map = (\<lambda> _. None)"
 
 definition init_mem :: "mem" where
-"init_mem = (\<lambda> _. None)"
+"init_mem = (\<lambda> _ _. None)"
 
 (*
 consts fm::func_map *)
