@@ -215,8 +215,26 @@ Paddq_rr rd r1 \<Rightarrow>
                   let (op:: u8) = 0x8b in
                   let (rop::u8) = construct_modsib_to_u8 0b10 (u8_of_ireg rd) 0b100 in
                   let (sib::u8) = construct_modsib_to_u8 scale (u8_of_ireg ri) (u8_of_ireg rb) in
-                  ([rex, op, rop, sib] @ (u8_list_of_u32 dis)))
-))"
+                  ([rex, op, rop, sib] @ (u8_list_of_u32 dis)))) |
+  \<comment> \<open> P2878 `CALL: direct`   -> `1110 1000 : displacement32` \<close>
+  Pcall_i d  \<Rightarrow>
+      ([0xe8] @ (u8_list_of_u32 d))
+)"
+(* \<comment> \<open> P2878 `CALL: register indirect`   -> `0100 W00Bw 1111 1111 : 11 010 reg ` \<close>
+  Pcall_r r1 \<Rightarrow>
+    let (rex::u8) = (construct_rex_to_u8    \<comment> \<open> `000B` \<close>
+      False \<comment> \<open> W \<close>
+      False \<comment> \<open> R \<close>
+      False \<comment> \<open> X \<close>
+      (and (u8_of_ireg r1) 0b1000 \<noteq> 0) \<comment> \<open> B \<close>
+      ) in
+      let (op:: u8) = 0xff in
+      let (rop::u8) = construct_modsib_to_u8 0b11 0b010 (u8_of_ireg r1) in
+      if rex = 0x40 then
+        [op, rop]
+      else 
+        [rex, op, rop] |*)
+
 (*if dis \<le> 127 \<or> dis \<ge> -128  then   \<comment> \<open> displacement8 : mod 01 \<close>
         let (dis::u8) = scast dis in
         let (rop::u8) = construct_modsib_to_u8 0b01 (u8_of_ireg r1) (u8_of_ireg rb) in

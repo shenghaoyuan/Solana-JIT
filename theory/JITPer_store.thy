@@ -56,9 +56,9 @@ lemma cast_lemma1:"(ucast(((scast(x::u64))::i64) + ((scast(y::u64))::i64))::u64)
   using cast_aux1 cast_aux2 by auto
 
 lemma store_mem_one_step1:
- assumes a0:"(SBPF_OK pc' rs' m') = sbpf_step prog (SBPF_OK pc rs m)" and
-    a1:"xst = (Next xpc xrs xm)" and
-    a2:"match_state (SBPF_OK pc rs m) (pc,xst)" and
+ assumes a0:"(SBPF_OK pc' rs' m' ss') = sbpf_step prog (SBPF_OK pc rs m ss)" and
+    a1:"xst = (Next xpc xrs xm xss)" and
+    a2:"match_state (SBPF_OK pc rs m ss) (pc,xst)" and
     a3:"prog \<noteq> [] \<and> unat pc < length prog \<and> unat pc \<ge> 0" and
     a4:"prog!(unat pc) = BPF_ST chk dst (SOReg src) off" and
     a5:"chk = M64"
@@ -92,9 +92,9 @@ proof-
 qed
 
 lemma store_mem_one_step2:
-    "(SBPF_OK pc' rs' m') = sbpf_step prog (SBPF_OK pc rs m) \<Longrightarrow>
-    xst = (Next xpc xrs xm) \<Longrightarrow>
-    match_state (SBPF_OK pc rs m) (pc,xst) \<Longrightarrow>
+    "(SBPF_OK pc' rs' m' ss') = sbpf_step prog (SBPF_OK pc rs m ss) \<Longrightarrow>
+    xst = (Next xpc xrs xm xss) \<Longrightarrow>
+    match_state (SBPF_OK pc rs m ss) (pc,xst) \<Longrightarrow>
     prog \<noteq> [] \<and> unat pc < length prog \<and> unat pc \<ge> 0 \<Longrightarrow>
     prog!(unat pc) = BPF_ST chk dst (SOReg src) off  \<Longrightarrow>
     storev chk xm (Vlong (scast off + xrs (IR (bpf_to_x64_reg dst)))) (Vlong (xrs (IR (bpf_to_x64_reg src)))) = Some a \<Longrightarrow>
@@ -105,9 +105,9 @@ lemma store_mem_one_step2:
 
 
 lemma store_mem_one_step3:
-  assumes a0:"(SBPF_OK pc' rs' m') = sbpf_step prog (SBPF_OK pc rs m)" and
-    a1:"xst = (Next xpc xrs xm)" and
-    a2:"match_state (SBPF_OK pc rs m) (pc,xst)" and
+  assumes a0:"(SBPF_OK pc' rs' m' ss') = sbpf_step prog (SBPF_OK pc rs m ss)" and
+    a1:"xst = (Next xpc xrs xm xss)" and
+    a2:"match_state (SBPF_OK pc rs m ss) (pc,xst)" and
     a3:"prog \<noteq> [] \<and> unat pc < length prog \<and> unat pc \<ge> 0" and
     a4:"prog!(unat pc) =  BPF_ST chk dst (SOReg src) off" and
     a5:"storev chk xm (Vlong (scast off + xrs (IR (bpf_to_x64_reg dst)))) (Vlong (xrs (IR (bpf_to_x64_reg src)))) = Some xm'" and
@@ -123,8 +123,7 @@ proof-
   let vm_addr  = (dv + (scast off)) in (  
   let sv :: u64 = eval_snd_op_u64 (SOReg src) rs in (
   (storev chk m (Vlong vm_addr) (memory_chunk_value_of_u64 chk sv))))))" using a0 a3 a4 eval_store_def
-    by (smt (verit) bpf_instruction.case(3) option.case_eq_if option.collapse sbpf_state.inject(1) sbpf_state.simps(6) sbpf_step.elims snd_op.simps(6))
-    
+    by (smt (z3) bpf_instruction.case(3) option.case_eq_if option.collapse sbpf_state.inject(1) sbpf_state.simps(6) sbpf_step.simps(1) snd_op.simps(6))
   
   let "?x_addr" = "(xrs (IR (bpf_to_x64_reg dst)) + scast off)"
 
@@ -157,9 +156,9 @@ value "uint (1::u64)"
 
 
 lemma store_mem_one_step4:
-  "(SBPF_OK pc' rs' m') = sbpf_step prog (SBPF_OK pc rs m) \<Longrightarrow>
-    xst = (Next xpc xrs xm) \<Longrightarrow>
-    match_state (SBPF_OK pc rs m) (pc,xst) \<Longrightarrow>
+  "(SBPF_OK pc' rs' m' ss') = sbpf_step prog (SBPF_OK pc rs m ss) \<Longrightarrow>
+    xst = (Next xpc xrs xm xss) \<Longrightarrow>
+    match_state (SBPF_OK pc rs m ss) (pc,xst) \<Longrightarrow>
     prog \<noteq> [] \<and> unat pc < length prog \<and> unat pc \<ge> 0 \<Longrightarrow>
     prog!(unat pc) =  BPF_ST chk dst (SOReg src) off   \<Longrightarrow>
     storev chk xm (Vlong (scast off + xrs (IR (bpf_to_x64_reg dst)))) (Vlong (xrs (IR (bpf_to_x64_reg src)))) = Some a \<Longrightarrow>
@@ -168,9 +167,9 @@ lemma store_mem_one_step4:
  
 
 lemma store_mem_one_step:
-  "(SBPF_OK pc' rs' m') = sbpf_step prog (SBPF_OK pc rs m) \<Longrightarrow>
-    xst = (Next xpc xrs xm) \<Longrightarrow>
-    match_state (SBPF_OK pc rs m) (pc,xst) \<Longrightarrow>
+  "(SBPF_OK pc' rs' m' ss') = sbpf_step prog (SBPF_OK pc rs m ss) \<Longrightarrow>
+    xst = (Next xpc xrs xm xss) \<Longrightarrow>
+    match_state (SBPF_OK pc rs m ss) (pc,xst) \<Longrightarrow>
     prog \<noteq> [] \<and> unat pc < length prog \<and> unat pc \<ge> 0 \<Longrightarrow>
     prog!(unat pc) =  BPF_ST chk dst (SOReg src) off   \<Longrightarrow>
     chk = M64 \<Longrightarrow>
@@ -180,11 +179,21 @@ lemma store_mem_one_step:
   using store_mem_one_step2 store_mem_one_step3 store_mem_one_step4 by auto
 
 
+lemma store_one_step5:
+  "(SBPF_OK pc' rs' m' ss') = sbpf_step prog (SBPF_OK pc rs m ss) \<Longrightarrow>
+    xst = (Next xpc xrs xm xss) \<Longrightarrow>
+    match_state (SBPF_OK pc rs m ss) (pc,xst) \<Longrightarrow>
+    prog \<noteq> [] \<and> unat pc < length prog \<and> unat pc \<ge> 0 \<Longrightarrow>
+    prog!(unat pc) =  BPF_ST chk dst (SOReg src) off   \<Longrightarrow>
+    xss = ss'"
+  by (smt (z3) bpf_instruction.case(3) match_state_def option.case_eq_if outcome.case(1) prod.sel(2) sbpf_state.case(1) sbpf_state.distinct(3) sbpf_state.inject(1) sbpf_step.simps(1))
+  
+
 lemma store_one_step1:
  assumes a0:"s' = sbpf_step prog s" and
-  a1:"s = (SBPF_OK pc rs m)" and
-  a2:"s' = (SBPF_OK pc' rs' m')" and
-  a3:"xst = (Next xpc xrs xm)" and
+  a1:"s = (SBPF_OK pc rs m ss)" and
+  a2:"s' = (SBPF_OK pc' rs' m' ss')" and
+  a3:"xst = (Next xpc xrs xm xss)" and
   a4:"match_state s (pc,xst)" and
   a5:"jitper prog = Some x64_prog" and                      
   a6:"prog \<noteq> [] \<and> unat pc < length prog \<and> unat pc \<ge> 0" and
@@ -209,7 +218,11 @@ shows "\<exists> xst'. x64_sem1 1 x64_prog (pc,xst) = (pc',xst') \<and>
        prefer 2
       subgoal by (simp add: per_jit_store_reg64_def Let_def)
       apply (subgoal_tac "(x64_encode (Pmovq_ri R11 (scast off))@x64_encode (Paddq_rr R11 (bpf_to_x64_reg dst))@
-    x64_encode (Pmovq_rr R10 (bpf_to_x64_reg src))@x64_encode (Pmov_rm R10 (Addrmode (Some R11) None 0) chk)) !1 \<noteq> 0x39")
+    x64_encode (Pmovq_rr R10 (bpf_to_x64_reg src))@x64_encode (Pmov_rm R10 (Addrmode (Some R11) None 0) chk)) !1 \<noteq> 0x39 \<and> 
+    (x64_encode (Pmovq_ri R11 (scast off))@x64_encode (Paddq_rr R11 (bpf_to_x64_reg dst))@
+    x64_encode (Pmovq_rr R10 (bpf_to_x64_reg src))@x64_encode (Pmov_rm R10 (Addrmode (Some R11) None 0) chk))!0 \<noteq> 0xc3 \<and>
+    (x64_encode (Pmovq_ri R11 (scast off))@x64_encode (Paddq_rr R11 (bpf_to_x64_reg dst))@
+    x64_encode (Pmovq_rr R10 (bpf_to_x64_reg src))@x64_encode (Pmov_rm R10 (Addrmode (Some R11) None 0) chk))!0\<noteq> 0xe8")
        prefer 2
       subgoal apply(unfold x64_encode_def) 
         apply(cases "Pmovq_ri REG_SCRATCH (scast off)",simp_all)
@@ -341,11 +354,11 @@ shows "\<exists> xst'. x64_sem1 1 x64_prog (pc,xst) = (pc',xst') \<and>
          apply (simp add: match_state_def)
          apply(cases "storev chk xm (Vlong (scast off + xrs (IR (bpf_to_x64_reg dst)))) (Vlong (xrs (IR (bpf_to_x64_reg src))))",simp_all)
         subgoal using store_mem_one_step1 a0 a1 a2 a3 a4 a5 a6 a8 a9 by metis 
-        subgoal for m' using store_mem_one_step a9 a0 a1 a2 a3 a4 a5 a6 a8 
-          apply simp
+        subgoal for m' using store_mem_one_step a9 a0 a1 a2 a3 a4 a5 a6 a8 apply simp
+          using store_one_step5 a9 a0 a1 a2 a3 a4 a5 a6 a8 by (metis (no_types, lifting)) 
           done
         done
       done
     done
-  done
+
 end

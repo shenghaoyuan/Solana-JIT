@@ -35,9 +35,9 @@ qed
 
 
 lemma load_m64_one_step_match_reg_1:
-  assumes a0:"(SBPF_OK pc' rs' m') = sbpf_step prog (SBPF_OK pc rs m)" and
-    a1:"xst = (Next xpc xrs xm)" and
-    a2:"match_state (SBPF_OK pc rs m) (pc,xst)" and
+  assumes a0:"(SBPF_OK pc' rs' m' ss') = sbpf_step prog (SBPF_OK pc rs m ss)" and
+    a1:"xst = (Next xpc xrs xm xss)" and
+    a2:"match_state (SBPF_OK pc rs m ss) (pc,xst)" and
     a3:"prog \<noteq> [] \<and> unat pc < length prog \<and> unat pc \<ge> 0" and
     a4:"prog!(unat pc) = BPF_LDX chk dst src off" and
     a5:"chk = M64"
@@ -76,9 +76,9 @@ qed
 
 
 lemma load_m64_one_step_match_reg_2:
-  "(SBPF_OK pc' rs' m') = sbpf_step prog (SBPF_OK pc rs m) \<Longrightarrow>
-    xst = (Next xpc xrs xm) \<Longrightarrow>
-    match_state (SBPF_OK pc rs m) (pc,xst) \<Longrightarrow>
+  "(SBPF_OK pc' rs' m' xss') = sbpf_step prog (SBPF_OK pc rs m ss) \<Longrightarrow>
+    xst = (Next xpc xrs xm xss) \<Longrightarrow>
+    match_state (SBPF_OK pc rs m ss) (pc,xst) \<Longrightarrow>
     prog \<noteq> [] \<and> unat pc < length prog \<and> unat pc \<ge> 0 \<Longrightarrow>
     prog!(unat pc) = BPF_LDX chk dst src off  \<Longrightarrow>
     loadv M64 xm (Vlong (scast off + xrs (IR (bpf_to_x64_reg src)))) = Some (Vbyte x2) \<Longrightarrow>
@@ -89,9 +89,9 @@ lemma val_type_unique2:"x = Vlong v \<longrightarrow> x \<notin> {Vshort (ucast 
   by blast
 
 lemma load_m64_one_step_match_reg_3:
-  "(SBPF_OK pc' rs' m') = sbpf_step prog (SBPF_OK pc rs m) \<Longrightarrow>
-    xst = (Next xpc xrs xm) \<Longrightarrow>
-    match_state (SBPF_OK pc rs m) (pc,xst) \<Longrightarrow>
+  "(SBPF_OK pc' rs' m' ss') = sbpf_step prog (SBPF_OK pc rs m ss) \<Longrightarrow>
+    xst = (Next xpc xrs xm xss) \<Longrightarrow>
+    match_state (SBPF_OK pc rs m ss) (pc,xst) \<Longrightarrow>
     prog \<noteq> [] \<and> unat pc < length prog \<and> unat pc \<ge> 0 \<Longrightarrow>
     prog!(unat pc) = BPF_LDX chk dst src off  \<Longrightarrow>
     loadv M64 xm (Vlong (scast off + xrs (IR (bpf_to_x64_reg src)))) = Some (Vshort x2) \<Longrightarrow>
@@ -99,9 +99,9 @@ lemma load_m64_one_step_match_reg_3:
   using load_m64_one_step_match_reg_1 by fastforce
 
 lemma load_m64_one_step_match_reg_4:
-  "(SBPF_OK pc' rs' m') = sbpf_step prog (SBPF_OK pc rs m) \<Longrightarrow>
-    xst = (Next xpc xrs xm) \<Longrightarrow>
-    match_state (SBPF_OK pc rs m) (pc,xst) \<Longrightarrow>
+  "(SBPF_OK pc' rs' m' ss') = sbpf_step prog (SBPF_OK pc rs m ss) \<Longrightarrow>
+    xst = (Next xpc xrs xm xss) \<Longrightarrow>
+    match_state (SBPF_OK pc rs m ss) (pc,xst) \<Longrightarrow>
     prog \<noteq> [] \<and> unat pc < length prog \<and> unat pc \<ge> 0 \<Longrightarrow>
     prog!(unat pc) = BPF_LDX chk dst src off  \<Longrightarrow>
     loadv M64 xm (Vlong (scast off + xrs (IR (bpf_to_x64_reg src)))) = Some (Vint x2) \<Longrightarrow>
@@ -109,9 +109,9 @@ lemma load_m64_one_step_match_reg_4:
   using load_m64_one_step_match_reg_1  by fastforce
 
 lemma load_m64_one_step_match_reg_5:
-  "(SBPF_OK pc' rs' m') = sbpf_step prog (SBPF_OK pc rs m) \<Longrightarrow>
-    xst = (Next xpc xrs xm) \<Longrightarrow>
-    match_state (SBPF_OK pc rs m) (pc,xst) \<Longrightarrow>
+   "(SBPF_OK pc' rs' m' ss') = sbpf_step prog (SBPF_OK pc rs m ss) \<Longrightarrow>
+    xst = (Next xpc xrs xm xss) \<Longrightarrow>
+    match_state (SBPF_OK pc rs m ss) (pc,xst) \<Longrightarrow>
     prog \<noteq> [] \<and> unat pc < length prog \<and> unat pc \<ge> 0 \<Longrightarrow>
     prog!(unat pc) = BPF_LDX chk dst src off  \<Longrightarrow>
     loadv M64 xm (Vlong (scast off + xrs (IR (bpf_to_x64_reg src)))) = Some (Vptr x1 x2) \<Longrightarrow>
@@ -119,11 +119,10 @@ lemma load_m64_one_step_match_reg_5:
   using load_m64_one_step_match_reg_1  by fastforce
 
 lemma load_M64_one_step_match_reg:
-  " (SBPF_OK pc' rs' m') = sbpf_step prog (SBPF_OK pc rs m) \<Longrightarrow>
-    xst = (Next xpc xrs xm) \<Longrightarrow>
-    match_state (SBPF_OK pc rs m) (pc,xst) \<Longrightarrow>
+   "(SBPF_OK pc' rs' m' ss') = sbpf_step prog (SBPF_OK pc rs m ss) \<Longrightarrow>
+    xst = (Next xpc xrs xm xss) \<Longrightarrow>
+    match_state (SBPF_OK pc rs m ss) (pc,xst) \<Longrightarrow>
     prog \<noteq> [] \<and> unat pc < length prog \<and> unat pc \<ge> 0 \<Longrightarrow>
-    chk = M64 \<Longrightarrow>
     prog!(unat pc) = BPF_LDX chk dst src off  \<Longrightarrow>
     loadv M64 xm (Vlong (scast off + xrs (IR (bpf_to_x64_reg src)))) = Some (Vlong x5) \<Longrightarrow>
     chk = M64 \<Longrightarrow>
@@ -139,9 +138,9 @@ lemma load_M64_one_step_match_reg:
 
 
 lemma load_M64_one_step_match_mem:
-  "(SBPF_OK pc' rs' m') = sbpf_step prog (SBPF_OK pc rs m) \<Longrightarrow>
-    xst = (Next xpc xrs xm) \<Longrightarrow>
-    match_state (SBPF_OK pc rs m) (pc,xst) \<Longrightarrow>
+  "(SBPF_OK pc' rs' m' ss') = sbpf_step prog (SBPF_OK pc rs m ss) \<Longrightarrow>
+    xst = (Next xpc xrs xm xss) \<Longrightarrow>
+    match_state (SBPF_OK pc rs m ss) (pc,xst) \<Longrightarrow>
     prog \<noteq> [] \<and> unat pc < length prog \<and> unat pc \<ge> 0 \<Longrightarrow>
     loadv M64 xm (Vlong (scast off + xrs (IR (bpf_to_x64_reg src)))) = Some (Vlong x5) \<Longrightarrow>
     chk = M64 \<Longrightarrow>
@@ -153,9 +152,9 @@ lemma load_M64_one_step_match_mem:
 
 
 lemma load_M64_one_step_match_stack:
-  "(SBPF_OK pc' rs' m') = sbpf_step prog (SBPF_OK pc rs m) \<Longrightarrow>
-    xst = (Next xpc xrs xm) \<Longrightarrow>
-    match_state (SBPF_OK pc rs m) (pc,xst) \<Longrightarrow>
+  "(SBPF_OK pc' rs' m' ss') = sbpf_step prog (SBPF_OK pc rs m ss) \<Longrightarrow>
+    xst = (Next xpc xrs xm xss) \<Longrightarrow>
+    match_state (SBPF_OK pc rs m ss) (pc,xst) \<Longrightarrow>
     prog \<noteq> [] \<and> unat pc < length prog \<and> unat pc \<ge> 0 \<Longrightarrow>
     loadv M64 xm (Vlong (scast off + xrs (IR (bpf_to_x64_reg src)))) = Some (Vlong x5) \<Longrightarrow>
     chk = M64 \<Longrightarrow>
@@ -168,13 +167,25 @@ lemma load_M64_one_step_match_stack:
   apply (simp add: match_state_def match_stack_def eval_alu_def eval_reg_def)
   using reg_rsp_consist by blast
 
-
+lemma load_M64_one_step_match_stack2:"(SBPF_OK pc' rs' m' ss') = sbpf_step prog (SBPF_OK pc rs m ss) \<Longrightarrow>
+    xst = (Next xpc xrs xm xss) \<Longrightarrow>
+    match_state (SBPF_OK pc rs m ss) (pc,xst) \<Longrightarrow>
+    prog \<noteq> [] \<and> unat pc < length prog \<and> unat pc \<ge> 0 \<Longrightarrow>
+    loadv M64 xm (Vlong (scast off + xrs (IR (bpf_to_x64_reg src)))) = Some (Vlong x5) \<Longrightarrow>
+    chk = M64 \<Longrightarrow>
+    prog!(unat pc) = BPF_LDX chk dst src off  \<Longrightarrow> xss = ss'"
+  apply(cases " prog!(unat pc)",simp_all)
+  subgoal for x21
+    apply(cases "eval_load M64 dst src off rs m",simp_all)
+    apply(unfold match_state_def,simp_all)
+    done
+  done
 
 lemma load_one_step1:
  assumes a0:"s' = sbpf_step prog s" and
-  a1:"s = (SBPF_OK pc rs m)" and
-  a2:"s' = (SBPF_OK pc' rs' m')" and
-  a3:"xst = (Next xpc xrs xm)" and
+  a1:"s = (SBPF_OK pc rs m ss)" and
+  a2:"s' = (SBPF_OK pc' rs' m' ss')" and
+  a3:"xst = (Next xpc xrs xm xss)" and
   a4:"match_state s (pc,xst)" and
   a5:"jitper prog = Some x64_prog" and                      
   a6:"prog \<noteq> [] \<and> unat pc < length prog \<and> unat pc \<ge> 0" and
@@ -200,7 +211,9 @@ shows "\<exists> xst'. x64_sem1 1 x64_prog (pc,xst) = (pc',xst') \<and>
        prefer 2
       subgoal by (simp add: per_jit_load_reg64_def Let_def)
       apply (subgoal_tac "(x64_encode(Pmovq_ri R11 (scast off))@x64_encode (Paddq_rr R11 (bpf_to_x64_reg src))@
-    x64_encode (Pmov_mr (Addrmode (Some R11) None 0) (bpf_to_x64_reg dst) chk)) !1 \<noteq> 0x39")
+    x64_encode (Pmov_mr (Addrmode (Some R11) None 0) (bpf_to_x64_reg dst) chk))!1 \<noteq> 0x39 \<and> (x64_encode(Pmovq_ri R11 (scast off))@x64_encode (Paddq_rr R11 (bpf_to_x64_reg src))@
+    x64_encode (Pmov_mr (Addrmode (Some R11) None 0) (bpf_to_x64_reg dst) chk))!0 \<noteq> 0xc3 \<and>  (x64_encode(Pmovq_ri R11 (scast off))@x64_encode (Paddq_rr R11 (bpf_to_x64_reg src))@
+    x64_encode (Pmov_mr (Addrmode (Some R11) None 0) (bpf_to_x64_reg dst) chk))!0 \<noteq> 0xe8")
        prefer 2
       subgoal apply(unfold x64_encode_def) 
         apply(cases "Pmovq_ri REG_SCRATCH (scast off)",simp_all)
@@ -313,7 +326,8 @@ shows "\<exists> xst'. x64_sem1 1 x64_prog (pc,xst) = (pc',xst') \<and>
             apply(rule conjI)
             using load_M64_one_step_match_mem a0 a1 a2 a3 a4 a5 a6 a8 a9 apply metis
 (* 4.3  match_stack *)
-            using load_M64_one_step_match_stack a0 a1 a2 a3 a4 a5 a6 a8 a9 by auto
+            using load_M64_one_step_match_stack a0 a1 a2 a3 a4 a5 a6 a8 a9 apply auto
+            using load_M64_one_step_match_stack2 a0 a1 a2 a3 a4 a5 a6 a8 a9 by (metis (no_types, lifting))
           done
         done
       done

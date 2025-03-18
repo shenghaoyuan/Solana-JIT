@@ -19,16 +19,16 @@ imports
   JITPer_add JITPer_mul_rax JITPer_mul_rdx JITPer_mul_other
   JITPer_exit JITPer_jump
   JITPer_load JITPer_shift
-  JITPer_store 
+  JITPer_store JITPer_call JITPer_Exit
 
 begin
 
 
 lemma one_step_equiv_proof: 
   assumes a0:"s' = sbpf_step prog s" and
-  a1:"s = (SBPF_OK pc rs m)" and
-  a2:"s' = (SBPF_OK pc' rs' m')" and
-  a3:"xst = (Next xpc xrs xm)" and
+  a1:"s = (SBPF_OK pc rs m ss)" and
+  a2:"s' = (SBPF_OK pc' rs' m' ss')" and
+  a3:"xst = (Next xpc xrs xm xss')" and
   a4:"match_state s (pc,xst)" and
   a5:"jitper prog = Some x64_prog" and                      
   a6:"prog \<noteq> [] \<and> unat pc < length prog \<and> unat pc \<ge> 0" 
@@ -44,8 +44,10 @@ proof-
     prog!(unat pc) = BPF_ALU64 BPF_ARSH dst (SOReg src)) \<or> 
   (\<exists> dst src chk off. prog!(unat pc) = BPF_LDX chk dst src off) \<or>
   (\<exists> dst src chk off. prog!(unat pc) = BPF_ST chk dst (SOReg src) off) \<or>
-  (\<exists> x cond dst src. prog!(unat pc) = BPF_JUMP cond dst (SOReg src) x)" using a0 a1 a2 a6 aux1 by fast
-  obtain src dst x cond chk off where 
+  (\<exists> x cond dst src. prog!(unat pc) = BPF_JUMP cond dst (SOReg src) x) \<or>
+  (\<exists> src imm. prog!(unat pc) = BPF_CALL_IMM src imm) \<or>
+  prog!(unat pc) = BPF_EXIT" using a0 a1 a2 a6 aux1 by fast
+  obtain src dst x cond chk off imm where 
     b2:"?bpf_ins = BPF_ALU64 BPF_ADD dst (SOReg src) \<or> 
         ?bpf_ins = BPF_ALU64 BPF_MUL dst (SOReg src) \<or> 
         ?bpf_ins = BPF_ALU64 BPF_LSH dst (SOReg src) \<or> 
@@ -53,7 +55,9 @@ proof-
         ?bpf_ins = BPF_ALU64 BPF_ARSH dst (SOReg src) \<or> 
         ?bpf_ins = BPF_LDX chk dst src off \<or> 
         ?bpf_ins = BPF_ST chk dst (SOReg src) off \<or> 
-        ?bpf_ins = BPF_JUMP cond dst (SOReg src) x" using b1 by auto
+        ?bpf_ins = BPF_JUMP cond dst (SOReg src) x \<or>
+        ?bpf_ins = BPF_CALL_IMM src imm \<or>
+        ?bpf_ins = BPF_EXIT" using b1 by auto
   show ?thesis
   proof (cases "?bpf_ins = BPF_ALU64 BPF_MUL dst (SOReg src) ")
     case True
@@ -84,11 +88,13 @@ proof-
         ?bpf_ins = BPF_ALU64 BPF_ARSH dst (SOReg src) \<or> 
         ?bpf_ins = BPF_LDX chk dst src off \<or> 
         ?bpf_ins = BPF_ST chk dst (SOReg src) off \<or> 
-        ?bpf_ins = BPF_JUMP cond dst (SOReg src) x" using False b2 by blast
+        ?bpf_ins = BPF_JUMP cond dst (SOReg src) x\<or>
+        ?bpf_ins = BPF_CALL_IMM src imm \<or>
+        ?bpf_ins = BPF_EXIT" using False b2 by blast
       thus ?thesis 
       proof(cases "(?bpf_ins = BPF_JUMP cond dst (SOReg src) x)")
         case True
-          then show ?thesis using True False a0 a1 a2 a3 a4 a5 a6 jump_one_step by blast
+          then show ?thesis using True False a0 a1 a2 a3 a4 a5 a6 jump_one_step by simp
         next
         case False
         have c5:"?bpf_ins = BPF_ALU64 BPF_ADD dst (SOReg src) \<or>  
@@ -96,7 +102,9 @@ proof-
         ?bpf_ins = BPF_ALU64 BPF_RSH dst (SOReg src) \<or> 
         ?bpf_ins = BPF_ALU64 BPF_ARSH dst (SOReg src) \<or> 
         ?bpf_ins = BPF_LDX chk dst src off \<or> 
-        ?bpf_ins = BPF_ST chk dst (SOReg src) off" using False c4 by simp
+        ?bpf_ins = BPF_ST chk dst (SOReg src) off\<or>
+        ?bpf_ins = BPF_CALL_IMM src imm \<or>
+        ?bpf_ins = BPF_EXIT" using False c4 by simp
         thus ?thesis
         proof(cases "?bpf_ins = BPF_ALU64 BPF_ADD dst (SOReg src)")
           case True
@@ -107,18 +115,22 @@ proof-
           ?bpf_ins = BPF_ALU64 BPF_RSH dst (SOReg src) \<or> 
           ?bpf_ins = BPF_ALU64 BPF_ARSH dst (SOReg src) \<or> 
           ?bpf_ins = BPF_LDX chk dst src off \<or> 
-          ?bpf_ins = BPF_ST chk dst (SOReg src) off" using False c5 by simp
+          ?bpf_ins = BPF_ST chk dst (SOReg src) off\<or>
+          ?bpf_ins = BPF_CALL_IMM src imm \<or>
+          ?bpf_ins = BPF_EXIT" using False c5 by simp
           thus ?thesis
           proof(cases "?bpf_ins = BPF_ALU64 BPF_LSH dst (SOReg src)")
             case True
             have "(bpf_to_x64_reg dst) \<noteq> RCX" sorry
-            then show ?thesis using True shiftq_lsh_one_step1 a0 a1 a2 a3 a4 a5 a6 True by blast
+            then show ?thesis using True shiftq_lsh_one_step1 a0 a1 a2 a3 a4 a5 a6 True by simp
           next
             case False
             have c7:"?bpf_ins = BPF_ALU64 BPF_RSH dst (SOReg src) \<or> 
             ?bpf_ins = BPF_ALU64 BPF_ARSH dst (SOReg src) \<or> 
             ?bpf_ins = BPF_LDX chk dst src off \<or> 
-            ?bpf_ins = BPF_ST chk dst (SOReg src) off" using c6 False by simp
+            ?bpf_ins = BPF_ST chk dst (SOReg src) off\<or>
+            ?bpf_ins = BPF_CALL_IMM src imm \<or>
+            ?bpf_ins = BPF_EXIT" using c6 False by simp
             then show ?thesis 
             proof(cases "?bpf_ins = BPF_ALU64 BPF_RSH dst (SOReg src)")
               case True
@@ -128,7 +140,9 @@ proof-
               case False
               have c7:"?bpf_ins = BPF_ALU64 BPF_ARSH dst (SOReg src) \<or> 
               ?bpf_ins = BPF_LDX chk dst src off \<or> 
-              ?bpf_ins = BPF_ST chk dst (SOReg src) off" using c7 False by simp
+              ?bpf_ins = BPF_ST chk dst (SOReg src) off\<or>
+              ?bpf_ins = BPF_CALL_IMM src imm \<or>
+              ?bpf_ins = BPF_EXIT" using c7 False by simp
               then show ?thesis 
               proof(cases "?bpf_ins = BPF_ALU64 BPF_ARSH dst (SOReg src)")
                 case True
@@ -136,17 +150,38 @@ proof-
               next
                 case False
                 have c8:"?bpf_ins = BPF_LDX chk dst src off \<or> 
-                ?bpf_ins = BPF_ST chk dst (SOReg src) off" using c7 False by simp
+                ?bpf_ins = BPF_ST chk dst (SOReg src) off\<or>
+                ?bpf_ins = BPF_CALL_IMM src imm \<or>
+                ?bpf_ins = BPF_EXIT" using c7 False by simp
                 then show ?thesis
                 proof(cases "?bpf_ins = BPF_LDX chk dst src off")
                   case True
                   have "chk = M64" sorry
-                  then show ?thesis using load_one_step1 a0 a1 a2 a3 a4 a5 a6 True by blast
+                  then show ?thesis using load_one_step1 a0 a1 a2 a3 a4 a5 a6 True by simp
                 next
                   case False
-                  have "?bpf_ins = BPF_ST chk dst (SOReg src) off" using False c8 by simp
-                  have "chk = M64" sorry
-                  then show ?thesis using store_one_step1 a0 a1 a2 a3 a4 a5 a6 False c8 by blast
+                  have c9:"?bpf_ins = BPF_ST chk dst (SOReg src) off\<or>
+                  ?bpf_ins = BPF_CALL_IMM src imm \<or>
+                  ?bpf_ins = BPF_EXIT" using False c8 by simp
+                  then show ?thesis
+                   proof(cases "?bpf_ins = BPF_ST chk dst (SOReg src) off")
+                     case True
+                     have "chk = M64" sorry
+                     then show ?thesis using store_one_step1 a0 a1 a2 a3 a4 a5 a6 True by simp
+                   next
+                     case False
+                     have c10:"?bpf_ins = BPF_CALL_IMM src imm \<or>
+                     ?bpf_ins = BPF_EXIT" using False c9 by simp
+                     then show ?thesis
+                      proof(cases "?bpf_ins = BPF_CALL_IMM src imm")
+                        case True
+                        then show ?thesis using call_imm_one_step a0 a1 a2 a3 a4 a5 a6 True by simp
+                      next
+                        case False
+                        have "?bpf_ins = BPF_EXIT" using c10 False by simp
+                        then show ?thesis using exit_one_step a0 a1 a2 a3 a4 a5 a6 False by blast
+                      qed
+                    qed
                 qed
               qed
             qed
@@ -179,16 +214,16 @@ using x64_sem1_induct_aux1
 
 lemma n_steps_equiv_proof_aux:
   "\<lbrakk> sbpf_sem n prog s = s';
-   s = (SBPF_OK pc rs m);
-   s' = (SBPF_OK pc' rs' m');
-   xst = (Next xpc xrs xm);
+   s = (SBPF_OK pc rs m ss);
+   s' = (SBPF_OK pc' rs' m' ss');
+   xst = (Next xpc xrs xm xss);
    match_state s (pc,xst);
    jitper prog = Some x64_prog;
    prog \<noteq> [];
    x64_sem1 n x64_prog (pc,xst) = xst' \<rbrakk> \<Longrightarrow>
    match_state s' xst'"
 (* \<exists> xst'. x64_sem1 n pc x64_prog xst = xst' \<and> match_state s' xst'"*)
-proof (induction n arbitrary: prog s s' pc rs m pc' rs' m' xst' xst xpc xrs xm x64_prog xst')
+proof (induction n arbitrary: prog s s' pc rs m ss pc' rs' m' ss' xst' xst xpc xrs xm xss x64_prog xst')
   case 0
   then show ?case
     by simp
@@ -196,9 +231,9 @@ next
   case (Suc n)
   assume 
        assm1: "sbpf_sem (Suc n) prog s = s'" and
-       assm2:"s = SBPF_OK pc rs m" and
-       assm3:"s' = SBPF_OK pc' rs' m'" and
-       assm4:"xst = Next xpc xrs xm" and
+       assm2:"s = SBPF_OK pc rs m ss" and
+       assm3:"s' = SBPF_OK pc' rs' m' ss'" and
+       assm4:"xst = Next xpc xrs xm xss" and
        assm5:"match_state s (pc,xst)" and
        assm6:"jitper prog = Some x64_prog" and
        assm7:"prog \<noteq> [] " and
@@ -207,10 +242,11 @@ next
   have n_step_def:"sbpf_sem n prog s1 = s'" using s1_eq assm1 sbpf_sem_induct
     by (metis sbpf_sem.simps(2))
   have a0:"unat pc < length prog \<and> unat pc \<ge> 0" using assm1 assm3 
-    using Suc.prems(2) assm7 pc_scope_aux by blast
-  moreover have a1:"\<exists> pc1 rs1 m1. s1 = (SBPF_OK pc1 rs1 m1)"
+    using Suc.prems(2) assm7 pc_scope_aux
+    by (metis (no_types, lifting) err_is_still_err n_step_def s1_eq sbpf_state.simps(6) sbpf_step.simps(1) verit_comp_simplify1(3)) 
+  moreover have a1:"\<exists> pc1 rs1 m1 ss1 . s1 = (SBPF_OK pc1 rs1 m1 ss1)"
     by (metis Suc.prems(3) bot_nat_0.not_eq_extremum intermediate_step_is_ok n_step_def sbpf_sem.simps(1) sbpf_state.simps(6))
-  obtain pc1 rs1 m1 where a2:"s1 = (SBPF_OK pc1 rs1 m1)" using a1 by auto
+  obtain pc1 rs1 m1 ss1 where a2:"s1 = (SBPF_OK pc1 rs1 m1 ss1)" using a1 by auto
   (*have a3:"m1 = m" using s1_eq assm2 a2 sorry*)
   
   have "\<exists> num off l. x64_prog!(unat pc) = (num,off,l)" by (metis split_pairs)
@@ -221,14 +257,14 @@ next
     using s1_eq assm2 a2 assm4 assm5 assm6 assm7 one_step_equiv_proof a6 a7 a0 by blast
   then obtain xst1 where a4:"x64_sem1 1 x64_prog (pc,xst) = (pc1,xst1) \<and> match_state s1 (pc1,xst1)" by auto
   hence a4_1:"x64_sem1 1 x64_prog (pc,xst) = (pc1,xst1)" by auto
-  have an:"\<exists> xpc1 xrs1 xm1. xst1 = Next xpc1 xrs1 xm1" using a4 by (metis match_s_not_stuck outcome.exhaust)
-  then obtain xpc1 xrs1 xm1 where a10:"xst1 = Next xpc1 xrs1 xm1" by auto
+  have an:"\<exists> xpc1 xrs1 xm1 xss1. xst1 = Next xpc1 xrs1 xm1 xss1" using a4 by (metis match_s_not_stuck outcome.exhaust)
+  then obtain xpc1 xrs1 xm1 xss1 where a10:"xst1 = Next xpc1 xrs1 xm1 xss1" by auto
   have a5:"match_state s1 (pc1,xst1)" using an match_state_def
     using a10 a2 a4 by fastforce
   have    "sbpf_sem n prog s = s' \<Longrightarrow>
-           s = SBPF_OK pc rs m \<Longrightarrow>
-           s' = SBPF_OK pc' rs' m' \<Longrightarrow>
-           xst = Next xpc xrs xm \<Longrightarrow>
+           s = SBPF_OK pc rs m ss \<Longrightarrow>
+           s' = SBPF_OK pc' rs' m' ss' \<Longrightarrow>
+           xst = Next xpc xrs xm xss \<Longrightarrow>
            match_state s (pc, xst) \<Longrightarrow>
            jitper prog = Some x64_prog \<Longrightarrow> 
            prog \<noteq> [] \<Longrightarrow> 
@@ -247,9 +283,9 @@ qed
 
 lemma n_steps_equiv_proof:
   "\<lbrakk> sbpf_sem n prog s = s';
-   s = (SBPF_OK pc rs m);
-   s' = (SBPF_OK pc' rs' m');
-   xst = (Next xpc xrs xm);
+   s = (SBPF_OK pc rs m ss);
+   s' = (SBPF_OK pc' rs' m' ss');
+   xst = (Next xpc xrs xm xss');
    match_state s (pc,xst);
    jitper prog = Some x64_prog;
    prog \<noteq> [] \<rbrakk> \<Longrightarrow>

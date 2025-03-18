@@ -12,6 +12,12 @@ abbreviation "stack_frame_size:: usize \<equiv> 4096"
 
 abbreviation "instruction_meter_checkpoint_distance:: usize \<equiv> 10000"
 
+definition INSN_SIZE :: nat where 
+"INSN_SIZE = 8"
+
+definition program_vm_addr :: u64 where 
+"program_vm_addr = 0x100000000"
+
 (*
 abbreviation "enable_stack_frame_gaps:: bool \<equiv> True"
 

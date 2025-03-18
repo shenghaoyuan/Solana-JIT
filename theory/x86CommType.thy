@@ -74,5 +74,5 @@ definition construct_modsib_to_u8 :: "u8 \<Rightarrow> u8 \<Rightarrow> u8 \<Rig
     (bitfield_insert_u8 3 3 (and 0b111 op3) (and 0b111 op2))
     op1"
 
-
+value "construct_modsib_to_u8 0b111 0b000 0b101"
 end

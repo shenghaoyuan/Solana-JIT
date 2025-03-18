@@ -10,9 +10,9 @@ begin
 
 value "and (0b1111111000000::32 word) (0b111111::32 word)"
 lemma shiftq_lsh_one_step_match_reg:
-  " (SBPF_OK pc' rs' m') = sbpf_step prog (SBPF_OK pc rs m) \<Longrightarrow>
-    xst = (Next xpc xrs xm) \<Longrightarrow>
-    match_state (SBPF_OK pc rs m) (pc,xst) \<Longrightarrow>
+  " (SBPF_OK pc' rs' m' ss') = sbpf_step prog (SBPF_OK pc rs m ss) \<Longrightarrow>
+    xst = (Next xpc xrs xm xss) \<Longrightarrow>
+    match_state (SBPF_OK pc rs m ss) (pc,xst) \<Longrightarrow>
     prog \<noteq> [] \<and> unat pc < length prog \<and> unat pc \<ge> 0 \<Longrightarrow>
     prog!(unat pc) = BPF_ALU64 BPF_LSH dst (SOReg src) \<Longrightarrow>
     (bpf_to_x64_reg dst) \<noteq> RCX \<Longrightarrow>
@@ -20,15 +20,15 @@ lemma shiftq_lsh_one_step_match_reg:
      match_reg rs' 
      ((\<lambda>a::preg. 
         if a = IR (bpf_to_x64_reg dst) then xrs (IR (bpf_to_x64_reg dst)) << unat (and (ucast (xrs (IR (bpf_to_x64_reg src)))) (63::32 word)) 
-        else if a = IR RCX then xrs (IR (bpf_to_x64_reg src)) else if a = IR SP then xrs (IR SP) - u64_of_memory_chunk M64 else xrs a)
+        else if a = IR RCX then xrs (IR (bpf_to_x64_reg src)) else if a = IR SP then xrs (IR SP) - u64_of_memory_chunk M64 else xrs a )
       (IR SP := xrs (IR SP), IR RCX := xrs (IR RCX)))"
   by (simp add: match_state_def match_reg_def eval_alu_def eval_alu64_aux2_def eval_reg_def)
   
 
 lemma shiftq_lsh_one_step_match_mem:
-  " (SBPF_OK pc' rs' m') = sbpf_step prog (SBPF_OK pc rs m) \<Longrightarrow>
-    xst = (Next xpc xrs xm) \<Longrightarrow>
-    match_state (SBPF_OK pc rs m) (pc,xst) \<Longrightarrow>
+  " (SBPF_OK pc' rs' m' ss') = sbpf_step prog (SBPF_OK pc rs m ss) \<Longrightarrow>
+    xst = (Next xpc xrs xm xss) \<Longrightarrow>
+    match_state (SBPF_OK pc rs m ss) (pc,xst) \<Longrightarrow>
     prog \<noteq> [] \<and> unat pc < length prog \<and> unat pc \<ge> 0 \<Longrightarrow>
     prog!(unat pc) = BPF_ALU64 BPF_LSH dst (SOReg src) \<Longrightarrow>
     (bpf_to_x64_reg dst) \<noteq> RCX \<Longrightarrow>
@@ -45,9 +45,9 @@ lemma shiftq_lsh_one_step_match_mem:
 
 
 lemma shiftq_lsh_one_step_match_stack:
-  " (SBPF_OK pc' rs' m') = sbpf_step prog (SBPF_OK pc rs m) \<Longrightarrow>
-    xst = (Next xpc xrs xm) \<Longrightarrow>
-    match_state (SBPF_OK pc rs m) (pc,xst) \<Longrightarrow>
+  " (SBPF_OK pc' rs' m' ss') = sbpf_step prog (SBPF_OK pc rs m ss) \<Longrightarrow>
+    xst = (Next xpc xrs xm xss) \<Longrightarrow>
+    match_state (SBPF_OK pc rs m ss) (pc,xst) \<Longrightarrow>
     prog \<noteq> [] \<and> unat pc < length prog \<and> unat pc \<ge> 0 \<Longrightarrow>
     prog!(unat pc) = BPF_ALU64 BPF_LSH dst (SOReg src) \<Longrightarrow>
     (bpf_to_x64_reg dst) \<noteq> RCX \<Longrightarrow>
@@ -61,11 +61,32 @@ lemma shiftq_lsh_one_step_match_stack:
   by (simp add: match_state_def match_stack_def eval_alu_def eval_alu64_aux2_def eval_reg_def)
 
 
+lemma encode_aux:"(x64_encode(Ppushl_r x64Syntax.RCX)@x64_encode(Pmovq_rr (x64Syntax.RCX) (bpf_to_x64_reg src))@
+        x64_encode(Pshlq_r (bpf_to_x64_reg dst))@x64_encode(Ppopl x64Syntax.RCX))!0 \<notin> {0xc3, 0xe8}"
+  subgoal apply(unfold per_jit_mul_reg64_def x64_encode_def)
+   by(unfold construct_rex_to_u8_def bitfield_insert_u8_def Let_def u8_of_bool_def,simp_all)
+  done
+
+lemma shiftq_lsh_one_step_match_stack2:
+  " (SBPF_OK pc' rs' m' ss') = sbpf_step prog (SBPF_OK pc rs m ss) \<Longrightarrow>
+    xst = (Next xpc xrs xm xss) \<Longrightarrow>
+    match_state (SBPF_OK pc rs m ss) (pc,xst) \<Longrightarrow>
+    prog \<noteq> [] \<and> unat pc < length prog \<and> unat pc \<ge> 0 \<Longrightarrow>
+    prog!(unat pc) = BPF_ALU64 BPF_LSH dst (SOReg src) \<Longrightarrow>
+    xss = ss'"
+   apply(cases"prog!(unat pc)",simp_all)
+  subgoal for x91 
+    apply(cases "eval_alu BPF_LSH dst (SOReg src) rs",simp_all)
+    apply(unfold match_state_def,simp_all)
+    done
+  done
+
+
 lemma shiftq_lsh_one_step1:
  assumes a0:"s' = sbpf_step prog s" and
-  a1:"s = (SBPF_OK pc rs m)" and
-  a2:"s' = (SBPF_OK pc' rs' m')" and
-  a3:"xst = (Next xpc xrs xm)" and
+  a1:"s = (SBPF_OK pc rs m ss)" and
+  a2:"s' = (SBPF_OK pc' rs' m' ss')" and
+  a3:"xst = (Next xpc xrs xm xss)" and
   a4:"match_state s (pc,xst)" and
   a5:"jitper prog = Some x64_prog" and                      
   a6:"prog \<noteq> [] \<and> unat pc < length prog \<and> unat pc \<ge> 0" and
@@ -99,6 +120,9 @@ shows "\<exists> xst'. x64_sem1 1 x64_prog (pc,xst) = (pc',xst') \<and>
           apply(cases False,simp_all)
           apply(cases "and (u8_of_ireg (bpf_to_x64_reg src)) (8::8 word) \<noteq> (0::8 word)",simp_all)
         done
+      apply(subgoal_tac "(x64_encode(Ppushl_r x64Syntax.RCX)@x64_encode(Pmovq_rr (x64Syntax.RCX) (bpf_to_x64_reg src))@
+        x64_encode(Pshlq_r (bpf_to_x64_reg dst))@x64_encode(Ppopl x64Syntax.RCX))!0 \<notin> {0xc3, 0xe8}")
+      prefer 2 using encode_aux apply simp
       subgoal
         unfolding a3
         apply simp
@@ -244,7 +268,8 @@ shows "\<exists> xst'. x64_sem1 1 x64_prog (pc,xst) = (pc',xst') \<and>
 (* 4.2  match_mem *)
         subgoal using shiftq_lsh_one_step_match_mem a0 a1 a2 a3 a4 a6 a8 a9 by simp
 (* 4.3  match_stack *)
-        subgoal using shiftq_lsh_one_step_match_stack a0 a1 a2 a3 a4 a6 a8 a9 by simp
+        subgoal using shiftq_lsh_one_step_match_stack a0 a1 a2 a3 a4 a6 a8 a9 apply simp
+          using shiftq_lsh_one_step_match_stack2 a0 a1 a2 a3 a4 a6 a8 a9 by (metis (no_types, lifting)) 
         done
       done
     done
@@ -253,9 +278,9 @@ shows "\<exists> xst'. x64_sem1 1 x64_prog (pc,xst) = (pc',xst') \<and>
 
 
 lemma shiftq_rsh_one_step_match_reg:
-  " (SBPF_OK pc' rs' m') = sbpf_step prog (SBPF_OK pc rs m) \<Longrightarrow>
-    xst = (Next xpc xrs xm) \<Longrightarrow>
-    match_state (SBPF_OK pc rs m) (pc,xst) \<Longrightarrow>
+  " (SBPF_OK pc' rs' m' ss') = sbpf_step prog (SBPF_OK pc rs m ss) \<Longrightarrow>
+    xst = (Next xpc xrs xm xss) \<Longrightarrow>
+    match_state (SBPF_OK pc rs m ss) (pc,xst) \<Longrightarrow>
     prog \<noteq> [] \<and> unat pc < length prog \<and> unat pc \<ge> 0 \<Longrightarrow>
     prog!(unat pc) = BPF_ALU64 BPF_RSH dst (SOReg src) \<Longrightarrow>
     (bpf_to_x64_reg dst) \<noteq> RCX \<Longrightarrow>
@@ -272,9 +297,9 @@ lemma shiftq_rsh_one_step_match_reg:
   
 
 lemma shiftq_rsh_one_step_match_mem:
-  " (SBPF_OK pc' rs' m') = sbpf_step prog (SBPF_OK pc rs m) \<Longrightarrow>
-    xst = (Next xpc xrs xm) \<Longrightarrow>
-    match_state (SBPF_OK pc rs m) (pc,xst) \<Longrightarrow>
+  " (SBPF_OK pc' rs' m' ss') = sbpf_step prog (SBPF_OK pc rs m ss) \<Longrightarrow>
+    xst = (Next xpc xrs xm xss) \<Longrightarrow>
+    match_state (SBPF_OK pc rs m ss) (pc,xst) \<Longrightarrow>
     prog \<noteq> [] \<and> unat pc < length prog \<and> unat pc \<ge> 0 \<Longrightarrow>
     prog!(unat pc) = BPF_ALU64 BPF_RSH dst (SOReg src) \<Longrightarrow>
     (bpf_to_x64_reg dst) \<noteq> RCX \<Longrightarrow>
@@ -282,13 +307,13 @@ lemma shiftq_rsh_one_step_match_mem:
      loadv M64 m1 (Vptr sp_block (xrs (IR SP) - u64_of_memory_chunk M64)) = Some (Vlong (xrs (IR RCX))) \<Longrightarrow> 
      match_mem m' m1"
   apply (simp add: match_state_def match_mem_def eval_alu_def eval_alu64_aux2_def eval_reg_def)
-  using sp_block_def store_load_other_blk by auto
+  using sp_block_def store_load_other_blk by (metis match_mem_def match_mem_store_1_equiv) 
 
 
 lemma shiftq_rsh_one_step_match_stack:
-  " (SBPF_OK pc' rs' m') = sbpf_step prog (SBPF_OK pc rs m) \<Longrightarrow>
-    xst = (Next xpc xrs xm) \<Longrightarrow>
-    match_state (SBPF_OK pc rs m) (pc,xst) \<Longrightarrow>
+  " (SBPF_OK pc' rs' m' ss') = sbpf_step prog (SBPF_OK pc rs m ss) \<Longrightarrow>
+    xst = (Next xpc xrs xm xss) \<Longrightarrow>
+    match_state (SBPF_OK pc rs m ss) (pc,xst) \<Longrightarrow>
     prog \<noteq> [] \<and> unat pc < length prog \<and> unat pc \<ge> 0 \<Longrightarrow>
     prog!(unat pc) = BPF_ALU64 BPF_RSH dst (SOReg src) \<Longrightarrow>
     (bpf_to_x64_reg dst) \<noteq> RCX \<Longrightarrow>
@@ -302,11 +327,32 @@ lemma shiftq_rsh_one_step_match_stack:
   by (simp add: match_state_def match_stack_def eval_alu_def eval_alu64_aux2_def eval_reg_def)
 
 
+lemma encode_aux2:"(x64_encode(Ppushl_r x64Syntax.RCX)@x64_encode(Pmovq_rr (x64Syntax.RCX) (bpf_to_x64_reg src))@
+        x64_encode(Pshrq_r (bpf_to_x64_reg dst))@x64_encode(Ppopl x64Syntax.RCX))!0 \<notin> {0xc3, 0xe8}"
+  subgoal apply(unfold per_jit_mul_reg64_def x64_encode_def)
+   by(unfold construct_rex_to_u8_def bitfield_insert_u8_def Let_def u8_of_bool_def,simp_all)
+  done
+
+
+lemma shiftq_rsh_one_step_match_stack2:
+  " (SBPF_OK pc' rs' m' ss') = sbpf_step prog (SBPF_OK pc rs m ss) \<Longrightarrow>
+    xst = (Next xpc xrs xm xss) \<Longrightarrow>
+    match_state (SBPF_OK pc rs m ss) (pc,xst) \<Longrightarrow>
+    prog \<noteq> [] \<and> unat pc < length prog \<and> unat pc \<ge> 0 \<Longrightarrow>
+    prog!(unat pc) = BPF_ALU64 BPF_RSH dst (SOReg src) \<Longrightarrow>
+    xss = ss'"
+   apply(cases"prog!(unat pc)",simp_all)
+  subgoal for x91 
+    apply(cases "eval_alu BPF_RSH dst (SOReg src) rs",simp_all)
+    apply(unfold match_state_def,simp_all)
+    done
+  done
+
 lemma shiftq_rsh_one_step1:
  assumes a0:"s' = sbpf_step prog s" and
-  a1:"s = (SBPF_OK pc rs m)" and
-  a2:"s' = (SBPF_OK pc' rs' m')" and
-  a3:"xst = (Next xpc xrs xm)" and
+  a1:"s = (SBPF_OK pc rs m ss)" and
+  a2:"s' = (SBPF_OK pc' rs' m' ss')" and
+  a3:"xst = (Next xpc xrs xm xss)" and
   a4:"match_state s (pc,xst)" and
   a5:"jitper prog = Some x64_prog" and                      
   a6:"prog \<noteq> [] \<and> unat pc < length prog \<and> unat pc \<ge> 0" and
@@ -340,6 +386,9 @@ shows "\<exists> xst'. x64_sem1 1 x64_prog (pc,xst) = (pc',xst') \<and>
           apply(cases False,simp_all)
           apply(cases "and (u8_of_ireg (bpf_to_x64_reg src)) (8::8 word) \<noteq> (0::8 word)",simp_all)
         done
+      apply(subgoal_tac "(x64_encode(Ppushl_r x64Syntax.RCX)@x64_encode(Pmovq_rr (x64Syntax.RCX) (bpf_to_x64_reg src))@
+        x64_encode(Pshrq_r (bpf_to_x64_reg dst))@x64_encode(Ppopl x64Syntax.RCX))!0 \<notin> {0xc3, 0xe8}")
+      prefer 2 using encode_aux2 apply simp
       subgoal
         unfolding a3
         apply simp
@@ -485,7 +534,8 @@ shows "\<exists> xst'. x64_sem1 1 x64_prog (pc,xst) = (pc',xst') \<and>
 (* 4.2  match_mem *)
         subgoal using shiftq_rsh_one_step_match_mem a0 a1 a2 a3 a4 a6 a8 a9 by simp
 (* 4.3  match_stack *)
-        subgoal using shiftq_rsh_one_step_match_stack a0 a1 a2 a3 a4 a6 a8 a9 by simp
+        subgoal using shiftq_rsh_one_step_match_stack a0 a1 a2 a3 a4 a6 a8 a9 apply simp
+          using shiftq_rsh_one_step_match_stack2 a0 a1 a2 a3 a4 a6 a8 a9 by (metis (no_types, lifting)) 
         done
       done
     done

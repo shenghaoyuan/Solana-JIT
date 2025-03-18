@@ -444,7 +444,7 @@ definition push_frame:: "reg_map \<Rightarrow> stack_state \<Rightarrow> bool \<
         reg = rs#BR10 <-- update2 in
           (stack, reg)
 )))"
-
+(*
 definition eval_call_reg :: "src_ty \<Rightarrow> imm_ty \<Rightarrow> reg_map \<Rightarrow> stack_state \<Rightarrow> bool \<Rightarrow> u64 \<Rightarrow>
   func_map \<Rightarrow> bool \<Rightarrow> u64 \<Rightarrow> (u64 \<times> reg_map \<times> stack_state) option" where
 "eval_call_reg src imm rs ss is_v1 pc fm enable_stack_frame_gaps program_vm_addr = (
@@ -460,7 +460,7 @@ definition eval_call_reg :: "src_ty \<Rightarrow> imm_ty \<Rightarrow> reg_map \
           let next_pc = (pc1 - program_vm_addr)div (of_nat INSN_SIZE) in 
             Some (next_pc, rs', ss')
           ))
-)"
+)"*)
 
 definition eval_call_imm :: "u64 \<Rightarrow> src_ty \<Rightarrow> imm_ty \<Rightarrow> reg_map \<Rightarrow> stack_state \<Rightarrow> bool \<Rightarrow> func_map \<Rightarrow> bool \<Rightarrow> (u64 \<times> reg_map \<times> stack_state) option" where
 "eval_call_imm pc src imm rs ss is_v1 fm enable_stack_frame_gaps = (

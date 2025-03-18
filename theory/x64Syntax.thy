@@ -90,6 +90,7 @@ definition ireg_of_u8 ::"u8 \<Rightarrow> ireg option" where
     None
 )"
 
+
 text \<open> skip float registers, as Solana rBPF doesn't deal with float \<close>
 
 datatype crbit = ZF | CF | PF | SF | OF
@@ -184,7 +185,7 @@ definition cond_of_u8 :: "u8 \<Rightarrow> testcond option" where
   (and first argument), the second suffix describes the second argument.
 *)
 
-(*Pjmp i32*)
+(*Pcall_r ireg*)
 datatype instruction =
   Paddq_rr ireg ireg
   | Pret
@@ -201,6 +202,7 @@ datatype instruction =
   | Pshlq_r ireg
   | Psarq_r ireg
   | Pmov_rm ireg addrmode memory_chunk
+  | Pcall_i u32
 
 type_synonym x64_asm = "instruction list"
 type_synonym x64_bin = "u8 list"
