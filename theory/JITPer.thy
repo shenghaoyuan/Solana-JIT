@@ -275,7 +275,7 @@ proof-
         qed
       qed
     qed
-  qed
+
 
 lemma x64_sem1_induct_aux1:
  "x64_sem1 (m+n) x64_prog xst = xst'\<Longrightarrow> 

@@ -8,7 +8,6 @@ imports
 begin
 
 
-value "and (0b1111111000000::32 word) (0b111111::32 word)"
 lemma shiftq_lsh_one_step_match_reg:
   " (SBPF_OK pc' rs' m' ss') = sbpf_step prog (SBPF_OK pc rs m ss) \<Longrightarrow>
     xst = (Next xpc xrs xm xss) \<Longrightarrow>
@@ -133,7 +132,6 @@ shows "\<exists> xst'. x64_sem1 1 x64_prog (pc,xst) = (pc',xst') \<and>
         apply (subgoal_tac "Suc 3 = (4::nat)") prefer 2 subgoal by simp
         apply (erule subst)
         apply (simp only: x64_sem.simps)
-        apply simp
 (* 3.1.1 using consistency to get x64 assembly *)
         apply (subgoal_tac "x64_decode (0::nat)
             (x64_encode(Ppushl_r RCX)@x64_encode(Pmovq_rr RCX (bpf_to_x64_reg src))@
@@ -160,7 +158,6 @@ shows "\<exists> xst'. x64_sem1 1 x64_prog (pc,xst) = (pc',xst') \<and>
         apply (subgoal_tac "Suc 2 = (3::nat)") prefer 2 subgoal by simp
         apply (erule subst [of _ 3])
         apply (simp only: x64_sem.simps)
-        apply simp
         apply (subgoal_tac "x64_decode (1::nat)
             (x64_encode(Ppushl_r RCX)@x64_encode(Pmovq_rr RCX (bpf_to_x64_reg src))@
         x64_encode(Pshlq_r (bpf_to_x64_reg dst))@x64_encode(Ppopl RCX))
@@ -399,7 +396,6 @@ shows "\<exists> xst'. x64_sem1 1 x64_prog (pc,xst) = (pc',xst') \<and>
         apply (subgoal_tac "Suc 3 = (4::nat)") prefer 2 subgoal by simp
         apply (erule subst)
         apply (simp only: x64_sem.simps)
-        apply simp
 (* 3.1.1 using consistency to get x64 assembly *)
         apply (subgoal_tac "x64_decode (0::nat)
             (x64_encode(Ppushl_r RCX)@x64_encode(Pmovq_rr RCX (bpf_to_x64_reg src))@
@@ -426,7 +422,6 @@ shows "\<exists> xst'. x64_sem1 1 x64_prog (pc,xst) = (pc',xst') \<and>
         apply (subgoal_tac "Suc 2 = (3::nat)") prefer 2 subgoal by simp
         apply (erule subst [of _ 3])
         apply (simp only: x64_sem.simps)
-        apply simp
         apply (subgoal_tac "x64_decode (1::nat)
             (x64_encode(Ppushl_r RCX)@x64_encode(Pmovq_rr RCX (bpf_to_x64_reg src))@
         x64_encode(Pshrq_r (bpf_to_x64_reg dst))@x64_encode(Ppopl RCX))

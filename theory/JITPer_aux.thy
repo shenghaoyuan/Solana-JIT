@@ -163,16 +163,25 @@ definition per_jit_call_reg :: "bpf_ireg \<Rightarrow> imm_ty \<Rightarrow> (nat
 
 definition per_jit_shift_lsh_reg64 :: "bpf_ireg \<Rightarrow> bpf_ireg \<Rightarrow> (nat \<times> u64 \<times> x64_bin) option" where
 "per_jit_shift_lsh_reg64 dst src = (
-  let cond1 = ((bpf_to_x64_reg dst) = RCX); 
-    len = case (bpf_to_x64_reg dst) of 
-        RCX \<Rightarrow> 5 |
-          _ \<Rightarrow> 4; 
+  let len = 
+  (case (bpf_to_x64_reg dst) of 
+     RCX \<Rightarrow> (case (bpf_to_x64_reg src) of 
+               RCX \<Rightarrow> 1
+             | _   \<Rightarrow> 5)
+   | _   \<Rightarrow> 4);
     l_bin = 
-      case (bpf_to_x64_reg dst) of 
-        RCX \<Rightarrow> x64_encode(Ppushl_r (bpf_to_x64_reg src))@ x64_encode(Pxchgq_rr (bpf_to_x64_reg dst) (bpf_to_x64_reg src))@
-        x64_encode(Pshlq_r (bpf_to_x64_reg src))@x64_encode(Pmovq_rr (x64Syntax.RCX) (bpf_to_x64_reg src) )@ x64_encode(Ppopl (bpf_to_x64_reg src)) |               
-      _ \<Rightarrow> x64_encode(Ppushl_r x64Syntax.RCX)@x64_encode(Pmovq_rr (x64Syntax.RCX) (bpf_to_x64_reg src))@
-        x64_encode(Pshlq_r (bpf_to_x64_reg dst))@x64_encode(Ppopl x64Syntax.RCX)   
+  (case (bpf_to_x64_reg dst) of 
+     RCX \<Rightarrow> (case (bpf_to_x64_reg src) of 
+              RCX \<Rightarrow> x64_encode (Pshlq_r (bpf_to_x64_reg src))
+            | _   \<Rightarrow> x64_encode (Ppushl_r (bpf_to_x64_reg src)) @
+                    x64_encode (Pxchgq_rr (bpf_to_x64_reg dst) (bpf_to_x64_reg src)) @
+                    x64_encode (Pshlq_r (bpf_to_x64_reg src)) @
+                    x64_encode (Pmovq_rr x64Syntax.RCX (bpf_to_x64_reg src)) @
+                    x64_encode (Ppopl (bpf_to_x64_reg src)))
+   | _   \<Rightarrow> x64_encode (Ppushl_r x64Syntax.RCX) @
+           x64_encode (Pmovq_rr x64Syntax.RCX (bpf_to_x64_reg src)) @
+           x64_encode (Pshlq_r (bpf_to_x64_reg dst)) @
+           x64_encode (Ppopl x64Syntax.RCX))
     in Some (len, 0, l_bin)
 )"
 
@@ -692,7 +701,8 @@ lemma x64_sem1_pc_aux1:
   a7:"x64_sem num l (Next 0 xrs xm xss) = xst1 " and
   a8:"l!1 \<noteq> 0x39 \<and> l!0 \<noteq> 0xe8 \<and> l!0 \<noteq> 0xc3" and
   a10:"xst1 = Next xpc1 xrs1 xm1 xss1" and
-  a11:"prog!(unat pc) \<in> {BPF_ALU64 BPF_ADD dst (SOReg src), BPF_ALU64 BPF_MUL dst (SOReg src),  
+  a11:"prog!(unat pc) \<in> {BPF_ALU64 BPF_ADD dst (SOReg src), BPF_ALU64 BPF_MUL dst (SOReg src),  BPF_ALU64 BPF_SUB dst (SOReg src), 
+  BPF_ALU64 BPF_OR dst (SOReg src), BPF_ALU64 BPF_AND dst (SOReg src), BPF_ALU64 BPF_XOR dst (SOReg src),
   BPF_ALU64 BPF_LSH dst (SOReg src),BPF_ALU64 BPF_RSH dst (SOReg src), BPF_ALU64 BPF_ARSH dst (SOReg src),
   BPF_LDX chk dst src d, BPF_ST chk dst (SOReg src) d}"
 shows "x64_sem1 1 x64_prog (pc,xst) = (pc', Next xpc1 xrs1 xm1 xss1)"
@@ -702,7 +712,7 @@ proof-
     using a5 a8 a6 one_step_def by simp
   hence "x64_sem1 1 x64_prog (pc,xst) = (x64_sem1 0 x64_prog (pc+1,xst1))" using a3 a4 a5 a6 a7 a8 one_step_def by simp
   hence "x64_sem1 1 x64_prog (pc,xst) = (pc+1, Next xpc1 xrs1 xm1 xss1)" using a10 by simp
-  moreover have "pc+1=pc'" using corr_pc_aux2 a3 a0 a1 a2 a4 a11 a6 a8 by metis
+  moreover have "pc+1=pc'" using corr_pc_aux2 a3 a0 a1 a2 a4 a11 a6 a8 by force
   hence "x64_sem1 1 x64_prog (pc,xst) = (pc', Next xpc1 xrs1 xm1 xss1)" using calculation by blast
   thus ?thesis by blast
 qed
