@@ -188,6 +188,10 @@ definition cond_of_u8 :: "u8 \<Rightarrow> testcond option" where
 (*Pcall_r ireg*)
 datatype instruction =
   Paddq_rr ireg ireg
+  | Psubq_rr ireg ireg
+  | Porq_rr ireg ireg
+  | Pandq_rr ireg ireg
+  | Pxorq_rr ireg ireg
   | Pret
   | Ppushl_r ireg
   | Ppopl  ireg

@@ -80,6 +80,10 @@ definition eval_alu :: "binop \<Rightarrow> dst_ty \<Rightarrow> snd_op \<Righta
   let sv :: u64 = eval_snd_op_u64 sop rs in (
   case bop of
   BPF_ADD   \<Rightarrow> Some (rs#dst <-- (dv+sv)) |
+  BPF_SUB   \<Rightarrow> Some (rs#dst <-- (dv-sv)) |
+  BPF_OR  \<Rightarrow> Some (rs#dst <-- (or dv sv)) |
+  BPF_AND  \<Rightarrow> Some (rs#dst <-- (and dv sv)) |
+  BPF_XOR  \<Rightarrow> Some (rs#dst <-- (xor dv sv)) |
   BPF_MUL   \<Rightarrow> Some (rs#dst <-- (dv*sv)) |
   BPF_LSH   \<Rightarrow>  eval_alu64_aux2 bop dst sop rs |
   BPF_RSH   \<Rightarrow>  eval_alu64_aux2 bop dst sop rs |
@@ -260,6 +264,30 @@ fun sbpf_step :: "ebpf_asm \<Rightarrow> sbpf_state \<Rightarrow> sbpf_state" wh
         None \<Rightarrow> SBPF_Err |
         Some rs' \<Rightarrow> SBPF_OK (pc+1) rs' m ss
       ) |
+       BPF_SUB \<Rightarrow>(
+        case eval_alu bop d sop rs of
+        None \<Rightarrow> SBPF_Err |
+        Some rs' \<Rightarrow> SBPF_OK (pc+1) rs' m ss
+      ) |
+      
+      BPF_AND \<Rightarrow>(
+        case eval_alu bop d sop rs of
+        None \<Rightarrow> SBPF_Err |
+        Some rs' \<Rightarrow> SBPF_OK (pc+1) rs' m ss
+      ) |
+
+      BPF_OR \<Rightarrow>(
+        case eval_alu bop d sop rs of
+        None \<Rightarrow> SBPF_Err |
+        Some rs' \<Rightarrow> SBPF_OK (pc+1) rs' m ss
+      ) |
+
+      BPF_XOR \<Rightarrow>(
+        case eval_alu bop d sop rs of
+        None \<Rightarrow> SBPF_Err |
+        Some rs' \<Rightarrow> SBPF_OK (pc+1) rs' m ss
+      ) |
+
       BPF_MUL \<Rightarrow>(
         case eval_alu bop d sop rs of
         None \<Rightarrow> SBPF_Err |

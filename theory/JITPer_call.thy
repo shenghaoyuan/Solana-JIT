@@ -79,26 +79,22 @@ lemma pc_aux2:"(ucast((ucast (i::i32))::u32)::u64) = ((ucast i)::u64)"
     by (smt (verit, best) bintr_uint len_signed nat_le_linear numeral_Bit0_eq_double numeral_le_iff
          of_int_uint semiring_norm(69) take_bit_tightened_less_eq_int unsigned_ucast_eq)
    then show ?thesis by auto
-qed
-
+ qed
 
 lemma call_reg_subgoal_aux4:"s' = sbpf_step prog s \<Longrightarrow> s = (SBPF_OK pc rs m ss) \<Longrightarrow> s' = (SBPF_OK pc' rs' m' ss') \<Longrightarrow> 
   prog \<noteq> [] \<and> unat pc < length prog \<and> unat pc \<ge> 0 \<Longrightarrow> prog!(unat pc) = BPF_CALL_IMM src imm \<Longrightarrow> 
-  l = u8_list_of_u32 (ucast imm) \<Longrightarrow> 
-  pc' = (ucast(the (u32_of_u8_list l)))"
+  l = (ucast imm) \<Longrightarrow> 
+  pc' = l"
  apply(cases "prog!(unat pc)",simp_all)
   subgoal for x171 
     apply(cases "eval_call_imm src imm rs ss pc",simp_all)
     subgoal for a apply(cases a,simp_all )
       apply(unfold eval_call_imm_def push_frame_def Let_def,simp_all)
       apply(cases "update_stack [eval_reg BR6 rs, eval_reg BR7 rs, eval_reg BR8 rs, eval_reg BR9 rs] (eval_reg BR10 rs) (pc + (1::64 word)) ss",simp_all)
-      apply(unfold update_stack_def Let_def eval_reg_def, simp_all)
-      apply(split if_splits,simp_all)
-      apply(subgoal_tac "(the (u32_of_u8_list (u8_list_of_u32 (ucast imm)))) = ucast imm")
-       prefer 2 using pc_aux1 apply simp
-      using pc_aux2 by presburger
-        done
       done
+    done
+  done
+
 
 lemma call_reg_subgoal_aux5:"Next xpc xrs' xm xss'  = (let caller = save_x64_caller xrs; fp = save_x64_frame_pointer xrs;
                            xrs' = upate_x64_stack_pointer xrs (stack_pointer xss) in
@@ -162,9 +158,9 @@ proof-
   have c3_0:"per_jit_call_reg src imm = Some (num,off,l)" using c_aux c3
     by (simp add: per_jit_call_reg_def) 
 
-  have "l = x64_encode (Pcall_i (ucast imm))" using per_jit_call_reg_def c3_0 by simp
-  hence "l = ([0xe8] @ (u8_list_of_u32 (ucast imm)))" using x64_encode_def apply(cases "Pcall_i (ucast imm)",simp_all) done
-  hence c4_0:"tl l = (u8_list_of_u32 (ucast imm))" by simp
+
+  have "l = x64_encode (Pcall_i 0)" using per_jit_call_reg_def c3_0 by simp
+  hence c4_0:"off = ucast imm" using per_jit_call_reg_def c3_0 by simp
 
   have c4:"(l!0 = 0xe8)" using c_aux c3 c3_0 apply(unfold per_jit_call_reg_def x64_encode_def)
     apply(cases "Pcall_i (ucast imm)",simp_all) 
@@ -175,8 +171,8 @@ proof-
                            xrs' = upate_x64_stack_pointer xrs (stack_pointer xss) in
             let ss' = update_stack caller fp (pc+1) xss in
               (case ss' of None \<Rightarrow> (pc, Stuck) | 
-              Some ra \<Rightarrow> ((ucast(the (u32_of_u8_list (tl l)))), Next xpc xrs' xm ra)))" 
-    using c4 c2_1 one_step_def a3 c_aux c4_0 c_aux c4_1
+              Some ra \<Rightarrow> (off, Next xpc xrs' xm ra)))" 
+    using c4 c2_1 one_step_def a3 c_aux c_aux c4_1
     by (smt (z3) One_nat_def case_prod_conv fst_conv option.case_eq_if outcome.simps(4) snd_conv x64_sem1.simps(1) x64_sem1.simps(2)) 
 
   have d1_1:"xss = ss" using match_state_def a0 a1 a2 a3 a4 by auto
@@ -214,10 +210,11 @@ proof-
 
   have d4:"match_state s' (pc', ?st)" using a4 match_state_def match_mem_def match_stack_def match_reg_def c6 a0 a1 a2 a3 d0 d1 d2 d3 by force
                                                                                                       
-  have "fst ?one_step = (ucast(the (u32_of_u8_list (tl l))))" using c5 by (metis (no_types, lifting) d2_1 option.case_eq_if split_pairs)
-  hence "fst ?one_step = pc'" using c4_0 call_reg_subgoal_aux4 a0 a1 a2 a6 a8 by blast
+  have "fst ?one_step = off" using c5 by (metis (no_types, lifting) d2_1 option.case_eq_if split_pairs)
+  hence "fst ?one_step = pc'" using c4_0 call_reg_subgoal_aux4 a0 a1 a2 a6 a8 c_aux by blast
     thus ?thesis using d4 by (metis split_pairs)
   qed
+
 (*
 lemma mem_is_not_changed_by_call:
   "prog!(unat pc1) = BPF_CALL_REG src imm \<Longrightarrow> 

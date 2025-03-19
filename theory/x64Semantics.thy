@@ -181,6 +181,10 @@ definition exec_instr :: "instruction \<Rightarrow> u64 \<Rightarrow> u64 \<Righ
 "exec_instr i sz pc rs m ss = (\<comment> \<open> sz is the binary size (n-byte) of current instruction  \<close>
   case i of
   Paddq_rr  rd r1 \<Rightarrow> Next (pc + sz) ((rs#(IR rd) <- (rs (IR rd) + rs (IR r1)))) m ss |
+  Psubq_rr  rd r1 \<Rightarrow> Next (pc + sz) ((rs#(IR rd) <- (rs (IR rd) - rs (IR r1)))) m ss |
+  Porq_rr   rd r1 \<Rightarrow> Next (pc + sz) ((rs#(IR rd) <- (Bit_Operations.or (rs(IR rd)) (rs(IR r1))))) m ss |
+  Pandq_rr   rd r1 \<Rightarrow> Next (pc + sz) ((rs#(IR rd) <- (Bit_Operations.and (rs(IR rd)) (rs(IR r1))))) m ss |
+  Pxorq_rr   rd r1 \<Rightarrow> Next (pc + sz) ((rs#(IR rd) <- (Bit_Operations.xor (rs(IR rd)) (rs(IR r1))))) m ss |
   Pret            \<Rightarrow> exec_ret M64 m ss rs |
   Ppopl     rd    \<Rightarrow> exec_pop pc sz M64 m ss rs rd |
   Ppushl_r  r1    \<Rightarrow> exec_push pc sz M64 m ss rs (rs (IR r1)) |
@@ -268,7 +272,7 @@ definition restore_x64_caller::"regset \<Rightarrow> u64 list \<Rightarrow> u64 
 (*
 definition get_target_addr::"regset \<Rightarrow> u8 \<Rightarrow> u64" where
 "get_target_addr xrs xrid = xrs (IR (the (ireg_of_u8 xrid)))"*)
-
+(*Some ra \<Rightarrow> (ucast(the (u32_of_u8_list (tl l))), Next xpc rs' m ra))*)
 definition one_step:: " (nat \<times> u64 \<times> x64_bin) list \<Rightarrow> hybrid_state\<Rightarrow> hybrid_state" where
 "one_step lt st  \<equiv>
   let pc = fst st; xst = snd st in 
@@ -283,7 +287,7 @@ definition one_step:: " (nat \<times> u64 \<times> x64_bin) list \<Rightarrow> h
             rs' = upate_x64_stack_pointer rs (stack_pointer ss) in
         let ss' = update_stack caller fp (pc+1) ss in
           (case ss' of None \<Rightarrow> (pc, Stuck) | 
-          Some ra \<Rightarrow> (ucast(the (u32_of_u8_list (tl l))), Next xpc rs' m ra))
+          Some ra \<Rightarrow> (off, Next xpc rs' m ra))
       else if l!1 = (0x39::u8)  then
         let xst_temp = Next 0 rs m ss; xst' = x64_sem num l xst_temp in
           case xst' of

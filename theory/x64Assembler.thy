@@ -16,6 +16,50 @@ Paddq_rr rd r1 \<Rightarrow>
     let (op:: u8) = 0x01 in
     let (rop::u8) = construct_modsib_to_u8 0b11 (u8_of_ireg r1) (u8_of_ireg rd) in
      [ rex, op, rop ] |
+  \<comment> \<open> P2891 `SUB qwordregister1 from qwordregister2` -> `0100 1R0B : 0010 1001 : 11 reg1 reg2` \<close>
+  Psubq_rr rd r1 \<Rightarrow>
+    let (rex:: u8) = (construct_rex_to_u8  \<comment> \<open> `1R0B` \<close>
+      True \<comment> \<open> W \<close>
+      (and (u8_of_ireg r1) 0b1000 \<noteq> 0) \<comment> \<open> R \<close>
+      False \<comment> \<open> X \<close>
+      (and (u8_of_ireg rd) 0b1000 \<noteq> 0) \<comment> \<open> B \<close>
+      ) in
+    let (op:: u8) = 0x29 in
+    let (rop::u8) = construct_modsib_to_u8 0b11 (u8_of_ireg r1) (u8_of_ireg rd) in
+      [ rex, op, rop ] |
+    \<comment> \<open> P2884 `OR qwordregister1 to qwordregister2` -> ` 0100 1R0B : 0000 1001 : 11 reg1 reg2` \<close>
+  Porq_rr rd r1  \<Rightarrow> 
+     let (rex:: u8) = (construct_rex_to_u8  \<comment> \<open> `1R0B` \<close>
+      True \<comment> \<open> W \<close>
+      (and (u8_of_ireg r1) 0b1000 \<noteq> 0) \<comment> \<open> R \<close>
+      False \<comment> \<open> X \<close>
+      (and (u8_of_ireg rd) 0b1000 \<noteq> 0) \<comment> \<open> B \<close>
+      ) in
+    let (op:: u8) = 0x09 in
+    let (rop::u8) = construct_modsib_to_u8 0b11 (u8_of_ireg r1) (u8_of_ireg rd) in
+      [ rex, op, rop] |
+   \<comment> \<open> P2876 `AND qwordregister1 to qwordregister2` -> ` 0100 1R0B : 0010 0001 : 11 reg1 reg2` \<close>
+  Pandq_rr rd r1  \<Rightarrow> 
+     let (rex:: u8) = (construct_rex_to_u8  \<comment> \<open> `1R0B` \<close>
+      True \<comment> \<open> W \<close>
+      (and (u8_of_ireg r1) 0b1000 \<noteq> 0) \<comment> \<open> R \<close>
+      False \<comment> \<open> X \<close>
+      (and (u8_of_ireg rd) 0b1000 \<noteq> 0) \<comment> \<open> B \<close>
+      ) in
+    let (op:: u8) = 0x21 in
+    let (rop::u8) = construct_modsib_to_u8 0b11 (u8_of_ireg r1) (u8_of_ireg rd) in
+      [ rex, op, rop] |
+   \<comment> \<open> P2893 `XOR qwordregister1 to qwordregister2` -> ` 0100 1R0B : 0011 0001 : 11 reg1 reg2` \<close>
+  Pxorq_rr rd r1  \<Rightarrow> 
+     let (rex:: u8) = (construct_rex_to_u8  \<comment> \<open> `1R0B` \<close>
+      True \<comment> \<open> W \<close>
+      (and (u8_of_ireg r1) 0b1000 \<noteq> 0) \<comment> \<open> R \<close>
+      False \<comment> \<open> X \<close>
+      (and (u8_of_ireg rd) 0b1000 \<noteq> 0) \<comment> \<open> B \<close>
+      ) in
+    let (op:: u8) = 0x31 in
+    let (rop::u8) = construct_modsib_to_u8 0b11 (u8_of_ireg r1) (u8_of_ireg rd) in
+      [ rex, op, rop] |
   Pret \<Rightarrow>
     [0xc3] |
   \<comment> \<open> P2884 `MUL RAX with qwordregister (to RDX:RAX)` -> ` 0100 100B : 1111 0111 : 11 100 qowrdreg` \<close>
