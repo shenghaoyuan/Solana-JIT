@@ -23,9 +23,9 @@ fun undef_regs :: "preg list \<Rightarrow> regset \<Rightarrow> regset" where
 "undef_regs [] rs = rs" |
 "undef_regs (r#l') rs = undef_regs l' (rs#r <- 0)"
 
-datatype outcome = Next u64 regset mem stack_state | Stuck
+datatype outcome = Next nat regset mem stack_state | Stuck
 
-definition exec_pop :: "usize \<Rightarrow> u64 \<Rightarrow> memory_chunk \<Rightarrow> mem \<Rightarrow> stack_state \<Rightarrow> regset \<Rightarrow> ireg \<Rightarrow> outcome" where
+definition exec_pop :: "nat \<Rightarrow> nat \<Rightarrow> memory_chunk \<Rightarrow> mem \<Rightarrow> stack_state \<Rightarrow> regset \<Rightarrow> ireg \<Rightarrow> outcome" where
 "exec_pop pc sz chunk m ss rs rd = (
   let nsp = (rs (IR SP)) + (u64_of_memory_chunk chunk) in
     let addr = (rs (IR SP)) in
@@ -37,7 +37,7 @@ definition exec_pop :: "usize \<Rightarrow> u64 \<Rightarrow> memory_chunk \<Rig
                      _ \<Rightarrow> Stuck)
 )"
 
-definition exec_push :: "usize \<Rightarrow> u64 \<Rightarrow> memory_chunk \<Rightarrow> mem \<Rightarrow> stack_state \<Rightarrow> regset \<Rightarrow> usize \<Rightarrow> outcome" where
+definition exec_push :: "nat \<Rightarrow> nat \<Rightarrow> memory_chunk \<Rightarrow> mem \<Rightarrow> stack_state \<Rightarrow> regset \<Rightarrow> usize \<Rightarrow> outcome" where
 "exec_push pc sz chunk m ss rs v = ( 
   let nsp = (rs (IR SP)) - (u64_of_memory_chunk chunk) in
       case Mem.storev chunk m (Vptr sp_block nsp) (Vlong v) of
@@ -85,7 +85,7 @@ definition eval_addrmode64 :: "addrmode \<Rightarrow> regset \<Rightarrow> u64" 
     + (scast const)) 
 )"
 
-definition exec_load :: "usize \<Rightarrow> u64 \<Rightarrow> memory_chunk \<Rightarrow> mem \<Rightarrow> stack_state \<Rightarrow> addrmode \<Rightarrow> regset \<Rightarrow> preg \<Rightarrow> outcome" where
+definition exec_load :: "nat \<Rightarrow> nat \<Rightarrow> memory_chunk \<Rightarrow> mem \<Rightarrow> stack_state \<Rightarrow> addrmode \<Rightarrow> regset \<Rightarrow> preg \<Rightarrow> outcome" where
 "exec_load pc sz chunk m ss a rs rd = (
   let addr =  eval_addrmode64 a rs in
     case Mem.loadv chunk m (Vlong addr) of
@@ -96,7 +96,7 @@ definition exec_load :: "usize \<Rightarrow> u64 \<Rightarrow> memory_chunk \<Ri
 )"
 
 (*preg list?*)
-definition exec_store :: "usize \<Rightarrow> u64 \<Rightarrow> memory_chunk \<Rightarrow> mem \<Rightarrow> stack_state \<Rightarrow> addrmode \<Rightarrow> regset \<Rightarrow> preg \<Rightarrow> outcome" where
+definition exec_store :: "nat \<Rightarrow> nat \<Rightarrow> memory_chunk \<Rightarrow> mem \<Rightarrow> stack_state \<Rightarrow> addrmode \<Rightarrow> regset \<Rightarrow> preg \<Rightarrow> outcome" where
 "exec_store pc sz chunk m ss a rs r1 = (
   let addr =  eval_addrmode64 a rs in (
     case Mem.storev chunk m (Vlong addr) (Vlong (rs r1)) of
@@ -115,13 +115,13 @@ definition exec_call :: "usize \<Rightarrow> u64 \<Rightarrow> memory_chunk \<Ri
 ))"*)
 
 
-definition exec_call :: "usize \<Rightarrow> u64 \<Rightarrow> memory_chunk \<Rightarrow> mem \<Rightarrow> stack_state \<Rightarrow> regset \<Rightarrow> u32 \<Rightarrow> outcome" where
+definition exec_call :: "nat \<Rightarrow> nat \<Rightarrow> memory_chunk \<Rightarrow> mem \<Rightarrow> stack_state \<Rightarrow> regset \<Rightarrow> u32 \<Rightarrow> outcome" where
 "exec_call pc sz chunk m ss rs n = (
   let nsp = (rs (IR SP))-(u64_of_memory_chunk chunk) in (
       case Mem.storev M64 m (Vptr sp_block nsp) (Vlong (ucast n)) of
         None \<Rightarrow> Stuck |
         Some m' \<Rightarrow> let rs1 = rs#(IR SP) <- nsp in
-                    Next (ucast n) rs1 m' ss
+                    Next (unat n) rs1 m' ss
 ))"
 
 definition exec_ret :: "memory_chunk \<Rightarrow> mem \<Rightarrow> stack_state \<Rightarrow> regset \<Rightarrow> outcome" where
@@ -132,7 +132,7 @@ definition exec_ret :: "memory_chunk \<Rightarrow> mem \<Rightarrow> stack_state
     Some ra \<Rightarrow> (
       case ra of
       Vlong v \<Rightarrow> let rs1 = rs#(IR SP) <- nsp in
-                  Next v rs1 m ss |
+                  Next (unat v) rs1 m ss |
       _ \<Rightarrow> Stuck)
 )"
 
@@ -177,7 +177,7 @@ definition eval_testcond :: "testcond \<Rightarrow> regset \<Rightarrow> bool op
 )"*)
 
 (*Pjmp       d    \<Rightarrow> Next (scast d) rs m*)
-definition exec_instr :: "instruction \<Rightarrow> u64 \<Rightarrow> u64 \<Rightarrow> regset \<Rightarrow> mem \<Rightarrow> stack_state \<Rightarrow> outcome" where
+definition exec_instr :: "instruction \<Rightarrow> nat \<Rightarrow> nat \<Rightarrow> regset \<Rightarrow> mem \<Rightarrow> stack_state \<Rightarrow> outcome" where
 "exec_instr i sz pc rs m ss = (\<comment> \<open> sz is the binary size (n-byte) of current instruction  \<close>
   case i of
   Paddq_rr  rd r1 \<Rightarrow> Next (pc + sz) ((rs#(IR rd) <- (rs (IR rd) + rs (IR r1)))) m ss |
@@ -192,7 +192,7 @@ definition exec_instr :: "instruction \<Rightarrow> u64 \<Rightarrow> u64 \<Righ
   Pmulq_r   r1    \<Rightarrow> let rs1 = rs#(IR RAX) <- ((rs (IR RAX))*(rs (IR r1))) in
                      Next (pc + sz) (rs1#(IR RDX) <-( (rs (IR RAX))*(rs (IR r1)) div (2 ^ 32))) m ss|
   Pjcc      t d    \<Rightarrow> (case eval_testcond t rs of Some b \<Rightarrow> 
-                          if b then Next (scast d) rs m ss
+                          if b then Next (unat d) rs m ss
                           else Next (pc+sz) rs m ss | 
                         None \<Rightarrow> Stuck) |
   Pcmpq_rr rd r1 \<Rightarrow> Next (pc+sz)(compare_longs (rs (IR r1)) (rs (IR rd)) rs) m ss |
@@ -213,10 +213,10 @@ fun x64_sem :: "nat \<Rightarrow> x64_bin \<Rightarrow> outcome \<Rightarrow> ou
 "x64_sem 0 _ st = st" |
 "x64_sem (Suc n) l Stuck = Stuck"|
 "x64_sem (Suc n) l (Next pc rs m ss) = (
-  case x64_decode (unat pc) l of
+  case x64_decode pc l of
   None \<Rightarrow> Stuck |
   Some (sz, ins) \<Rightarrow>
-    x64_sem n l (exec_instr ins (of_nat sz) pc rs m ss)
+    x64_sem n l (exec_instr ins sz pc rs m ss)
 )"
 
 lemma x64_sem_add_stuck : 
@@ -238,12 +238,12 @@ lemma x64_sem_add:
   subgoal by simp
   subgoal for m n x64_prog xst xst' pc rs ms ss
     apply simp
-    apply (cases "x64_decode (unat pc) x64_prog"; simp)
+    apply (cases "x64_decode pc x64_prog"; simp)
     subgoal by (cases n; simp)
     subgoal for ins1
       apply (cases ins1; simp)
       subgoal for sz ins
-        apply (cases "(exec_instr ins (word_of_nat sz) pc rs ms ss)"; simp)
+        apply (cases "(exec_instr ins sz pc rs ms ss)"; simp)
         apply (erule x64_sem_add_stuck)
         done
       done
