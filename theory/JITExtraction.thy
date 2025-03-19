@@ -17,7 +17,9 @@ fun list_embedd_in_list :: "u8 list \<Rightarrow> u8 list \<Rightarrow> (u8 list
 "list_embedd_in_list [] l = Some l" |
 "list_embedd_in_list (x#xs) [] = None" |
 "list_embedd_in_list (x#xs) (y#ys) = (
-  if x = y then
+  if x = 0 then
+   list_embedd_in_list xs (y#ys)
+  else if x = y then
     list_embedd_in_list xs ys
   else
     list_embedd_in_list (x#xs) ys
@@ -52,5 +54,9 @@ definition jit_evaluation :: "int list \<Rightarrow> int list \<Rightarrow> bool
         let l_bin = map (\<lambda> x. snd (snd x)) l_bin3 in
           dlist_embedd_in_list l_bin jit_prog
 ))"
+
+
+export_code jit_evaluation in OCaml
+  module_name Jit_eval file_prefix jit_eval
 
 end
