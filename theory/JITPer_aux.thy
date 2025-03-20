@@ -187,32 +187,50 @@ definition per_jit_shift_lsh_reg64 :: "bpf_ireg \<Rightarrow> bpf_ireg \<Rightar
 
 definition per_jit_shift_rsh_reg64 :: "bpf_ireg \<Rightarrow> bpf_ireg \<Rightarrow> (nat \<times> u64 \<times> x64_bin) option" where
 "per_jit_shift_rsh_reg64 dst src = (
-  let cond1 = ((bpf_to_x64_reg dst) = RCX); 
-    len = case (bpf_to_x64_reg dst) of 
-        RCX \<Rightarrow> 5 |
-          _ \<Rightarrow> 4; 
+  let len = 
+  (case (bpf_to_x64_reg dst) of 
+     RCX \<Rightarrow> (case (bpf_to_x64_reg src) of 
+               RCX \<Rightarrow> 1
+             | _   \<Rightarrow> 5)
+   | _   \<Rightarrow> 4);
     l_bin = 
-      case (bpf_to_x64_reg dst) of 
-        RCX \<Rightarrow> x64_encode(Ppushl_r (bpf_to_x64_reg src))@ x64_encode(Pxchgq_rr (bpf_to_x64_reg dst) (bpf_to_x64_reg src))@
-        x64_encode(Pshrq_r (bpf_to_x64_reg src))@x64_encode(Pmovq_rr (x64Syntax.RCX) (bpf_to_x64_reg src) )@ x64_encode(Ppopl (bpf_to_x64_reg src)) |               
-      _ \<Rightarrow> x64_encode(Ppushl_r x64Syntax.RCX)@x64_encode(Pmovq_rr (x64Syntax.RCX) (bpf_to_x64_reg src))@
-        x64_encode(Pshrq_r (bpf_to_x64_reg dst))@x64_encode(Ppopl x64Syntax.RCX)   
-    in Some (len, 0, l_bin)
+  (case (bpf_to_x64_reg dst) of 
+     RCX \<Rightarrow> (case (bpf_to_x64_reg src) of 
+              RCX \<Rightarrow> x64_encode (Pshrq_r (bpf_to_x64_reg src))
+            | _   \<Rightarrow> x64_encode (Ppushl_r (bpf_to_x64_reg src)) @
+                    x64_encode (Pxchgq_rr (bpf_to_x64_reg dst) (bpf_to_x64_reg src)) @
+                    x64_encode (Pshrq_r (bpf_to_x64_reg src)) @
+                    x64_encode (Pmovq_rr x64Syntax.RCX (bpf_to_x64_reg src)) @
+                    x64_encode (Ppopl (bpf_to_x64_reg src)))
+   | _   \<Rightarrow> x64_encode (Ppushl_r x64Syntax.RCX) @
+           x64_encode (Pmovq_rr x64Syntax.RCX (bpf_to_x64_reg src)) @
+           x64_encode (Pshrq_r (bpf_to_x64_reg dst)) @
+           x64_encode (Ppopl x64Syntax.RCX))
+    in Some (len, 0, l_bin)  
 )"
 
 definition per_jit_shift_arsh_reg64 :: "bpf_ireg \<Rightarrow> bpf_ireg \<Rightarrow> (nat \<times> u64 \<times> x64_bin) option" where
 "per_jit_shift_arsh_reg64 dst src = (
-  let cond1 = ((bpf_to_x64_reg dst) = RCX); 
-    len = case (bpf_to_x64_reg dst) of 
-        RCX \<Rightarrow> 5 |
-          _ \<Rightarrow> 4; 
+  let len = 
+  (case (bpf_to_x64_reg dst) of 
+     RCX \<Rightarrow> (case (bpf_to_x64_reg src) of 
+               RCX \<Rightarrow> 1
+             | _   \<Rightarrow> 5)
+   | _   \<Rightarrow> 4);
     l_bin = 
-      case (bpf_to_x64_reg dst) of 
-        RCX \<Rightarrow> x64_encode(Ppushl_r (bpf_to_x64_reg src))@ x64_encode(Pxchgq_rr (bpf_to_x64_reg dst) (bpf_to_x64_reg src))@
-        x64_encode(Psarq_r (bpf_to_x64_reg src))@x64_encode(Pmovq_rr (x64Syntax.RCX) (bpf_to_x64_reg src) )@ x64_encode(Ppopl (bpf_to_x64_reg src)) |               
-      _ \<Rightarrow> x64_encode(Ppushl_r x64Syntax.RCX)@x64_encode(Pmovq_rr (x64Syntax.RCX) (bpf_to_x64_reg src))@
-        x64_encode(Psarq_r (bpf_to_x64_reg dst))@x64_encode(Ppopl x64Syntax.RCX)   
-    in Some (len, 0, l_bin)
+  (case (bpf_to_x64_reg dst) of 
+     RCX \<Rightarrow> (case (bpf_to_x64_reg src) of 
+              RCX \<Rightarrow> x64_encode (Psarq_r (bpf_to_x64_reg src))
+            | _   \<Rightarrow> x64_encode (Ppushl_r (bpf_to_x64_reg src)) @
+                    x64_encode (Pxchgq_rr (bpf_to_x64_reg dst) (bpf_to_x64_reg src)) @
+                    x64_encode (Psarq_r (bpf_to_x64_reg src)) @
+                    x64_encode (Pmovq_rr x64Syntax.RCX (bpf_to_x64_reg src)) @
+                    x64_encode (Ppopl (bpf_to_x64_reg src)))
+   | _   \<Rightarrow> x64_encode (Ppushl_r x64Syntax.RCX) @
+           x64_encode (Pmovq_rr x64Syntax.RCX (bpf_to_x64_reg src)) @
+           x64_encode (Psarq_r (bpf_to_x64_reg dst)) @
+           x64_encode (Ppopl x64Syntax.RCX))
+    in Some (len, 0, l_bin)    
 )"
 
 definition per_jit_load_reg64 :: "bpf_ireg \<Rightarrow> bpf_ireg \<Rightarrow> memory_chunk \<Rightarrow> off_ty \<Rightarrow> (nat \<times> u64 \<times> x64_bin) option" where

@@ -203,8 +203,9 @@ definition exec_instr :: "instruction \<Rightarrow> nat \<Rightarrow> nat \<Righ
                        Next (pc + sz) (rs1#(IR r1)<- tmp) m ss |
   Pshlq_r   rd    \<Rightarrow> Next (pc + sz) (rs#(IR rd) <- ((rs (IR rd))<< (unat (and ( (ucast (rs(IR RCX)))::u32) (63::u32))))) m ss |
   Pshrq_r   rd    \<Rightarrow> Next (pc + sz) (rs#(IR rd) <- ((rs (IR rd))>> (unat (and ( (ucast (rs(IR RCX)))::u32) (63::u32))))) m ss |
-  Psarq_r   rd    \<Rightarrow> Next (pc + sz) (rs#(IR rd) <- (ucast (((scast (rs (IR rd)))::i64) >> (unat (and ( (ucast (rs(IR RCX)))::u32) (63::u32)))))) m ss |
-  Pmov_rm  rd a c \<Rightarrow> exec_store pc sz c m ss a rs (IR rd) |
+  Psarq_r   rd    \<Rightarrow> Next (pc + sz) (rs#(IR rd) <- (ucast (arsh64 ((scast (rs (IR rd)))::i64) (unat (and ( (ucast (rs(IR RCX)))::u32) (63::u32)))))) m ss |
+\<comment> \<open>TODO  Psarq_r   rd    \<Rightarrow> Next (pc + sz) (rs#(IR rd) <- (ucast (((scast (rs (IR rd)))::i64) >> (unat (and ( (ucast (rs(IR RCX)))::u32) (63::u32)))))) m ss | \<close>
+ Pmov_rm  rd a c \<Rightarrow> exec_store pc sz c m ss a rs (IR rd) |
   Pcall_i   n   \<Rightarrow> exec_call pc sz M64 m ss rs n
 )"
 (*Pcall_r   r1    \<Rightarrow> exec_call pc sz M64 m ss rs (IR r1)*)
