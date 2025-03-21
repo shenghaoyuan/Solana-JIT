@@ -81,6 +81,7 @@ definition eval_alu :: "binop \<Rightarrow> dst_ty \<Rightarrow> snd_op \<Righta
   case bop of
   BPF_ADD   \<Rightarrow> Some (rs#dst <-- (dv+sv)) |
   BPF_SUB   \<Rightarrow> Some (rs#dst <-- (dv-sv)) |
+  BPF_MOV   \<Rightarrow> Some (rs#dst <-- (sv)) |
   BPF_OR  \<Rightarrow> Some (rs#dst <-- (or dv sv)) |
   BPF_AND  \<Rightarrow> Some (rs#dst <-- (and dv sv)) |
   BPF_XOR  \<Rightarrow> Some (rs#dst <-- (xor dv sv)) |

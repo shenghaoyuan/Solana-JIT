@@ -59,7 +59,7 @@ proof -
   have b8:"match_stack reg' " using a6 match_state_def a5 b0 apply (simp add: exec_instr_def compare_longs_def) by(simp add:match_stack_def)
   have b9:"match_mem m' xm'" using match_state_def a6 a5 b0 apply (simp add: exec_instr_def) 
     using a4 mem_is_not_changed_by_jump
-    by (metis a0 a7 bpf_instruction.distinct(63))
+    by (metis a0 a7 )
   have "ss=xss" using match_state_def a6 by simp 
   moreover have "ss' = ss" using a0 a4 a7 apply(cases "prog!(unat pc)",simp_all) subgoal for x161
       by (smt (z3) bpf_instruction.simps(376) sbpf_state.inject(1) sbpf_state.simps(6) snd_op.simps(6)) 

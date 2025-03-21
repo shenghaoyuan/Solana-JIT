@@ -129,7 +129,6 @@ shows "\<exists> xst'. x64_sem1 1 x64_prog (pc,xst) = (pc',xst') \<and>
         apply (subgoal_tac "Suc 5 = (6::nat)") prefer 2 subgoal by simp
         apply (erule subst)
         apply (simp only: x64_sem.simps)
-        apply simp
 (* 3.1.1 using consistency to get x64 assembly *)
         apply (subgoal_tac "x64_decode (0::nat)
             (x64_encode (Pmovq_rr REG_SCRATCH (bpf_to_x64_reg src)) @
@@ -151,7 +150,6 @@ shows "\<exists> xst'. x64_sem1 1 x64_prog (pc,xst) = (pc',xst') \<and>
         apply (subgoal_tac "Suc 4 = (5::nat)") prefer 2 subgoal by simp
         apply (erule subst)
         apply (simp only: x64_sem.simps)
-        apply simp
         apply (subgoal_tac "x64_decode (3::nat)
             (x64_encode (Pmovq_rr REG_SCRATCH (bpf_to_x64_reg src)) @
              x64_encode (Ppushl_r RAX) @ x64_encode (Pmovq_rr RAX RDX) @ x64_encode (Pmulq_r REG_SCRATCH) @ x64_encode (Pmovq_rr RDX RAX) @ x64_encode (Ppopl RAX))
@@ -206,7 +204,6 @@ shows "\<exists> xst'. x64_sem1 1 x64_prog (pc,xst) = (pc',xst') \<and>
         apply (subgoal_tac "Suc 2 = (3::nat)") prefer 2 subgoal by simp
         apply (erule_tac subst [of _ 3])
         apply (simp only: x64_sem.simps)
-        apply simp
 (* using consistency to get x64 assembly *)
         apply (subgoal_tac "x64_decode (7::nat)
             (x64_encode (Pmovq_rr REG_SCRATCH (bpf_to_x64_reg src)) @
@@ -232,7 +229,6 @@ shows "\<exists> xst'. x64_sem1 1 x64_prog (pc,xst) = (pc',xst') \<and>
         apply (subgoal_tac "Suc 1 = (2::nat)") prefer 2 subgoal by simp
         apply (erule_tac subst [of _ 2])
         apply (simp only: x64_sem.simps)
-        apply simp
 (* using consistency to get x64 assembly *)
         apply (subgoal_tac "x64_decode (10::nat)
             (x64_encode (Pmovq_rr REG_SCRATCH (bpf_to_x64_reg src)) @

@@ -128,7 +128,7 @@ shows "\<exists> xst'. x64_sem1 1 x64_prog (pc,xst) = (pc',xst') \<and>
         apply (subgoal_tac "Suc 3 = (4::nat)") prefer 2 subgoal by simp
         apply (erule subst)
         apply (simp only: x64_sem.simps)
-        apply simp
+
 (* 3.1.1 using consistency to get x64 assembly *)
         apply (subgoal_tac "x64_decode (0::nat)
             (x64_encode (Pmovq_rr R11 (bpf_to_x64_reg src))@(x64_encode (Ppushl_r RDX)) @ (x64_encode (Pmulq_r R11)) @ (x64_encode (Ppopl RDX)))
@@ -177,7 +177,6 @@ shows "\<exists> xst'. x64_sem1 1 x64_prog (pc,xst) = (pc',xst') \<and>
         apply (subgoal_tac "Suc 1 = (2::nat)") prefer 2 subgoal by simp
         apply (erule_tac subst [of _ 2])
         apply (simp only: x64_sem.simps)
-        apply simp
 (* using consistency to get x64 assembly *)
         apply (subgoal_tac "x64_decode (4::nat)
             (x64_encode (Pmovq_rr R11 (bpf_to_x64_reg src))@(x64_encode (Ppushl_r RDX)) @ (x64_encode (Pmulq_r R11)) @ (x64_encode (Ppopl RDX)))

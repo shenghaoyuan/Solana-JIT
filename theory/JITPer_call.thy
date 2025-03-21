@@ -54,7 +54,7 @@ lemma call_reg_subgoal_aux3:"s' = sbpf_step prog s \<Longrightarrow> s = (SBPF_O
       apply(unfold eval_call_imm_def push_frame_def Let_def,simp_all)
       apply(cases "update_stack [eval_reg BR6 rs, eval_reg BR7 rs, eval_reg BR8 rs, eval_reg BR9 rs] (eval_reg BR10 rs) (pc + (1::64 word)) ss",simp_all)
       apply(unfold update_stack_def Let_def eval_reg_def, simp_all)
-        by (metis option.discI option.inject)
+        by (metis option.discI)
       done
     done
 
