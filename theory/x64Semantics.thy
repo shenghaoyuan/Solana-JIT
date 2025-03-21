@@ -189,7 +189,7 @@ definition exec_instr :: "instruction \<Rightarrow> nat \<Rightarrow> nat \<Righ
   Ppopl     rd    \<Rightarrow> exec_pop pc sz M64 m ss rs rd |
   Ppushl_r  r1    \<Rightarrow> exec_push pc sz M64 m ss rs (rs (IR r1)) |
   Pmovq_rr rd r1  \<Rightarrow> Next (pc + sz) (rs#(IR rd) <- (rs (IR r1))) m ss|
-  Pmulq_r   r1    \<Rightarrow> let rs1 = rs#(IR RAX) <- ((rs (IR RAX))*(rs (IR r1))) in
+  Pimulq_r   r1    \<Rightarrow> let rs1 = rs#(IR RAX) <- ((rs (IR RAX))*(rs (IR r1))) in
                      Next (pc + sz) (rs1#(IR RDX) <-( (rs (IR RAX))*(rs (IR r1)) div (2 ^ 32))) m ss|
   Pjcc      t d    \<Rightarrow> (case eval_testcond t rs of Some b \<Rightarrow> 
                           if b then Next (unat d) rs m ss

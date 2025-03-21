@@ -60,7 +60,7 @@ lemma mulq_one_step_match_stack:
   by (simp add: match_state_def match_stack_def eval_alu_def eval_reg_def)
 
 
-lemma encode_aux:"(x64_encode (Pmovq_rr R11 (bpf_to_x64_reg src))@(x64_encode (Ppushl_r RDX)) @ (x64_encode (Pmulq_r R11)) @ (x64_encode (Ppopl RDX)))!0 \<notin> {0xc3, 0xe8}"
+lemma encode_aux:"(x64_encode (Pmovq_rr R11 (bpf_to_x64_reg src))@(x64_encode (Ppushl_r RDX)) @ (x64_encode (Pimulq_r R11)) @ (x64_encode (Ppopl RDX)))!0 \<notin> {0xc3, 0xe8}"
  subgoal apply(unfold per_jit_mul_reg64_def x64_encode_def)
    apply(unfold construct_rex_to_u8_def bitfield_insert_u8_def Let_def u8_of_bool_def,simp_all)
    apply(cases "and (u8_of_ireg (bpf_to_x64_reg src)) (8::8 word)",simp_all)
@@ -111,12 +111,12 @@ shows "\<exists> xst'. x64_sem1 1 x64_prog (pc,xst) = (pc',xst') \<and>
     subgoal
       using a5 a6 a8 aux5 per_jit_ins_def by fastforce
     subgoal
-      apply (subgoal_tac "the (per_jit_mul_reg64 dst src) = (4, 0, (x64_encode (Pmovq_rr R11 (bpf_to_x64_reg src))@(x64_encode (Ppushl_r RDX)) @ (x64_encode (Pmulq_r R11)) @ (x64_encode (Ppopl RDX))))")
+      apply (subgoal_tac "the (per_jit_mul_reg64 dst src) = (4, 0, (x64_encode (Pmovq_rr R11 (bpf_to_x64_reg src))@(x64_encode (Ppushl_r RDX)) @ (x64_encode (Pimulq_r R11)) @ (x64_encode (Ppopl RDX))))")
        prefer 2
       subgoal using per_jit_mul_reg64_def a9 by simp
-      apply(subgoal_tac "(x64_encode (Pmovq_rr R11 (bpf_to_x64_reg src))@(x64_encode (Ppushl_r RDX)) @ (x64_encode (Pmulq_r R11)) @ (x64_encode (Ppopl RDX)))!1 \<noteq> 0x39")
+      apply(subgoal_tac "(x64_encode (Pmovq_rr R11 (bpf_to_x64_reg src))@(x64_encode (Ppushl_r RDX)) @ (x64_encode (Pimulq_r R11)) @ (x64_encode (Ppopl RDX)))!1 \<noteq> 0x39")
        prefer 2 subgoal using per_jit_mul_reg64_def x64_encode_def by auto
-      apply(subgoal_tac "(x64_encode (Pmovq_rr R11 (bpf_to_x64_reg src))@(x64_encode (Ppushl_r RDX)) @ (x64_encode (Pmulq_r R11)) @ (x64_encode (Ppopl RDX)))!0 \<notin> {0xc3, 0xe8}")
+      apply(subgoal_tac "(x64_encode (Pmovq_rr R11 (bpf_to_x64_reg src))@(x64_encode (Ppushl_r RDX)) @ (x64_encode (Pimulq_r R11)) @ (x64_encode (Ppopl RDX)))!0 \<notin> {0xc3, 0xe8}")
       prefer 2 using encode_aux apply simp
       subgoal
         unfolding a3
@@ -131,7 +131,7 @@ shows "\<exists> xst'. x64_sem1 1 x64_prog (pc,xst) = (pc',xst') \<and>
 
 (* 3.1.1 using consistency to get x64 assembly *)
         apply (subgoal_tac "x64_decode (0::nat)
-            (x64_encode (Pmovq_rr R11 (bpf_to_x64_reg src))@(x64_encode (Ppushl_r RDX)) @ (x64_encode (Pmulq_r R11)) @ (x64_encode (Ppopl RDX)))
+            (x64_encode (Pmovq_rr R11 (bpf_to_x64_reg src))@(x64_encode (Ppushl_r RDX)) @ (x64_encode (Pimulq_r R11)) @ (x64_encode (Ppopl RDX)))
             = Some (3, Pmovq_rr REG_SCRATCH (bpf_to_x64_reg src))")
          prefer 2
         subgoal
@@ -151,7 +151,7 @@ shows "\<exists> xst'. x64_sem1 1 x64_prog (pc,xst) = (pc',xst') \<and>
         apply (simp only: x64_sem.simps)
         apply simp
         apply (subgoal_tac "x64_decode (3::nat)
-            (x64_encode (Pmovq_rr R11 (bpf_to_x64_reg src))@(x64_encode (Ppushl_r RDX)) @ (x64_encode (Pmulq_r R11)) @ (x64_encode (Ppopl RDX)))
+            (x64_encode (Pmovq_rr R11 (bpf_to_x64_reg src))@(x64_encode (Ppushl_r RDX)) @ (x64_encode (Pimulq_r R11)) @ (x64_encode (Ppopl RDX)))
             = Some (1, Ppushl_r RDX)")
          prefer 2
 (* this is necessary for later list_in_list_prop_aux2 *)
@@ -179,15 +179,15 @@ shows "\<exists> xst'. x64_sem1 1 x64_prog (pc,xst) = (pc',xst') \<and>
         apply (simp only: x64_sem.simps)
 (* using consistency to get x64 assembly *)
         apply (subgoal_tac "x64_decode (4::nat)
-            (x64_encode (Pmovq_rr R11 (bpf_to_x64_reg src))@(x64_encode (Ppushl_r RDX)) @ (x64_encode (Pmulq_r R11)) @ (x64_encode (Ppopl RDX)))
-            = Some (3, Pmulq_r REG_SCRATCH)")
+            (x64_encode (Pmovq_rr R11 (bpf_to_x64_reg src))@(x64_encode (Ppushl_r RDX)) @ (x64_encode (Pimulq_r R11)) @ (x64_encode (Ppopl RDX)))
+            = Some (3, Pimulq_r REG_SCRATCH)")
          prefer 2
 (* this is necessary for later list_in_list_prop_aux2 *)
         apply (subgoal_tac "length ((x64_encode (Pmovq_rr REG_SCRATCH (bpf_to_x64_reg src)) @
              x64_encode (Ppushl_r RDX))) = 4")
          prefer 2 subgoal using x64_encode_def construct_rex_to_u8_def bitfield_insert_u8_def Let_def by simp
         subgoal
-          apply (rule_tac l_bin = "x64_encode (Pmulq_r REG_SCRATCH)" in x64_encode_decode_consistency)
+          apply (rule_tac l_bin = "x64_encode (Pimulq_r REG_SCRATCH)" in x64_encode_decode_consistency)
           subgoal using list_in_list_prop_aux2
             by (metis append_assoc)
           subgoal by simp
@@ -195,7 +195,7 @@ shows "\<exists> xst'. x64_sem1 1 x64_prog (pc,xst) = (pc',xst') \<and>
             by fastforce
           done
         apply simp
-        apply (erule subst [of _ "Some (3::nat, Pmulq_r REG_SCRATCH)"])
+        apply (erule subst [of _ "Some (3::nat, Pimulq_r REG_SCRATCH)"])
 
 
         apply (simp add: exec_instr_def)
@@ -205,12 +205,12 @@ shows "\<exists> xst'. x64_sem1 1 x64_prog (pc,xst) = (pc',xst') \<and>
         apply (simp only: x64_sem.simps)
 (* using consistency to get x64 assembly *)
         apply (subgoal_tac "x64_decode (7::nat)
-             (x64_encode (Pmovq_rr R11 (bpf_to_x64_reg src))@(x64_encode (Ppushl_r RDX)) @ (x64_encode (Pmulq_r R11)) @ (x64_encode (Ppopl RDX)))
+             (x64_encode (Pmovq_rr R11 (bpf_to_x64_reg src))@(x64_encode (Ppushl_r RDX)) @ (x64_encode (Pimulq_r R11)) @ (x64_encode (Ppopl RDX)))
             = Some (1, Ppopl RDX)")
          prefer 2
 (* this is necessary for later list_in_list_prop_aux2 *)
         apply (subgoal_tac "length ((x64_encode (Pmovq_rr REG_SCRATCH (bpf_to_x64_reg src)) @
-             x64_encode (Ppushl_r RDX) @ x64_encode (Pmulq_r REG_SCRATCH))) = 7")
+             x64_encode (Ppushl_r RDX) @ x64_encode (Pimulq_r REG_SCRATCH))) = 7")
          prefer 2 subgoal using x64_encode_def construct_rex_to_u8_def bitfield_insert_u8_def Let_def by simp
         subgoal
           apply (rule_tac l_bin = "x64_encode (Ppopl RDX)" in x64_encode_decode_consistency)

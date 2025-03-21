@@ -93,7 +93,7 @@ definition x64_decode :: "nat \<Rightarrow> x64_bin \<Rightarrow> (nat * instruc
            if modrm = 0b11 \<and> reg1 = 0b100 then 
               case ireg_of_u8 dst of None \<Rightarrow> None | Some dst \<Rightarrow> (
               if w = 1 \<and> r = 0 \<and> x = 0 then 
-                Some (3, Pmulq_r dst) 
+                Some (3, Pimulq_r dst) 
               else None)
            else None
       else if op = 0x39 then

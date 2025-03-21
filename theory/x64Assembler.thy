@@ -62,7 +62,7 @@ Paddq_rr rd r1 \<Rightarrow>
       [ rex, op, rop] |
   Pret \<Rightarrow>
     [0xc3] |
-  \<comment> \<open> P2884 `MUL RAX with qwordregister (to RDX:RAX)` -> ` 0100 100B : 1111 0111 : 11 100 qowrdreg` \<close>
+  \<comment> \<open> P2884 `MUL RAX with qwordregister (to RDX:RAX)` -> ` 0100 100B : 1111 0111 : 11 100 qowrdreg` 
   Pmulq_r r1 \<Rightarrow>
     let (rex:: u8) = (construct_rex_to_u8  \<comment> \<open> `100B` \<close>
       True \<comment> \<open> W \<close>
@@ -72,6 +72,16 @@ Paddq_rr rd r1 \<Rightarrow>
       ) in
     let (op:: u8) = 0xf7 in
     let (rop::u8) = construct_modsib_to_u8 0b11 0b100 (u8_of_ireg r1) in
+      [ rex, op, rop] |\<close>
+  Pimulq_r r1 \<Rightarrow>
+    let (rex:: u8) = (construct_rex_to_u8  \<comment> \<open> `100B` \<close>
+      True \<comment> \<open> W \<close>
+      False \<comment> \<open> R \<close>
+      False \<comment> \<open> X \<close>
+      (and (u8_of_ireg r1) 0b1000 \<noteq> 0) \<comment> \<open> B \<close>
+      ) in
+    let (op:: u8) = 0xf7 in
+    let (rop::u8) = construct_modsib_to_u8 0b11 0b101 (u8_of_ireg r1) in
       [ rex, op, rop] |
    \<comment> \<open> P2882 `MOV immediate64 to qwordregister (alternate encoding)` -> `0100 100B 1011 1reg : imm64` \<close>
   Pmovq_ri rd n \<Rightarrow>

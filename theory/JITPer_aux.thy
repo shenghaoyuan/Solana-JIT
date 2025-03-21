@@ -132,13 +132,13 @@ definition per_jit_exit :: "(nat \<times> u64 \<times> x64_bin) option" where
 definition per_jit_mul_reg64::"bpf_ireg \<Rightarrow> bpf_ireg \<Rightarrow> (nat \<times> u64 \<times> x64_bin) option" where
 "per_jit_mul_reg64 dst src \<equiv> 
   let ins_list = case (bpf_to_x64_reg dst) of 
-      RAX \<Rightarrow> (x64_encode (Pmovq_rr R11 (bpf_to_x64_reg src))@(x64_encode (Ppushl_r RDX)) @ (x64_encode (Pmulq_r R11)) @ (x64_encode (Ppopl RDX))) |
+      RAX \<Rightarrow> (x64_encode (Pmovq_rr R11 (bpf_to_x64_reg src))@(x64_encode (Ppushl_r RDX)) @ (x64_encode (Pimulq_r R11)) @ (x64_encode (Ppopl RDX))) |
       
       RDX \<Rightarrow> (x64_encode (Pmovq_rr R11 (bpf_to_x64_reg src))@(x64_encode (Ppushl_r RAX)) @ (x64_encode (Pmovq_rr RAX RDX)) 
-                  @ (x64_encode (Pmulq_r R11))@ (x64_encode (Pmovq_rr RDX RAX))@ (x64_encode (Ppopl RAX)))|
+                  @ (x64_encode (Pimulq_r R11))@ (x64_encode (Pmovq_rr RDX RAX))@ (x64_encode (Ppopl RAX)))|
       
       _   \<Rightarrow> (x64_encode(Pmovq_rr R11 (bpf_to_x64_reg src)))@(x64_encode (Ppushl_r RAX)) @ (x64_encode (Pmovq_rr RAX (bpf_to_x64_reg dst)))
-                  @ (x64_encode (Ppushl_r RDX)) @ (x64_encode (Pmulq_r R11)) @ (x64_encode (Ppopl RDX))
+                  @ (x64_encode (Ppushl_r RDX)) @ (x64_encode (Pimulq_r R11)) @ (x64_encode (Ppopl RDX))
                   @ (x64_encode (Pmovq_rr (bpf_to_x64_reg dst) RAX)) @ (x64_encode (Ppopl RAX))
   in let len = case (bpf_to_x64_reg dst) of 
     RAX \<Rightarrow> 4 |
@@ -277,6 +277,14 @@ definition per_jit_ins ::" bpf_instruction \<Rightarrow> (nat \<times> u64 \<tim
   BPF_CALL_IMM src imm \<Rightarrow> (per_jit_call_reg src imm) |
   _ \<Rightarrow> None
 )"
+
+value "per_jit_ins (BPF_ALU64 BPF_MUL BR7 (SOReg BR3))"
+
+value "x64_decode 0  [73, 137, 203, 80, 76, 137, 232, 82, 73, 247, 227, 90, 73, 137, 197, 88]"
+
+value "x64_decode 0  [73, 247, 227, 90, 73, 137, 197, 88]"
+
+value "x64_encode (Pimulq_r R11)"
 
 fun jitper :: "ebpf_asm \<Rightarrow> (nat \<times> u64 \<times> x64_bin) list option" where
   "jitper [] = Some []" |
@@ -814,6 +822,6 @@ lemma match_state_eqiv:"match_state s (pc,Next xpc' xrs' xm' xss') = match_state
   done
 
 (*
-value "(x64_encode (Pmovq_rr R11 RBX)@(x64_encode (Ppushl_r RDX)) @ (x64_encode (Pmulq_r R11)) @ (x64_encode (Ppopl RDX)))"*)
+value "(x64_encode (Pmovq_rr R11 RBX)@(x64_encode (Ppushl_r RDX)) @ (x64_encode (Pimulq_r R11)) @ (x64_encode (Ppopl RDX)))"*)
 (*[1001001,10001001,11011011,1010010,1001001,11110111,11100011,1011010]*)
 end

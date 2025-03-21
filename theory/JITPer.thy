@@ -1,8 +1,9 @@
 section \<open> JIT-Per: translate SBPF assembly to IR1 \<close>
 
 text\<open> IR1 is a list-list binary code:
+
 - each SBPF assembly is mapped a list of binary code
-    where SBPF_JUMP ofs is set to 0 in the target binary 
+  where SBPF_JUMP ofs is set to 0 in the target binary 
 - SBPF assembly and IR1 have the same pc value because JIT-Per is one-by-one 
 
 SBPF: 0: BPF_ADD; 1: BPF_SUB; 2: BPF_EXIT
@@ -20,8 +21,8 @@ imports
   JITPer_exit JITPer_jump
   JITPer_load JITPer_shift
   JITPer_store JITPer_call JITPer_exit
-  JITPer_sub JITPer_and JITPer_xor JITPer_or
-
+  JITPer_sub JITPer_and JITPer_xor JITPer_or JITPer_mov_rr
+  JITPer_shift JITPer_shift_rcx
 begin
 
 
@@ -55,6 +56,7 @@ proof-
   obtain src dst x cond chk off imm where 
     b2:"?bpf_ins = BPF_ALU64 BPF_ADD dst (SOReg src) \<or>  
         ?bpf_ins  = BPF_ALU64 BPF_SUB dst (SOReg src) \<or>
+        ?bpf_ins  = BPF_ALU64 BPF_MOV dst (SOReg src) \<or>
         ?bpf_ins = BPF_ALU64 BPF_XOR dst (SOReg src) \<or>
         ?bpf_ins = BPF_ALU64 BPF_OR dst (SOReg src) \<or>
         ?bpf_ins = BPF_ALU64 BPF_AND dst (SOReg src) \<or>
@@ -91,7 +93,8 @@ proof-
       qed 
     next
     case False
-      have c4:"?bpf_ins = BPF_ALU64 BPF_ADD dst (SOReg src) \<or> 
+    have c4:"?bpf_ins = BPF_ALU64 BPF_ADD dst (SOReg src) \<or> 
+        ?bpf_ins  = BPF_ALU64 BPF_MOV dst (SOReg src) \<or>
         ?bpf_ins = BPF_ALU64 BPF_LSH dst (SOReg src) \<or> 
         ?bpf_ins = BPF_ALU64 BPF_RSH dst (SOReg src) \<or> 
         ?bpf_ins = BPF_ALU64 BPF_ARSH dst (SOReg src) \<or> 
@@ -111,6 +114,7 @@ proof-
         next
         case False
         have c5:"?bpf_ins = BPF_ALU64 BPF_ADD dst (SOReg src) \<or>  
+        ?bpf_ins  = BPF_ALU64 BPF_MOV dst (SOReg src) \<or>
         ?bpf_ins = BPF_ALU64 BPF_LSH dst (SOReg src) \<or> 
         ?bpf_ins = BPF_ALU64 BPF_RSH dst (SOReg src) \<or> 
         ?bpf_ins = BPF_ALU64 BPF_ARSH dst (SOReg src) \<or> 
@@ -138,6 +142,7 @@ proof-
           ?bpf_ins  = BPF_ALU64 BPF_SUB dst (SOReg src) \<or>
           ?bpf_ins = BPF_ALU64 BPF_XOR dst (SOReg src) \<or>
           ?bpf_ins = BPF_ALU64 BPF_OR dst (SOReg src) \<or>
+          ?bpf_ins  = BPF_ALU64 BPF_MOV dst (SOReg src) \<or>
           ?bpf_ins = BPF_ALU64 BPF_AND dst (SOReg src)" using False c5 by simp
           thus ?thesis
           proof(cases "?bpf_ins = BPF_ALU64 BPF_LSH dst (SOReg src)")
@@ -334,7 +339,7 @@ next
     by (metis Suc.prems(3) bot_nat_0.not_eq_extremum intermediate_step_is_ok n_step_def sbpf_sem.simps(1) sbpf_state.simps(6))
   obtain pc1 rs1 m1 ss1 where a2:"s1 = (SBPF_OK pc1 rs1 m1 ss1)" using a1 by auto
   (*have a3:"m1 = m" using s1_eq assm2 a2 sorry*)
-  
+
   have "\<exists> num off l. x64_prog!(unat pc) = (num,off,l)" by (metis split_pairs)
   then obtain num off l where a6:"x64_prog!(unat pc) = (num,off,l)" by auto
   have a7:"l = (snd (snd ((x64_prog!(unat pc)))))" using a6 by simp
@@ -356,7 +361,7 @@ next
            prog \<noteq> [] \<Longrightarrow> 
            x64_sem1 n x64_prog (pc, xst) = xst' \<Longrightarrow> 
            match_state s' xst'" using Suc by blast
-  
+
   have "\<exists> xst''. x64_sem1 n x64_prog (pc1, xst1) = xst''" by blast
   then obtain xst'' where b0:"x64_sem1 n x64_prog (pc1, xst1) = xst''" by auto
   hence b1:"xst' = xst''" 

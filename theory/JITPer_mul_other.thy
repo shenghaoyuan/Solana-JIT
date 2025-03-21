@@ -147,7 +147,7 @@ lemma mul_push_mem_prop : "match_stack xrs \<Longrightarrow>
   using todo_stack_overflow by auto
 
 lemma encode_aux:"(x64_encode (Pmovq_rr R11 (bpf_to_x64_reg src))@(x64_encode (Ppushl_r RAX)) @ (x64_encode (Pmovq_rr RAX (bpf_to_x64_reg dst)))
-         @ (x64_encode (Ppushl_r RDX)) @ (x64_encode (Pmulq_r R11)) @ (x64_encode (Ppopl RDX))
+         @ (x64_encode (Ppushl_r RDX)) @ (x64_encode (Pimulq_r R11)) @ (x64_encode (Ppopl RDX))
          @ (x64_encode (Pmovq_rr (bpf_to_x64_reg dst) RAX)) @ (x64_encode (Ppopl RAX)))!0 \<notin> {0xc3, 0xe8}"
  subgoal apply(unfold per_jit_mul_reg64_def x64_encode_def)
    apply(unfold construct_rex_to_u8_def bitfield_insert_u8_def Let_def u8_of_bool_def,simp_all)
@@ -200,18 +200,18 @@ shows "\<exists> xst'. x64_sem1 1 x64_prog (pc,xst) = (pc',xst') \<and>
       using a5 a6 a8 aux5 per_jit_ins_def by fastforce
     subgoal
       apply (subgoal_tac "the (per_jit_mul_reg64 dst src) = (8, 0, x64_encode (Pmovq_rr R11 (bpf_to_x64_reg src))@(x64_encode (Ppushl_r RAX)) @ (x64_encode (Pmovq_rr RAX (bpf_to_x64_reg dst)))
-                  @ (x64_encode (Ppushl_r RDX)) @ (x64_encode (Pmulq_r R11)) @ (x64_encode (Ppopl RDX))
+                  @ (x64_encode (Ppushl_r RDX)) @ (x64_encode (Pimulq_r R11)) @ (x64_encode (Ppopl RDX))
                   @ (x64_encode (Pmovq_rr (bpf_to_x64_reg dst) RAX)) @ (x64_encode (Ppopl RAX)))")
        prefer 2
       subgoal 
         apply (cases "bpf_to_x64_reg dst" ; simp add:per_jit_mul_reg64_def a9 a7)
         done
       apply(subgoal_tac "(x64_encode (Pmovq_rr R11 (bpf_to_x64_reg src))@(x64_encode (Ppushl_r RAX)) @ (x64_encode (Pmovq_rr RAX (bpf_to_x64_reg dst)))
-                  @ (x64_encode (Ppushl_r RDX)) @ (x64_encode (Pmulq_r R11)) @ (x64_encode (Ppopl RDX))
+                  @ (x64_encode (Ppushl_r RDX)) @ (x64_encode (Pimulq_r R11)) @ (x64_encode (Ppopl RDX))
                   @ (x64_encode (Pmovq_rr (bpf_to_x64_reg dst) RAX)) @ (x64_encode (Ppopl RAX)))!1 \<noteq> 0x39")
        prefer 2 subgoal apply(unfold per_jit_mul_reg64_def x64_encode_def) by simp
       apply(subgoal_tac "(x64_encode (Pmovq_rr R11 (bpf_to_x64_reg src))@(x64_encode (Ppushl_r RAX)) @ (x64_encode (Pmovq_rr RAX (bpf_to_x64_reg dst)))
-         @ (x64_encode (Ppushl_r RDX)) @ (x64_encode (Pmulq_r R11)) @ (x64_encode (Ppopl RDX))
+         @ (x64_encode (Ppushl_r RDX)) @ (x64_encode (Pimulq_r R11)) @ (x64_encode (Ppopl RDX))
          @ (x64_encode (Pmovq_rr (bpf_to_x64_reg dst) RAX)) @ (x64_encode (Ppopl RAX)))!0 \<notin> {0xc3, 0xe8}") 
       prefer 2 using encode_aux apply blast
       subgoal
@@ -228,7 +228,7 @@ shows "\<exists> xst'. x64_sem1 1 x64_prog (pc,xst) = (pc',xst') \<and>
 (* 3.1.1 using consistency to get x64 assembly *)
         apply (subgoal_tac "x64_decode (0::nat)
             (x64_encode (Pmovq_rr REG_SCRATCH (bpf_to_x64_reg src))@(x64_encode (Ppushl_r RAX)) @ (x64_encode (Pmovq_rr RAX (bpf_to_x64_reg dst)))
-                  @ (x64_encode (Ppushl_r RDX)) @ (x64_encode (Pmulq_r R11)) @ (x64_encode (Ppopl RDX))
+                  @ (x64_encode (Ppushl_r RDX)) @ (x64_encode (Pimulq_r R11)) @ (x64_encode (Ppopl RDX))
                   @ (x64_encode (Pmovq_rr (bpf_to_x64_reg dst) RAX)) @ (x64_encode (Ppopl RAX)))
             = Some (3, Pmovq_rr REG_SCRATCH (bpf_to_x64_reg src))")
          prefer 2
@@ -249,7 +249,7 @@ shows "\<exists> xst'. x64_sem1 1 x64_prog (pc,xst) = (pc',xst') \<and>
         apply (simp only: x64_sem.simps)
         apply (subgoal_tac "x64_decode (3::nat)
            (x64_encode (Pmovq_rr REG_SCRATCH (bpf_to_x64_reg src))@(x64_encode (Ppushl_r RAX)) @ (x64_encode (Pmovq_rr RAX (bpf_to_x64_reg dst)))
-                  @ (x64_encode (Ppushl_r RDX)) @ (x64_encode (Pmulq_r R11)) @ (x64_encode (Ppopl RDX))
+                  @ (x64_encode (Ppushl_r RDX)) @ (x64_encode (Pimulq_r R11)) @ (x64_encode (Ppopl RDX))
                   @ (x64_encode (Pmovq_rr (bpf_to_x64_reg dst) RAX)) @ (x64_encode (Ppopl RAX)))
             = Some (1, Ppushl_r RAX)")
          prefer 2
@@ -279,7 +279,7 @@ shows "\<exists> xst'. x64_sem1 1 x64_prog (pc,xst) = (pc',xst') \<and>
 (* using consistency to get x64 assembly *)
         apply (subgoal_tac "x64_decode (4::nat)
             (x64_encode (Pmovq_rr REG_SCRATCH (bpf_to_x64_reg src))@(x64_encode (Ppushl_r RAX)) @ (x64_encode (Pmovq_rr RAX (bpf_to_x64_reg dst)))
-                  @ (x64_encode (Ppushl_r RDX)) @ (x64_encode (Pmulq_r R11)) @ (x64_encode (Ppopl RDX))
+                  @ (x64_encode (Ppushl_r RDX)) @ (x64_encode (Pimulq_r R11)) @ (x64_encode (Ppopl RDX))
                   @ (x64_encode (Pmovq_rr (bpf_to_x64_reg dst) RAX)) @ (x64_encode (Ppopl RAX)))
             = Some (3, Pmovq_rr RAX (bpf_to_x64_reg dst))")
          prefer 2
@@ -311,7 +311,7 @@ shows "\<exists> xst'. x64_sem1 1 x64_prog (pc,xst) = (pc',xst') \<and>
         apply (simp only: x64_sem.simps)
         apply (subgoal_tac "x64_decode (7::nat)
             (x64_encode (Pmovq_rr REG_SCRATCH (bpf_to_x64_reg src))@(x64_encode (Ppushl_r RAX)) @ (x64_encode (Pmovq_rr RAX (bpf_to_x64_reg dst)))
-                  @ (x64_encode (Ppushl_r RDX)) @ (x64_encode (Pmulq_r R11)) @ (x64_encode (Ppopl RDX))
+                  @ (x64_encode (Ppushl_r RDX)) @ (x64_encode (Pimulq_r R11)) @ (x64_encode (Ppopl RDX))
                   @ (x64_encode (Pmovq_rr (bpf_to_x64_reg dst) RAX)) @ (x64_encode (Ppopl RAX)))
             = Some (1, Ppushl_r RDX)")
          prefer 2
@@ -343,16 +343,16 @@ shows "\<exists> xst'. x64_sem1 1 x64_prog (pc,xst) = (pc',xst') \<and>
 (* using consistency to get x64 assembly *)
         apply (subgoal_tac "x64_decode (8::nat)
             (x64_encode (Pmovq_rr REG_SCRATCH (bpf_to_x64_reg src))@(x64_encode (Ppushl_r RAX)) @ (x64_encode (Pmovq_rr RAX (bpf_to_x64_reg dst)))
-                  @ (x64_encode (Ppushl_r RDX)) @ (x64_encode (Pmulq_r R11)) @ (x64_encode (Ppopl RDX))
+                  @ (x64_encode (Ppushl_r RDX)) @ (x64_encode (Pimulq_r R11)) @ (x64_encode (Ppopl RDX))
                   @ (x64_encode (Pmovq_rr (bpf_to_x64_reg dst) RAX)) @ (x64_encode (Ppopl RAX)))
-            = Some (3, Pmulq_r R11)")
+            = Some (3, Pimulq_r R11)")
          prefer 2
 (* this is necessary for later list_in_list_prop_aux2 *)
         apply (subgoal_tac "length ((x64_encode (Pmovq_rr REG_SCRATCH (bpf_to_x64_reg src))@(x64_encode (Ppushl_r RAX)) @ (x64_encode (Pmovq_rr RAX (bpf_to_x64_reg dst)))
                   @ (x64_encode (Ppushl_r RDX)))) = 8")
          prefer 2 subgoal using x64_encode_def construct_rex_to_u8_def bitfield_insert_u8_def Let_def by simp
         subgoal
-          apply (rule_tac l_bin = "x64_encode (Pmulq_r REG_SCRATCH)" in x64_encode_decode_consistency)
+          apply (rule_tac l_bin = "x64_encode (Pimulq_r REG_SCRATCH)" in x64_encode_decode_consistency)
           subgoal using list_in_list_prop_aux2
             by (metis append_assoc)
           subgoal by simp
@@ -360,7 +360,7 @@ shows "\<exists> xst'. x64_sem1 1 x64_prog (pc,xst) = (pc',xst') \<and>
             by fastforce
           done
         apply simp
-        apply (erule subst [of _ "Some (3::nat, Pmulq_r REG_SCRATCH)"])
+        apply (erule subst [of _ "Some (3::nat, Pimulq_r REG_SCRATCH)"])
         apply (simp add: exec_instr_def)
 (* 3.6 *)
         apply (subgoal_tac "Suc 2 = (3::nat)") prefer 2 subgoal by simp
@@ -369,13 +369,13 @@ shows "\<exists> xst'. x64_sem1 1 x64_prog (pc,xst) = (pc',xst') \<and>
 (* using consistency to get x64 assembly *)
         apply (subgoal_tac "x64_decode (11::nat)
              (x64_encode (Pmovq_rr REG_SCRATCH (bpf_to_x64_reg src))@(x64_encode (Ppushl_r RAX)) @ (x64_encode (Pmovq_rr RAX (bpf_to_x64_reg dst)))
-                  @ (x64_encode (Ppushl_r RDX)) @ (x64_encode (Pmulq_r R11)) @ (x64_encode (Ppopl RDX))
+                  @ (x64_encode (Ppushl_r RDX)) @ (x64_encode (Pimulq_r R11)) @ (x64_encode (Ppopl RDX))
                   @ (x64_encode (Pmovq_rr (bpf_to_x64_reg dst) RAX)) @ (x64_encode (Ppopl RAX)))
             = Some (1, Ppopl RDX)")
          prefer 2
 (* this is necessary for later list_in_list_prop_aux2 *)
         apply (subgoal_tac "length ((x64_encode (Pmovq_rr REG_SCRATCH (bpf_to_x64_reg src))@(x64_encode (Ppushl_r RAX)) @ (x64_encode (Pmovq_rr RAX (bpf_to_x64_reg dst)))
-                  @ (x64_encode (Ppushl_r RDX)) @ (x64_encode (Pmulq_r R11)))) = 11")
+                  @ (x64_encode (Ppushl_r RDX)) @ (x64_encode (Pimulq_r R11)))) = 11")
          prefer 2 subgoal using x64_encode_def construct_rex_to_u8_def bitfield_insert_u8_def Let_def by simp
         subgoal
           apply (rule_tac l_bin = "x64_encode (Ppopl RDX)" in x64_encode_decode_consistency)
@@ -397,13 +397,13 @@ shows "\<exists> xst'. x64_sem1 1 x64_prog (pc,xst) = (pc',xst') \<and>
 (* using consistency to get x64 assembly *)
         apply (subgoal_tac "x64_decode (12::nat)
             (x64_encode (Pmovq_rr REG_SCRATCH (bpf_to_x64_reg src))@(x64_encode (Ppushl_r RAX)) @ (x64_encode (Pmovq_rr RAX (bpf_to_x64_reg dst)))
-                  @ (x64_encode (Ppushl_r RDX)) @ (x64_encode (Pmulq_r R11)) @ (x64_encode (Ppopl RDX))
+                  @ (x64_encode (Ppushl_r RDX)) @ (x64_encode (Pimulq_r R11)) @ (x64_encode (Ppopl RDX))
                   @ (x64_encode (Pmovq_rr (bpf_to_x64_reg dst) RAX)) @ (x64_encode (Ppopl RAX)))
             = Some (3, Pmovq_rr (bpf_to_x64_reg dst) RAX)")
          prefer 2
 (* this is necessary for later list_in_list_prop_aux2 *)
         apply (subgoal_tac "length ((x64_encode (Pmovq_rr REG_SCRATCH (bpf_to_x64_reg src))@(x64_encode (Ppushl_r RAX)) @ (x64_encode (Pmovq_rr RAX (bpf_to_x64_reg dst)))
-                  @ (x64_encode (Ppushl_r RDX)) @ (x64_encode (Pmulq_r R11)) @ (x64_encode (Ppopl RDX)))) = 12")
+                  @ (x64_encode (Ppushl_r RDX)) @ (x64_encode (Pimulq_r R11)) @ (x64_encode (Ppopl RDX)))) = 12")
          prefer 2 subgoal using x64_encode_def construct_rex_to_u8_def bitfield_insert_u8_def Let_def by simp
         subgoal
           apply (rule_tac l_bin = "x64_encode (Pmovq_rr (bpf_to_x64_reg dst) RAX)" in x64_encode_decode_consistency)
@@ -423,13 +423,13 @@ shows "\<exists> xst'. x64_sem1 1 x64_prog (pc,xst) = (pc',xst') \<and>
 (* using consistency to get x64 assembly *)
         apply (subgoal_tac "x64_decode (15::nat)
             (x64_encode (Pmovq_rr REG_SCRATCH (bpf_to_x64_reg src))@(x64_encode (Ppushl_r RAX)) @ (x64_encode (Pmovq_rr RAX (bpf_to_x64_reg dst)))
-                  @ (x64_encode (Ppushl_r RDX)) @ (x64_encode (Pmulq_r R11)) @ (x64_encode (Ppopl RDX))
+                  @ (x64_encode (Ppushl_r RDX)) @ (x64_encode (Pimulq_r R11)) @ (x64_encode (Ppopl RDX))
                   @ (x64_encode (Pmovq_rr (bpf_to_x64_reg dst) RAX)) @ (x64_encode (Ppopl RAX)))
             = Some (1, Ppopl RAX)")
          prefer 2
 (* this is necessary for later list_in_list_prop_aux2 *)
         apply (subgoal_tac "length ((x64_encode (Pmovq_rr REG_SCRATCH (bpf_to_x64_reg src))@(x64_encode (Ppushl_r RAX)) @ (x64_encode (Pmovq_rr RAX (bpf_to_x64_reg dst)))
-                  @ (x64_encode (Ppushl_r RDX)) @ (x64_encode (Pmulq_r R11)) @ (x64_encode (Ppopl RDX))
+                  @ (x64_encode (Ppushl_r RDX)) @ (x64_encode (Pimulq_r R11)) @ (x64_encode (Ppopl RDX))
                   @ (x64_encode (Pmovq_rr (bpf_to_x64_reg dst) RAX)))) = 15")
          prefer 2 subgoal using x64_encode_def construct_rex_to_u8_def bitfield_insert_u8_def Let_def by simp
         subgoal
