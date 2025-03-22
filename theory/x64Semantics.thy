@@ -197,6 +197,7 @@ definition exec_instr :: "instruction \<Rightarrow> nat \<Rightarrow> nat \<Righ
                         None \<Rightarrow> Stuck) |
   Pcmpq_rr rd r1 \<Rightarrow> Next (pc+sz)(compare_longs (rs (IR r1)) (rs (IR rd)) rs) m ss |
   Pmovq_ri rd n  \<Rightarrow> Next (pc + sz) (rs#(IR rd) <- n) m ss |
+  Pmovl_ri rd n   \<Rightarrow> Next (pc + sz) (rs#(IR rd) <- (ucast n)) m ss|    \<comment> \<open> load imm32 to reg \<close>
   Pmov_mr  a r1 c \<Rightarrow> exec_load pc sz c m ss a rs (IR r1) |                    \<comment> \<open> store reg to mem \<close>
   Pxchgq_rr rd r1 \<Rightarrow> let tmp = rs (IR rd) in
                      let rs1 = (rs#(IR rd)<- (rs (IR r1))) in
@@ -205,7 +206,7 @@ definition exec_instr :: "instruction \<Rightarrow> nat \<Rightarrow> nat \<Righ
   Pshrq_r   rd    \<Rightarrow> Next (pc + sz) (rs#(IR rd) <- ((rs (IR rd))>> (unat (and ( (ucast (rs(IR RCX)))::u32) (63::u32))))) m ss |
   Psarq_r   rd    \<Rightarrow> Next (pc + sz) (rs#(IR rd) <- (ucast (arsh64 ((scast (rs (IR rd)))::i64) (unat (and ( (ucast (rs(IR RCX)))::u32) (63::u32)))))) m ss |
 \<comment> \<open>TODO  Psarq_r   rd    \<Rightarrow> Next (pc + sz) (rs#(IR rd) <- (ucast (((scast (rs (IR rd)))::i64) >> (unat (and ( (ucast (rs(IR RCX)))::u32) (63::u32)))))) m ss | \<close>
- Pmov_rm  rd a c \<Rightarrow> exec_store pc sz c m ss a rs (IR rd) |
+  Pmov_rm  rd a c \<Rightarrow> exec_store pc sz c m ss a rs (IR rd) |
   Pcall_i   n   \<Rightarrow> exec_call pc sz M64 m ss rs n
 )"
 (*Pcall_r   r1    \<Rightarrow> exec_call pc sz M64 m ss rs (IR r1)*)

@@ -71,9 +71,15 @@ lemma exit_reg_subgoal_aux5:"xst' = Next xpc1 xrs1 xm1 xss1 \<Longrightarrow>
   prog \<noteq> [] \<and> unat pc < length prog \<and> unat pc \<ge> 0 \<Longrightarrow> prog!(unat pc) = BPF_EXIT \<Longrightarrow> 
   \<forall> r. xrs (IR (bpf_to_x64_reg r)) = rs r \<Longrightarrow> ss = xss \<Longrightarrow>
   \<forall> r. xrs1 (IR (bpf_to_x64_reg r)) = rs' r "
-  apply(subgoal_tac  "\<forall> r. r \<in> {BR6, BR7, BR8, BR9, BR10} \<or> r \<notin> {BR6, BR7, BR8, BR9, BR10}" )
-  prefer 2 apply blast
-  using exit_reg_subgoal_aux4  exit_reg_subgoal_aux3 by metis
+  apply(cases "prog!(unat pc)",simp_all)
+  apply(split if_splits,simp_all)
+  apply(unfold update_stack2_def Let_def eval_exit_def Let_def,simp_all)
+ apply(unfold restore_x64_caller_def Let_def,simp_all)
+  using bpf_to_x64_reg_corr bpf_to_x64_reg_def
+   apply(subgoal_tac "caller_saved_registers ((call_frames ss)!0) = caller_saved_registers ((call_frames xss)!0)")
+    apply force
+   apply blast
+  done
 (*proof -
   assume a1: "xst' = Next xpc1 xrs1 xm1 xss1"
   assume a2: "xst' = snd (let (xpc', xss', caller, fp) = update_stack2 xss; xrs' = restore_x64_caller xrs caller fp in (xpc', Next xpc xrs' xm xss'))"

@@ -93,6 +93,20 @@ Paddq_rr rd r1 \<Rightarrow>
       ) in
     let (op:: u8) = bitfield_insert_u8 0 3 0xb8 (u8_of_ireg rd) in
        ([rex, op] @ u8_list_of_u64 n)|
+  \<comment> \<open> P2882 `MOV immediate to register` -> `0100 100B : 1100 0111 : 11 000 reg : imm` \<close>
+  Pmovl_ri rd n \<Rightarrow>
+    let (rex::u8) = ( construct_rex_to_u8  \<comment> \<open> `100B` \<close>
+      True \<comment> \<open> W \<close>
+      False \<comment> \<open> R \<close>
+      False \<comment> \<open> X \<close>
+      (and (u8_of_ireg rd) 0b1000 \<noteq> 0) \<comment> \<open> B \<close>
+      ) in
+    let (op:: u8) = 0xc7 in
+    let (rop::u8) = construct_modsib_to_u8 0b11 0b000 (u8_of_ireg rd) in
+      if rex = 0x40 then
+        [op, rop] @ (u8_list_of_u32 n)
+      else
+        [rex, op, rop] @ (u8_list_of_u32 n) |
    \<comment> \<open> P2882 `MOV qwordregister1 to qwordregister2` -> `0100 1R0B : 1000 1001 : 11 reg1 reg2` \<close>
   Pmovq_rr rd r1 \<Rightarrow>
     let (rex:: u8) = (construct_rex_to_u8  \<comment> \<open> `1R0B` \<close>
@@ -188,7 +202,7 @@ Paddq_rr rd r1 \<Rightarrow>
     let (op:: u8) = 0xd3 in
     let (rop::u8) = construct_modsib_to_u8 0b11 0b100 (u8_of_ireg rd) in
       [ rex, op, rop ] |
-   \<comment> \<open> P2882 ` MOV: qwordregister to memory64` ->  `0100 1RXB 1000 1001 : mod qwordreg r/m` \<close>
+   \<comment> \<open> P2882 ` MOV: memory64 to qwordregister` ->  `0100 1RXB 1000 1001 : mod qwordreg r/m` \<close>
   Pmov_mr  a r1 c \<Rightarrow> (
     case a of Addrmode (Some rb) None dis \<Rightarrow> 
       let (rex::u8) = ( construct_rex_to_u8 \<comment> \<open> WRXB \<close>
@@ -232,7 +246,7 @@ Paddq_rr rd r1 \<Rightarrow>
         let (rop::u8) = construct_modsib_to_u8 0b10 (u8_of_ireg r1) 0b100 in
         let (sib::u8) = construct_modsib_to_u8 scale (u8_of_ireg ri) (u8_of_ireg rb) in
             ([rex, op, rop, sib] @ (u8_list_of_u32 dis))) |
- \<comment> \<open> P2882 ` MOV: memory64 to qwordregister` ->  `0100 1RXB : 1000 1011 : mod qwordreg r/m`\<close>
+ \<comment> \<open> P2882 ` MOV: qwordregister to memory64` ->  `0100 1RXB : 1000 1011 : mod qwordreg r/m`\<close>
   Pmov_rm rd a c \<Rightarrow>( 
     case a of Addrmode (Some rb) None dis \<Rightarrow> 
       let (rex::u8) =  construct_rex_to_u8 \<comment> \<open> WRXB \<close>
