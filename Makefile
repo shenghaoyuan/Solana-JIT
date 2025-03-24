@@ -1,3 +1,12 @@
+.open:
+
+.PHONY: open  code clean
+
+DEFAULT_FILE = $(CURDIR)/theory/JITPer.thy
+
+open:
+	isabelle jedit -d . $(DEFAULT_FILE)
+
 code:
 	@echo "Analyzing code statistics"
 	@echo "SBPF Syntax"
@@ -14,3 +23,11 @@ code:
 	cd theory && cloc --force-lang="OCaml" BitsOpMore.thy BitsOpMore2.thy BitsOpMore3.thy BitsOpMore4.thy Proof1.thy x64DecodeProofAux.thy
 	@echo "SBPF JIT Extraction"
 	cd theory && cloc --force-lang="OCaml" JITExtraction.thy rBPFDecoder.thy
+
+clean :
+	@echo $@
+	find . -name "step" -exec rm {} \;
+	find . -name "*\.thy~" -exec rm {} \;
+	find . -name "test" -exec rm {} \;
+	find . -name "*\.cmi" -exec rm {} \;
+	find . -name "*\.cmo" -exec rm {} \;

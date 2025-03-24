@@ -219,20 +219,22 @@ value "x64_encode (Pmov_mr (Addrmode (Some R11) None (0::32 word)) RAX M64)"
 qed*)
 
 
+lemma scast_aux0:"((scast((scast (x::i16))::u32))::u64) = ((scast((scast (x::i16))::i32))::u64)"
+  by (simp add: signed_scast_eq)
+
+lemma scast_aux0_1:"((scast((scast (x::i16))::i32))::u64) = ((scast (x::i16))::u64)"
+  apply (simp add: signed_scast_eq)
+  apply (simp add: bit_eq_iff)
+  apply (simp add: bit_signed_take_bit_iff)
+  apply (rule allI)
+  subgoal for n
+  apply (simp add: bit_simps)
+    by linarith 
+  done
+
 lemma scast_aux1:"((scast((scast (x::i16))::u32))::u64) = ((scast (x::i16))::u64)"
- proof-
-
-   have n:"take_bit LENGTH(16)  (sint x) = take_bit 16 (sint x)" by auto
-   have m:"take_bit LENGTH(32)  (sint x) = take_bit 32 (sint x)" by auto
-   have p:"take_bit LENGTH(64)  (sint x) = take_bit 64 (sint x)" by auto
-
-  have "((scast ((word_of_int (sint x))::u32)) :: u64)  = ((scast ((word_of_int (sint x))::u64)) :: u64)"
-    using n m p                  
-    using bintr_uint len_signed nat_le_linear numeral_Bit0_eq_double numeral_le_iff
-         of_int_uint semiring_norm(69) take_bit_tightened_less_eq_int signed_scast_eq take_bit_take_bit uint_sint signed_take_bit_eq take_bit_of_int sorry
-    (*by (smt (verit) len_bit0 linorder_not_less min_def mult_le_mono2 of_int_sint signed_take_bit_eq take_bit_of_int take_bit_take_bit uint_sint wi_bintr) *)
-   then show ?thesis by simp
- qed
+  using scast_aux0 scast_aux0_1
+  by simp 
 
 
 lemma load_m64_one_step1:
