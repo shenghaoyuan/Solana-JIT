@@ -10,24 +10,6 @@ subsection  \<open> x64 Syntax \<close>
 
 datatype ireg = RAX | RBX | RCX | RDX | RSI | RDI | RBP | RSP | R8 | R9 | R10 | R11 | R12 | R13 | R14 | R15
 
-(*
-fun u8_of_ireg ::"ireg \<Rightarrow> u8" where
-"u8_of_ireg RAX = 0" |
-"u8_of_ireg RBX = 1" |
-"u8_of_ireg RCX = 2" |
-"u8_of_ireg RDX = 3" |
-"u8_of_ireg RSI = 4" |
-"u8_of_ireg RDI = 5" |
-"u8_of_ireg RBP = 6" |
-"u8_of_ireg RSP = 7" |
-"u8_of_ireg R8  = 8" |
-"u8_of_ireg R9  = 9" |
-"u8_of_ireg R10 = 10" |
-"u8_of_ireg R11 = 11" |
-"u8_of_ireg R12 = 12" |
-"u8_of_ireg R13 = 13" |
-"u8_of_ireg R14 = 14" |
-"u8_of_ireg R15 = 15" *)
 
 text \<open> TODO: Solana rBPF uses the following mapping, very weird.
 I don't understand, see: https://github.com/solana-labs/rbpf/blob/main/src/x86.rs#L16 

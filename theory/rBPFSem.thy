@@ -158,40 +158,6 @@ definition push_frame:: "reg_map \<Rightarrow> stack_state \<Rightarrow> u64 \<R
           (stack, reg)
 )"
 
-(*
-definition push_frame:: "reg_map \<Rightarrow> stack_state \<Rightarrow> u64 \<Rightarrow> stack_state option \<times> reg_map" where
-"push_frame rs ss pc = (
-  let npc = pc +1 in
-  let fp = eval_reg BR10 rs in
-  let caller = [eval_reg BR6 rs, eval_reg BR7 rs,
-                eval_reg BR8 rs, eval_reg BR9 rs] in
-  let frame = \<lparr> caller_saved_registers = caller,
-                frame_pointer = fp, target_pc = npc\<rparr> in 
-  let update1 = call_depth ss +1 in (
-    if update1 = max_call_depth then (None, rs)
-    else (
-      let update2 = stack_pointer ss;  
-        update3 = (call_frames ss)[unat(call_depth ss):= frame] in
-      let stack = Some \<lparr> call_depth = update1, stack_pointer = update2,
-        call_frames = update3\<rparr>;
-        reg = rs#BR10 <-- update2 in
-          (stack, reg)
-)))"*)
-
-(*
-definition eval_call_reg :: "src_ty \<Rightarrow> imm_ty \<Rightarrow> reg_map \<Rightarrow> stack_state \<Rightarrow> u64 \<Rightarrow> 
-  (u64 \<times> reg_map \<times> stack_state) option" where
-"eval_call_reg src imm rs ss pc = (
- (let pc1 = eval_reg src rs in  
-    let (x, rs') = push_frame rs ss pc in
-      case x of
-      None \<Rightarrow> None |
-      Some ss' \<Rightarrow> 
-        if pc1 < program_vm_addr then None else (
-          let next_pc = (pc1 - program_vm_addr)div (of_nat INSN_SIZE) in 
-            Some (next_pc, rs', ss')
-)))"*)
-
 definition eval_call_imm :: "src_ty \<Rightarrow> imm_ty \<Rightarrow> reg_map \<Rightarrow> stack_state \<Rightarrow> u64 \<Rightarrow>(u64 \<times> reg_map \<times> stack_state) option" where
 "eval_call_imm src imm rs ss pc = (
   let pc_option =
@@ -233,25 +199,7 @@ definition eval_exit :: "reg_map \<Rightarrow> stack_state \<Rightarrow> (u64 \<
               #BR6  <-- (caller!(0))) in 
     (pc, rs', ss')
 )"
-(*
-definition eval_exit :: "reg_map \<Rightarrow> stack_state \<Rightarrow> (u64 \<times> reg_map \<times> stack_state)" where
-"eval_exit rs ss = (
-  let x = call_depth ss-1 in
-  let frame = pop_frame ss in
-  let rs'= (((((
-            rs#BR10 <-- (frame_pointer frame))
-              #BR9  <-- ((caller_saved_registers frame)!(3)))
-              #BR8  <-- ((caller_saved_registers frame)!(2)))
-              #BR7  <-- ((caller_saved_registers frame)!(1)))
-              #BR6  <-- ((caller_saved_registers frame)!(0))) in 
-  let y = stack_pointer ss in 
-  let z = butlast (call_frames ss) in
-  let ss' = \<lparr>call_depth = x, stack_pointer= y, call_frames = z\<rparr> in
-  let pc = target_pc frame in 
-    (pc, rs', ss')
-)"*)
 
-(*BPF_JA off \<Rightarrow> SBPF_OK (pc+1+scast off) rs m | *)
 fun sbpf_step :: "ebpf_asm \<Rightarrow> sbpf_state \<Rightarrow> sbpf_state" where
 "sbpf_step prog (SBPF_OK pc rs m ss) = (
   if length prog = 0 then SBPF_Err
@@ -342,19 +290,5 @@ fun sbpf_sem :: "nat \<Rightarrow> ebpf_asm \<Rightarrow> sbpf_state \<Rightarro
 "sbpf_sem 0 _ st = st" |
 "sbpf_sem (Suc n) prog st = sbpf_sem n prog (sbpf_step prog st)"
 
-(*
-value "sbpf_step [BPF_ALU64 BPF_ADD BR0 (SOReg BR1)] (SBPF_OK 1 (\<lambda> x. 0) init_mem)" 
 
-value "sbpf_sem 0 [BPF_ALU64 BPF_ADD BR0 (SOReg BR1)] (SBPF_OK 1 (\<lambda>x. 0) init_mem)"*)
-(*
-n = 0
-  prog = [BPF_LD_IMM BR0 0 0]
-  s = SBPF_OK 1 (\<lambda>x. 0) Map.empty
-  s' = SBPF_OK 1 _ _
-  pc = 1
-  rs = _
-  m = _
-  pc' = 1
-  rs' = _
-  m' = _*)
 end

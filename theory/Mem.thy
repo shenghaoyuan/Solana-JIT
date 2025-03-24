@@ -109,18 +109,6 @@ definition option_val_of_u64 :: "memory_chunk \<Rightarrow> u64 option \<Rightar
   Some v1 \<Rightarrow> Some (memory_chunk_value_of_u64 mc v1)
 )"
 
-(*
-definition loadv :: "memory_chunk \<Rightarrow> mem \<Rightarrow> addr_type \<Rightarrow> val option" where
-"loadv mc m addr = ( option_val_of_u64 mc (
-  case mc of
-  M8  \<Rightarrow> option_u64_of_u8_1 (m addr) |
-  M16 \<Rightarrow> option_u64_of_u8_2 (m addr) (m (addr+1))|
-  M32 \<Rightarrow> option_u64_of_u8_4 (m addr) (m (addr+1)) (m (addr+2)) (m (addr+3))|
-  M64 \<Rightarrow> option_u64_of_u8_8 (m addr) (m (addr+1)) (m (addr+2)) (m (addr+3))
-                        (m (addr+4)) (m (addr+5)) (m (addr+6)) (m (addr+7))
-))"
-*)
-
 definition loadv :: "memory_chunk \<Rightarrow> mem \<Rightarrow> addr_type \<Rightarrow> val option" where
 "loadv mc m addr = (
   case addr of 
@@ -148,47 +136,6 @@ value "option_u64_of_u8_2 (Some 0b10000000) (Some 0b01000000)"
 value "0b10000000::u8"
 value "0b01000000::u8"
 
-(*definition storev :: "memory_chunk \<Rightarrow> mem \<Rightarrow> addr_type \<Rightarrow> val \<Rightarrow> mem option" where
-"storev mc m addr v = (
-  case mc of
-  M8  \<Rightarrow> (
-    case v of
-    Vbyte n \<Rightarrow> Some (\<lambda> i. if i = addr then Some n else m i) |
-    _ \<Rightarrow> None) |
-  M16 \<Rightarrow> (
-    case v of
-    Vshort n \<Rightarrow>
-      let l = u8_list_of_u16 n in
-        Some (\<lambda> i. if i = addr    then Some (l!(0)) else
-                   if i = addr+1  then Some (l!(1)) else
-                      m i) |
-    _ \<Rightarrow> None) |
-  M32 \<Rightarrow> (
-    case v of
-    Vint n \<Rightarrow>
-      let l = u8_list_of_u32 n in
-        Some (\<lambda> i. if i = addr    then Some (l!(0)) else
-                   if i = addr+1  then Some (l!(1)) else
-                   if i = addr+2  then Some (l!(2)) else
-                   if i = addr+3  then Some (l!(3)) else
-                      m i) |
-    _ \<Rightarrow> None) |
-  M64 \<Rightarrow> (
-    case v of
-    Vlong n \<Rightarrow>
-      let l = u8_list_of_u64 n in
-        Some (\<lambda> i. if i = addr    then Some (l!(0)) else
-                   if i = addr+1  then Some (l!(1)) else
-                   if i = addr+2  then Some (l!(2)) else
-                   if i = addr+3  then Some (l!(3)) else
-                   if i = addr+4  then Some (l!(4)) else
-                   if i = addr+5  then Some (l!(5)) else
-                   if i = addr+6  then Some (l!(6)) else
-                   if i = addr+7  then Some (l!(7)) else
-                      m i) |
-    _ \<Rightarrow> None)
-)"
-*)
 definition storev :: "memory_chunk \<Rightarrow> mem \<Rightarrow> addr_type \<Rightarrow> val \<Rightarrow> mem option" where
 "storev mc m addr v = (
   case addr of 
@@ -333,54 +280,6 @@ lemma le_255_int: "k < 8 \<Longrightarrow>  bit (255::int) k"
 lemma int_255_8_eq: "k \<le> n \<Longrightarrow> n < k+8 \<Longrightarrow> bit (255::int) (n - k)"
   using sub_8_eq le_255_int
   by presburger
-
-(*prove load_store_other *)
-(*lemma store_load_consistency_aux: "Some m' = storev M32 m place v \<Longrightarrow> loadv M32 m' place = Some v"
-  apply (simp add: storev_def loadv_def option_val_of_u64_def option_u64_of_u8_4_def)
-  apply (cases v; simp add: Let_def memory_chunk_value_of_u64_def u8_list_of_u32_def)
-  subgoal for x4
-    apply (simp add: bit_eq_iff [of _ x4])
-    apply (simp add: bit_simps)
-    apply (rule allI)
-    subgoal for n
-      apply (cases "24 \<le> n"; simp)
-      subgoal
-        apply (cases "bit x4 n"; simp)
-        apply (rule impI)
-        apply (subgoal_tac "n - 24 < 64 \<and> n - 24 < 8 \<and> n - 24 < 32 \<and> bit (255::int) (n - 24)")
-        subgoal by simp
-        subgoal using int_255_8_eq
-          by auto
-        done
-  
-      subgoal
-        apply (cases "16 \<le> n"; simp)
-        subgoal
-          apply (cases "bit x4 n"; simp)
-          apply (subgoal_tac "n - 16 < 64 \<and> n - 16 < 8 \<and> n - 16 < 32 \<and> bit (255::int) (n - 16)")
-          subgoal by simp
-          subgoal using int_255_8_eq
-            by auto
-          done
-    
-        subgoal
-          apply (cases "8 \<le> n"; simp)
-          subgoal
-            apply (drule Orderings.linorder_class.not_le_imp_less)
-            subgoal using int_255_8_eq
-              by auto
-            done
-          subgoal
-            apply (drule Orderings.linorder_class.not_le_imp_less)
-            apply (cases "bit x4 n"; simp)
-            using int_255_8_eq
-            using le_255_int by blast
-          done
-        done
-      done
-    done
-  done
-*)
 
 lemma u32_shift_u8_eq: "
  ucast
@@ -638,16 +537,6 @@ lemma store_load_consistency2_aux: "Some m' = storev M64 m place v \<Longrightar
 lemma store_load_consistency_m64: "storev M64 m place v = Some m' \<Longrightarrow> loadv M64 m' place = Some v"
   using store_load_consistency2_aux
   by metis
-
-lemma store_load_consistency_m32: "storev M32 m place v = Some m' \<Longrightarrow> loadv M32 m' place = Some v"
-  sorry
-
-lemma store_load_consistency_m8: "storev M8 m place v = Some m' \<Longrightarrow> loadv M8 m' place = Some v"
-  sorry
-
-lemma store_load_consistency_m16: "storev M16 m place v = Some m' \<Longrightarrow> loadv M16 m' place = Some v"
-  sorry
-
 
 
 lemma store_load_other_blk_if:"storev mc m (Vptr blk off) x = Some m' \<Longrightarrow>

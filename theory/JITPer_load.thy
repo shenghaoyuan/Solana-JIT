@@ -41,7 +41,7 @@ lemma load_m64_one_step_match_reg_1:
     a3:"prog \<noteq> [] \<and> unat pc < length prog \<and> unat pc \<ge> 0" and
     a4:"prog!(unat pc) = BPF_LDX chk dst src off" and
     a5:"chk = M64"
-  shows "\<exists> somev. loadv M64 xm (Vlong (scast off + xrs (IR (bpf_to_x64_reg src)))) = Some (Vlong somev)"
+  shows "\<exists> somev. loadv M64 xm (Vlong ( (scast (off) + xrs (IR (bpf_to_x64_reg src))))) = Some (Vlong somev)"
 proof-
   have c0:"match_mem m xm" using a0 a1 a2 match_state_def by auto
   have c1:"\<forall> addr v. m 0 addr = Some v \<longrightarrow> xm 0 addr = Some v" using a1 a2 match_state_def match_mem_def by simp
@@ -70,7 +70,7 @@ proof-
     by (smt (z3) b2_1 loadv_def match_mem_def option.case_eq_if option.collapse option.simps(3) option_u64_of_u8_8_def option_val_of_u64_def val.case(5)) 
   hence b5:"Mem.loadv chk xm (Vlong ?off) = Some x" using match_mem_load_1_equiv b0 b4 c0 by blast
   have b6:"Mem.loadv chk xm (Vlong ?off) = Some (Vlong v)" using b5 b4 by blast
-  have "Mem.loadv chk xm (Vlong (xrs (IR (bpf_to_x64_reg src)) + (scast off))) = Some (Vlong v)" using b6 c2 by argo
+  have "Mem.loadv chk xm (Vlong ((xrs (IR (bpf_to_x64_reg src)) + (scast off)))) = Some (Vlong v)" using b6 c2 by simp
   thus ?thesis using a5 add.commute by metis
 qed
 
@@ -127,15 +127,33 @@ lemma load_M64_one_step_match_reg:
     loadv M64 xm (Vlong (scast off + xrs (IR (bpf_to_x64_reg src)))) = Some (Vlong x5) \<Longrightarrow>
     chk = M64 \<Longrightarrow>
     match_reg rs' 
-    ((\<lambda>a::preg. 
-        if a = IR REG_SCRATCH then scast off + xrs (IR (bpf_to_x64_reg src)) 
-        else if a = IR REG_SCRATCH then scast off
-        else xrs a)
-    (IR (bpf_to_x64_reg dst) := x5)) "
+    ((\<lambda>a::preg. if a = IR REG_SCRATCH then (scast off) + xrs (IR (bpf_to_x64_reg src)) else if a = IR REG_SCRATCH then (scast off) else xrs a)(IR (bpf_to_x64_reg dst) := x5)) "
   apply (simp add: match_state_def match_reg_def eval_load_def)
   using bpf_to_x64_reg_corr reg_r11_consist reg_rsp_consist 
   by (smt (verit, best) add.commute fun_upd_apply match_mem_load_1_equiv option.case_eq_if option.collapse option.sel sbpf_state.inject(1) sbpf_state.simps(6) val.simps(40)) 
 
+lemma scast_aux2:"(\<And>x::16 signed word. scast (scast x) = scast x) \<Longrightarrow> 
+  match_reg rs' ((\<lambda>a::preg. if a = IR REG_SCRATCH then (scast off) + xrs (IR (bpf_to_x64_reg src)) else if a = IR REG_SCRATCH then (scast off) else xrs a)(IR (bpf_to_x64_reg dst) := x5))\<Longrightarrow>
+  match_reg rs' ((\<lambda>a::preg. if a = IR REG_SCRATCH then scast (scast off) + xrs (IR (bpf_to_x64_reg src)) else if a = IR REG_SCRATCH then scast (scast off) else xrs a)(IR (bpf_to_x64_reg dst) := x5))"
+  by (simp add: match_reg_def reg_r11_consist)
+
+
+lemma load_M64_one_step_match_reg_wrap:
+  assumes a0:"(SBPF_OK pc' rs' m' ss') = sbpf_step prog (SBPF_OK pc rs m ss)" and
+    a1:"xst = (Next xpc xrs xm xss) " and
+    a2:"match_state (SBPF_OK pc rs m ss) (pc,xst)" and
+    a3:"prog \<noteq> [] \<and> unat pc < length prog \<and> unat pc \<ge> 0" and
+    a4:"prog!(unat pc) = BPF_LDX chk dst src off" and
+    a5:"loadv M64 xm (Vlong (((scast off)::u64) + xrs (IR (bpf_to_x64_reg src)))) = Some (Vlong x5)" and
+    a7:" chk = M64" and
+    a8:"(\<And>x::16 signed word. ((scast ((scast (off::i16))::u32))::u64) = ((scast x)::u64))"
+  shows "match_reg rs' ((\<lambda>a::preg. if a = IR REG_SCRATCH then ((scast ((scast (off::i16))::u32))::u64) + xrs (IR (bpf_to_x64_reg src)) else if a = IR REG_SCRATCH then ((scast ((scast (off::i16))::u32))::u64) else xrs a)(IR (bpf_to_x64_reg dst) := x5))"
+proof-
+  have b0:"match_reg rs' ((\<lambda>a::preg. if a = IR REG_SCRATCH then ((scast off)::u64) + xrs (IR (bpf_to_x64_reg src)) else if a = IR REG_SCRATCH then ((scast off)::u64) else xrs a)(IR (bpf_to_x64_reg dst) := x5))"
+    using a0 a1 a2 a3 a4 a5 a7 load_M64_one_step_match_reg by blast
+  thus ?thesis  using scast_aux2 load_M64_one_step_match_reg a8
+    by (simp add: match_reg_def)
+qed
 
 lemma load_M64_one_step_match_mem:
   "(SBPF_OK pc' rs' m' ss') = sbpf_step prog (SBPF_OK pc rs m ss) \<Longrightarrow>
@@ -184,6 +202,38 @@ lemma load_M64_one_step_match_stack2:"(SBPF_OK pc' rs' m' ss') = sbpf_step prog 
 value "x64_encode (Pmovl_ri RAX 0xffffffff)"
 
 value "x64_encode (Pmov_mr (Addrmode (Some R11) None (0::32 word)) RAX M64)"
+
+(*lemma scast_aux1:"((scast((scast (x::i16))::i32))::i64) = ((scast (x::i16))::i64)"
+ proof-
+
+   have n:"take_bit LENGTH(16)  (sint x) = take_bit 16 (sint x)" by auto
+   have m:"take_bit LENGTH(32)  (sint x) = take_bit 32 (sint x)" by auto
+   have p:"take_bit LENGTH(64)  (sint x) = take_bit 64 (sint x)" by auto
+
+  have "((scast ((word_of_int (sint x))::i32)) :: i64)  = ((scast ((word_of_int (sint x))::i64)) :: i64)"
+    using n m p                  
+    using len_signed nat_le_linear numeral_Bit0_eq_double numeral_le_iff 
+          semiring_norm(69) signed_scast_eq take_bit_take_bit signed_take_bit_eq take_bit_of_int of_int_sint scast_id scast_nop2 sorry
+    (*by (smt (verit) len_bit0 linorder_not_less min_def mult_le_mono2 of_int_sint signed_take_bit_eq take_bit_of_int take_bit_take_bit uint_sint wi_bintr) *)
+   then show ?thesis by simp
+qed*)
+
+
+lemma scast_aux1:"((scast((scast (x::i16))::u32))::u64) = ((scast (x::i16))::u64)"
+ proof-
+
+   have n:"take_bit LENGTH(16)  (sint x) = take_bit 16 (sint x)" by auto
+   have m:"take_bit LENGTH(32)  (sint x) = take_bit 32 (sint x)" by auto
+   have p:"take_bit LENGTH(64)  (sint x) = take_bit 64 (sint x)" by auto
+
+  have "((scast ((word_of_int (sint x))::u32)) :: u64)  = ((scast ((word_of_int (sint x))::u64)) :: u64)"
+    using n m p                  
+    using bintr_uint len_signed nat_le_linear numeral_Bit0_eq_double numeral_le_iff
+         of_int_uint semiring_norm(69) take_bit_tightened_less_eq_int signed_scast_eq take_bit_take_bit uint_sint signed_take_bit_eq take_bit_of_int sorry
+    (*by (smt (verit) len_bit0 linorder_not_less min_def mult_le_mono2 of_int_sint signed_take_bit_eq take_bit_of_int take_bit_take_bit uint_sint wi_bintr) *)
+   then show ?thesis by simp
+ qed
+
 
 lemma load_m64_one_step1:
  assumes a0:"s' = sbpf_step prog s" and
@@ -312,25 +362,30 @@ shows "\<exists> xst'. x64_sem1 1 x64_prog (pc,xst) = (pc',xst') \<and>
           using a0 a1 a2 a5 a6 a8 corr_pc_aux2 insert_iff prod_cases3 by metis
         unfolding a1 a2
 (* 4.1  match_reg *)
-         apply (simp add: match_state_def)
-        apply(cases "loadv M64 xm (Vlong ( (scast off) + xrs (IR (bpf_to_x64_reg src))))",simp_all)
-        subgoal 
-        subgoal using load_m64_one_step_match_reg_1 a0 a1 a2 a3 a4 a5 a6 a8 a9 by (metis option.discI) 
-        subgoal for a using a9 apply (cases a,simp_all) 
+        apply (simp add: match_state_def)
+        (*apply(subgoal_tac "((scast((scast (off))::u32))::i64) = ((scast (off))::i64)") prefer 2 subgoal sorry
+        apply(subgoal_tac "loadv M64 xm  (Vlong (scast (scast off) + xrs (IR (bpf_to_x64_reg src)))) = loadv M64 xm (Vlong ((scast off) + xrs (IR (bpf_to_x64_reg src))))") prefer 2 subgoal sorry
+        (*apply(cases "loadv M64 xm (Vlong ( (scast off) + xrs (IR (bpf_to_x64_reg src))))")*)
+        apply (erule subst "[of _  (loadv M64 xm (Vlong ((scast off) + xrs (IR (bpf_to_x64_reg src)))))]")*)
+        apply(cases "loadv M64 xm (Vlong (((scast ((scast off)::u32))::u64) + xrs (IR (bpf_to_x64_reg src))))",simp_all)
+        subgoal using load_m64_one_step_match_reg_1 a0 a1 a2 a3 a4 a5 a6 a8 a9 scast_aux1 by (metis option.discI) 
+        subgoal for a using a9 scast_aux1 apply (cases a,simp_all) 
           subgoal using load_m64_one_step_match_reg_1 a0 a1 a2 a3 a4 a5 a6 a8 a9 apply (metis option.sel val.distinct(7)) done
           subgoal for x2 using load_m64_one_step_match_reg_2 a0 a1 a2 a3 a4 a5 a6 a8 a9 by metis
           subgoal for x3 using load_m64_one_step_match_reg_3 a0 a1 a2 a3 a4 a5 a6 a8 a9 by metis
           subgoal for x4 using load_m64_one_step_match_reg_4 a0 a1 a2 a3 a4 a5 a6 a8 a9 by metis
            prefer 2 subgoal for x61 x62 using load_m64_one_step_match_reg_5 a0 a1 a2 a3 a4 a5 a6 a8 a9 by metis
           subgoal for x5 
-            apply(rule conjI)
-            using load_M64_one_step_match_reg a0 a1 a2 a3 a4 a5 a6 a8 a9 apply auto[1]
+            apply(rule conjI) subgoal
+            using a0 a1 a2 a3 a4 a5 a6 a8 a9 scast_aux1 load_M64_one_step_match_reg_wrap sorry
 (* 4.2  match_mem *)
             apply(rule conjI)
             using load_M64_one_step_match_mem a0 a1 a2 a3 a4 a5 a6 a8 a9 apply metis
 (* 4.3  match_stack *)
-            using load_M64_one_step_match_stack a0 a1 a2 a3 a4 a5 a6 a8 a9 apply auto
-            using load_M64_one_step_match_stack2 a0 a1 a2 a3 a4 a5 a6 a8 a9 by (metis (no_types, lifting))
+apply(rule conjI)
+            using load_M64_one_step_match_stack a0 a1 a2 a3 a4 a5 a6 a8 a9 
+            apply (smt (verit, del_insts) fun_upd_other match_stack_def preg.inject(1) reg_rsp_consist) 
+            using load_M64_one_step_match_stack2 a0 a1 a2 a3 a4 a5 a6 a8 a9 by metis
           done
         done
       done

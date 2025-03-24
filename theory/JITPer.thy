@@ -47,7 +47,8 @@ proof-
     prog!(unat pc) = BPF_ALU64 BPF_MUL dst (SOReg src) \<or> 
     prog!(unat pc) = BPF_ALU64 BPF_LSH dst (SOReg src) \<or> 
     prog!(unat pc) = BPF_ALU64 BPF_RSH dst (SOReg src) \<or> 
-    prog!(unat pc) = BPF_ALU64 BPF_ARSH dst (SOReg src)) \<or> 
+    prog!(unat pc) = BPF_ALU64 BPF_ARSH dst (SOReg src) \<or>
+    prog!(unat pc) = BPF_ALU64 BPF_MOV dst (SOReg src)) \<or> 
   (\<exists> dst src chk off. prog!(unat pc) = BPF_LDX chk dst src off) \<or>
   (\<exists> dst src chk off. prog!(unat pc) = BPF_ST chk dst (SOReg src) off) \<or>
   (\<exists> x cond dst src. prog!(unat pc) = BPF_JUMP cond dst (SOReg src) x) \<or>
@@ -63,7 +64,7 @@ proof-
         ?bpf_ins = BPF_ALU64 BPF_MUL dst (SOReg src) \<or> 
         ?bpf_ins = BPF_ALU64 BPF_LSH dst (SOReg src) \<or> 
         ?bpf_ins = BPF_ALU64 BPF_RSH dst (SOReg src) \<or> 
-        ?bpf_ins = BPF_ALU64 BPF_ARSH dst (SOReg src) \<or> 
+        ?bpf_ins = BPF_ALU64 BPF_ARSH dst (SOReg src) \<or>
         ?bpf_ins = BPF_LDX chk dst src off \<or> 
         ?bpf_ins = BPF_ST chk dst (SOReg src) off \<or> 
         ?bpf_ins = BPF_JUMP cond dst (SOReg src) x \<or>
@@ -94,7 +95,6 @@ proof-
     next
     case False
     have c4:"?bpf_ins = BPF_ALU64 BPF_ADD dst (SOReg src) \<or> 
-        ?bpf_ins  = BPF_ALU64 BPF_MOV dst (SOReg src) \<or>
         ?bpf_ins = BPF_ALU64 BPF_LSH dst (SOReg src) \<or> 
         ?bpf_ins = BPF_ALU64 BPF_RSH dst (SOReg src) \<or> 
         ?bpf_ins = BPF_ALU64 BPF_ARSH dst (SOReg src) \<or> 
@@ -106,7 +106,8 @@ proof-
         ?bpf_ins  = BPF_ALU64 BPF_SUB dst (SOReg src) \<or>
         ?bpf_ins = BPF_ALU64 BPF_XOR dst (SOReg src) \<or>
         ?bpf_ins = BPF_ALU64 BPF_OR dst (SOReg src) \<or>
-        ?bpf_ins = BPF_ALU64 BPF_AND dst (SOReg src)" using False b2 by blast
+        ?bpf_ins = BPF_ALU64 BPF_AND dst (SOReg src) \<or>
+        ?bpf_ins = BPF_ALU64 BPF_MOV dst (SOReg src) " using False b2 by blast
       thus ?thesis 
       proof(cases "(?bpf_ins = BPF_JUMP cond dst (SOReg src) x)")
         case True
@@ -114,7 +115,6 @@ proof-
         next
         case False
         have c5:"?bpf_ins = BPF_ALU64 BPF_ADD dst (SOReg src) \<or>  
-        ?bpf_ins  = BPF_ALU64 BPF_MOV dst (SOReg src) \<or>
         ?bpf_ins = BPF_ALU64 BPF_LSH dst (SOReg src) \<or> 
         ?bpf_ins = BPF_ALU64 BPF_RSH dst (SOReg src) \<or> 
         ?bpf_ins = BPF_ALU64 BPF_ARSH dst (SOReg src) \<or> 
@@ -125,7 +125,8 @@ proof-
         ?bpf_ins  = BPF_ALU64 BPF_SUB dst (SOReg src) \<or>
         ?bpf_ins = BPF_ALU64 BPF_XOR dst (SOReg src) \<or>
         ?bpf_ins = BPF_ALU64 BPF_OR dst (SOReg src) \<or>
-        ?bpf_ins = BPF_ALU64 BPF_AND dst (SOReg src)" using False c4 by simp
+        ?bpf_ins = BPF_ALU64 BPF_AND dst (SOReg src) \<or>
+        ?bpf_ins = BPF_ALU64 BPF_MOV dst (SOReg src)" using False c4 by simp
         thus ?thesis
         proof(cases "?bpf_ins = BPF_ALU64 BPF_ADD dst (SOReg src)")
           case True
@@ -142,13 +143,30 @@ proof-
           ?bpf_ins  = BPF_ALU64 BPF_SUB dst (SOReg src) \<or>
           ?bpf_ins = BPF_ALU64 BPF_XOR dst (SOReg src) \<or>
           ?bpf_ins = BPF_ALU64 BPF_OR dst (SOReg src) \<or>
-          ?bpf_ins  = BPF_ALU64 BPF_MOV dst (SOReg src) \<or>
-          ?bpf_ins = BPF_ALU64 BPF_AND dst (SOReg src)" using False c5 by simp
+          ?bpf_ins = BPF_ALU64 BPF_AND dst (SOReg src) \<or>
+          ?bpf_ins = BPF_ALU64 BPF_MOV dst (SOReg src)" using False c5 by presburger 
           thus ?thesis
           proof(cases "?bpf_ins = BPF_ALU64 BPF_LSH dst (SOReg src)")
             case True
-            have "(bpf_to_x64_reg dst) \<noteq> RCX" sorry
-            then show ?thesis using True shiftq_lsh_one_step1 a0 a1 a2 a3 a4 a5 a6 True by simp
+            have c6_1:"?bpf_ins = BPF_ALU64 BPF_LSH dst (SOReg src)" using True by simp
+            then show ?thesis 
+              proof(cases "(bpf_to_x64_reg dst) \<noteq> RCX")
+              case True
+                then show ?thesis using True a0 a1 a2 a3 a4 a5 a6 True c6_1 by (meson JITPer_shift.shiftq_lsh_one_step1) 
+              next
+              case False
+                have c6_2:"(bpf_to_x64_reg dst) = RCX" using False by auto
+                then show ?thesis
+                proof(cases "(bpf_to_x64_reg src) \<noteq> RCX")
+                   case True
+                   then show ?thesis using c6_1 c6_2 a0 a1 a2 a3 a4 a5 a6 JITPer_shift_rcx.shiftq_lsh_one_step1 by auto
+                 next
+                   case False
+                   have "(bpf_to_x64_reg src) = RCX" using False by simp
+                   then show ?thesis using c6_1 a0 a1 a2 a3 a4 a5 a6 c6_2 JITPer_shift_rcx.shiftq_lsh_one_step by auto
+                 qed
+               qed
+
           next
             case False
             have c7:"?bpf_ins = BPF_ALU64 BPF_RSH dst (SOReg src) \<or> 
@@ -160,12 +178,29 @@ proof-
             ?bpf_ins  = BPF_ALU64 BPF_SUB dst (SOReg src) \<or>
             ?bpf_ins = BPF_ALU64 BPF_XOR dst (SOReg src) \<or>
             ?bpf_ins = BPF_ALU64 BPF_OR dst (SOReg src) \<or>
-            ?bpf_ins = BPF_ALU64 BPF_AND dst (SOReg src)" using c6 False by simp
+            ?bpf_ins = BPF_ALU64 BPF_AND dst (SOReg src)\<or>
+            ?bpf_ins = BPF_ALU64 BPF_MOV dst (SOReg src)" using c6 False by simp
             then show ?thesis 
             proof(cases "?bpf_ins = BPF_ALU64 BPF_RSH dst (SOReg src)")
               case True
-              have "(bpf_to_x64_reg dst) \<noteq> RCX" sorry
-              then show ?thesis using shiftq_rsh_one_step1 a0 a1 a2 a3 a4 a5 a6 True by blast
+                have c7_1:"?bpf_ins = BPF_ALU64 BPF_RSH dst (SOReg src)" using True by simp
+                then show ?thesis 
+                proof(cases "(bpf_to_x64_reg dst) \<noteq> RCX")
+                  case True
+                  then show ?thesis using True a0 a1 a2 a3 a4 a5 a6 True c7_1 by (meson JITPer_shift.shiftq_rsh_one_step1) 
+                next
+                  case False
+                  have c7_2:"(bpf_to_x64_reg dst) = RCX" using False by auto
+                  then show ?thesis
+                  proof(cases "(bpf_to_x64_reg src) \<noteq> RCX")
+                   case True
+                   then show ?thesis using c7_1 c7_2 a0 a1 a2 a3 a4 a5 a6 JITPer_shift_rcx.shiftq_rsh_one_step1 by auto
+                 next
+                   case False
+                   have "(bpf_to_x64_reg src) = RCX" using False by simp
+                   then show ?thesis using c7_1 a0 a1 a2 a3 a4 a5 a6 c7_2 JITPer_shift_rcx.shiftq_rsh_one_step by auto
+                 qed
+               qed
             next
               case False
               have c7:"?bpf_ins = BPF_ALU64 BPF_ARSH dst (SOReg src) \<or> 
@@ -176,11 +211,29 @@ proof-
               ?bpf_ins  = BPF_ALU64 BPF_SUB dst (SOReg src) \<or>
               ?bpf_ins = BPF_ALU64 BPF_XOR dst (SOReg src) \<or>
               ?bpf_ins = BPF_ALU64 BPF_OR dst (SOReg src) \<or>
-              ?bpf_ins = BPF_ALU64 BPF_AND dst (SOReg src)" using c7 False by simp
+              ?bpf_ins = BPF_ALU64 BPF_AND dst (SOReg src)\<or>
+              ?bpf_ins = BPF_ALU64 BPF_MOV dst (SOReg src)" using c7 False by simp
               then show ?thesis 
               proof(cases "?bpf_ins = BPF_ALU64 BPF_ARSH dst (SOReg src)")
                 case True
-                then show ?thesis sorry
+                have c8_1:"?bpf_ins = BPF_ALU64 BPF_ARSH dst (SOReg src)" using True by simp
+                then show ?thesis 
+                proof(cases "(bpf_to_x64_reg dst) \<noteq> RCX")
+                  case True
+                  then show ?thesis using True a0 a1 a2 a3 a4 a5 a6 True c8_1 by (meson JITPer_shift.shiftq_arsh_one_step1) 
+                next
+                  case False
+                  have c8_2:"(bpf_to_x64_reg dst) = RCX" using False by auto
+                  then show ?thesis
+                  proof(cases "(bpf_to_x64_reg src) \<noteq> RCX")
+                   case True
+                   then show ?thesis using c8_1 c8_2 a0 a1 a2 a3 a4 a5 a6 JITPer_shift_rcx.shiftq_arsh_one_step1 by auto
+                 next
+                   case False
+                   have "(bpf_to_x64_reg src) = RCX" using False by simp
+                   then show ?thesis using c8_1 a0 a1 a2 a3 a4 a5 a6 c8_2 JITPer_shift_rcx.shiftq_arsh_one_step by auto
+                 qed
+               qed
               next
                 case False
                 have c8:"?bpf_ins = BPF_LDX chk dst src off \<or> 
@@ -190,7 +243,8 @@ proof-
                 ?bpf_ins  = BPF_ALU64 BPF_SUB dst (SOReg src) \<or>
                 ?bpf_ins = BPF_ALU64 BPF_XOR dst (SOReg src) \<or>
                 ?bpf_ins = BPF_ALU64 BPF_OR dst (SOReg src) \<or>
-                ?bpf_ins = BPF_ALU64 BPF_AND dst (SOReg src)" using c7 False by simp
+                ?bpf_ins = BPF_ALU64 BPF_AND dst (SOReg src)\<or>
+                ?bpf_ins = BPF_ALU64 BPF_MOV dst (SOReg src)" using c7 False by simp
                 then show ?thesis
                 proof(cases "?bpf_ins = BPF_LDX chk dst src off")
                   case True

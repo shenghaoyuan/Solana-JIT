@@ -197,7 +197,7 @@ definition exec_instr :: "instruction \<Rightarrow> nat \<Rightarrow> nat \<Righ
                         None \<Rightarrow> Stuck) |
   Pcmpq_rr rd r1 \<Rightarrow> Next (pc+sz)(compare_longs (rs (IR r1)) (rs (IR rd)) rs) m ss |
   Pmovq_ri rd n  \<Rightarrow> Next (pc + sz) (rs#(IR rd) <- n) m ss |
-  Pmovl_ri rd n   \<Rightarrow> Next (pc + sz) (rs#(IR rd) <- (ucast n)) m ss|    \<comment> \<open> load imm32 to reg \<close>
+  Pmovl_ri rd n   \<Rightarrow> Next (pc + sz) (rs#(IR rd) <- (scast n)) m ss|    \<comment> \<open> load imm32 to reg \<close>
   Pmov_mr  a r1 c \<Rightarrow> exec_load pc sz c m ss a rs (IR r1) |                    \<comment> \<open> store reg to mem \<close>
   Pxchgq_rr rd r1 \<Rightarrow> let tmp = rs (IR rd) in
                      let rs1 = (rs#(IR rd)<- (rs (IR r1))) in
@@ -307,27 +307,8 @@ fun x64_sem1 :: "nat \<Rightarrow> (nat \<times> u64 \<times> x64_bin) list \<Ri
 "x64_sem1 (Suc n) lt (pc,xst) = (
   let pair = one_step lt (pc,xst) in
     (x64_sem1 n lt pair))"
-(*
-fun x64_sem1 :: "nat \<Rightarrow> u64 \<Rightarrow> (nat \<times> u64 \<times> x64_bin) list \<Rightarrow> outcome \<Rightarrow> outcome" where
-"x64_sem1 0 _ _ st = (let xst_temp =
-   case st of
-    Next xpc rs m \<Rightarrow> Next 0 rs m |
-    Stuck \<Rightarrow> Stuck in xst_temp )" |
-"x64_sem1 (Suc n) pc lt xst = (
-  let (num,off,l) = lt!(unat pc) in
-  let xst_temp = (
-    case xst of
-    Next xpc rs m \<Rightarrow> Next 0 rs m |
-    Stuck \<Rightarrow> Stuck) in
-    if l!0 = 0xE9 then x64_sem1 n (pc+off) lt xst else
-  let xst' = x64_sem num l xst_temp in (
-    x64_sem1 n (pc+off) lt xst'))"
-*)
 
 type_synonym x64_state = outcome
 
-value "scast (100::u64) ::i64"
-
-value "ucast((scast (100::u64) ::i64) + (-1::i64))::u64"
 
 end
