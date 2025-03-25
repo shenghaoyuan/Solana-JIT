@@ -201,7 +201,7 @@ lemma load_M64_one_step_match_stack2:"(SBPF_OK pc' rs' m' ss') = sbpf_step prog 
 
 value "x64_encode (Pmovl_ri RAX 0xffffffff)"
 
-value "x64_encode (Pmov_mr (Addrmode (Some R11) None (0::32 word)) RAX M64)"
+value "x64_encode (Pmov_mr (Addrmode (Some R11) None (0::32 word)) RAX M32)"
 
 
 lemma scast_aux0:"((scast((scast (x::i16))::u32))::u64) = ((scast((scast (x::i16))::i32))::u64)"
@@ -351,12 +351,15 @@ shows "\<exists> xst'. x64_sem1 1 x64_prog (pc,xst) = (pc',xst') \<and>
         apply (simp add: match_state_def)
         apply(cases "loadv M64 xm (Vlong (((scast ((scast off)::u32))::u64) + xrs (IR (bpf_to_x64_reg src))))",simp_all)
         subgoal using load_m64_one_step_match_reg_1 a0 a1 a2 a3 a4 a5 a6 a8 a9 scast_aux1 by (metis option.discI) 
-        subgoal for a using a9 scast_aux1 apply (cases a,simp_all) 
+       
+        subgoal for a using a9 load_m64_one_step_match_reg_1 scast_aux1 apply (cases a,simp_all) 
+          prefer 2
+          apply (metis (no_types, lifting) a0 a1 a2 a3 a4 a6 a8 load_m64_one_step_match_reg_2) 
           subgoal using load_m64_one_step_match_reg_1 a0 a1 a2 a3 a4 a5 a6 a8 a9 apply (metis option.sel val.distinct(7)) done
-          subgoal for x2 using load_m64_one_step_match_reg_2 a0 a1 a2 a3 a4 a5 a6 a8 a9 by metis
-          subgoal for x3 using load_m64_one_step_match_reg_3 a0 a1 a2 a3 a4 a5 a6 a8 a9 by metis
-          subgoal for x4 using load_m64_one_step_match_reg_4 a0 a1 a2 a3 a4 a5 a6 a8 a9 by metis
-           prefer 2 subgoal for x61 x62 using load_m64_one_step_match_reg_5 a0 a1 a2 a3 a4 a5 a6 a8 a9 by metis
+             apply (metis (no_types, lifting) a0 a1 a2 a3 a4 a6 a8 load_m64_one_step_match_reg_3) 
+            apply (metis (no_types, lifting) a0 a1 a2 a3 a4 a6 a8 load_m64_one_step_match_reg_4) 
+          prefer 2
+           apply (metis (no_types, lifting) a0 a1 a2 a3 a4 a6 a8 load_m64_one_step_match_reg_5) 
           subgoal for x5 
             apply(rule conjI) subgoal
               apply (rule load_M64_one_step_match_reg_wrap [of pc' _ m' ss' prog pc rs m ss xst xpc xrs xm xss chk])
