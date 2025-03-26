@@ -888,9 +888,11 @@ type testcond = Cond_e | Cond_ne | Cond_b | Cond_be | Cond_ae | Cond_a | Cond_l
 
 type condition = Eq | Gt | Ge | Lt | Le | SEt | Ne | SGt | SGe | SLt | SLe;;
 
-type instruction = Paddq_rr of ireg * ireg | Pret | Ppushl_r of ireg |
-  Ppopl of ireg | Pmovq_rr of ireg * ireg |
-  Pmovq_ri of ireg * num1 bit0 bit0 bit0 bit0 bit0 bit0 word | Pmulq_r of ireg |
+type instruction = Paddq_rr of ireg * ireg | Psubq_rr of ireg * ireg |
+  Porq_rr of ireg * ireg | Pandq_rr of ireg * ireg | Pxorq_rr of ireg * ireg |
+  Pret | Ppushl_r of ireg | Ppopl of ireg | Pmovq_rr of ireg * ireg |
+  Pmovq_ri of ireg * num1 bit0 bit0 bit0 bit0 bit0 bit0 word |
+  Pmovl_ri of ireg * num1 bit0 bit0 bit0 bit0 bit0 word | Pimulq_r of ireg |
   Pjcc of testcond * num1 bit0 bit0 bit0 bit0 bit0 signed word |
   Pcmpq_rr of ireg * ireg | Pmov_mr of addrmode * ireg * memory_chunk |
   Pxchgq_rr of ireg * ireg | Pshrq_r of ireg | Pshlq_r of ireg | Psarq_r of ireg
@@ -972,263 +974,6 @@ let rec the_signed_int _A
 
 let rec signed_cast _B _A
   w = Word (take_bit_int (len_of _A.len0_len Type) (the_signed_int _B w));;
-
-let rec equal_ireg x0 x1 = match x0, x1 with R14, R15 -> false
-                     | R15, R14 -> false
-                     | R13, R15 -> false
-                     | R15, R13 -> false
-                     | R13, R14 -> false
-                     | R14, R13 -> false
-                     | R12, R15 -> false
-                     | R15, R12 -> false
-                     | R12, R14 -> false
-                     | R14, R12 -> false
-                     | R12, R13 -> false
-                     | R13, R12 -> false
-                     | R11, R15 -> false
-                     | R15, R11 -> false
-                     | R11, R14 -> false
-                     | R14, R11 -> false
-                     | R11, R13 -> false
-                     | R13, R11 -> false
-                     | R11, R12 -> false
-                     | R12, R11 -> false
-                     | R10, R15 -> false
-                     | R15, R10 -> false
-                     | R10, R14 -> false
-                     | R14, R10 -> false
-                     | R10, R13 -> false
-                     | R13, R10 -> false
-                     | R10, R12 -> false
-                     | R12, R10 -> false
-                     | R10, R11 -> false
-                     | R11, R10 -> false
-                     | R9, R15 -> false
-                     | R15, R9 -> false
-                     | R9, R14 -> false
-                     | R14, R9 -> false
-                     | R9, R13 -> false
-                     | R13, R9 -> false
-                     | R9, R12 -> false
-                     | R12, R9 -> false
-                     | R9, R11 -> false
-                     | R11, R9 -> false
-                     | R9, R10 -> false
-                     | R10, R9 -> false
-                     | R8, R15 -> false
-                     | R15, R8 -> false
-                     | R8, R14 -> false
-                     | R14, R8 -> false
-                     | R8, R13 -> false
-                     | R13, R8 -> false
-                     | R8, R12 -> false
-                     | R12, R8 -> false
-                     | R8, R11 -> false
-                     | R11, R8 -> false
-                     | R8, R10 -> false
-                     | R10, R8 -> false
-                     | R8, R9 -> false
-                     | R9, R8 -> false
-                     | RSP, R15 -> false
-                     | R15, RSP -> false
-                     | RSP, R14 -> false
-                     | R14, RSP -> false
-                     | RSP, R13 -> false
-                     | R13, RSP -> false
-                     | RSP, R12 -> false
-                     | R12, RSP -> false
-                     | RSP, R11 -> false
-                     | R11, RSP -> false
-                     | RSP, R10 -> false
-                     | R10, RSP -> false
-                     | RSP, R9 -> false
-                     | R9, RSP -> false
-                     | RSP, R8 -> false
-                     | R8, RSP -> false
-                     | RBP, R15 -> false
-                     | R15, RBP -> false
-                     | RBP, R14 -> false
-                     | R14, RBP -> false
-                     | RBP, R13 -> false
-                     | R13, RBP -> false
-                     | RBP, R12 -> false
-                     | R12, RBP -> false
-                     | RBP, R11 -> false
-                     | R11, RBP -> false
-                     | RBP, R10 -> false
-                     | R10, RBP -> false
-                     | RBP, R9 -> false
-                     | R9, RBP -> false
-                     | RBP, R8 -> false
-                     | R8, RBP -> false
-                     | RBP, RSP -> false
-                     | RSP, RBP -> false
-                     | RDI, R15 -> false
-                     | R15, RDI -> false
-                     | RDI, R14 -> false
-                     | R14, RDI -> false
-                     | RDI, R13 -> false
-                     | R13, RDI -> false
-                     | RDI, R12 -> false
-                     | R12, RDI -> false
-                     | RDI, R11 -> false
-                     | R11, RDI -> false
-                     | RDI, R10 -> false
-                     | R10, RDI -> false
-                     | RDI, R9 -> false
-                     | R9, RDI -> false
-                     | RDI, R8 -> false
-                     | R8, RDI -> false
-                     | RDI, RSP -> false
-                     | RSP, RDI -> false
-                     | RDI, RBP -> false
-                     | RBP, RDI -> false
-                     | RSI, R15 -> false
-                     | R15, RSI -> false
-                     | RSI, R14 -> false
-                     | R14, RSI -> false
-                     | RSI, R13 -> false
-                     | R13, RSI -> false
-                     | RSI, R12 -> false
-                     | R12, RSI -> false
-                     | RSI, R11 -> false
-                     | R11, RSI -> false
-                     | RSI, R10 -> false
-                     | R10, RSI -> false
-                     | RSI, R9 -> false
-                     | R9, RSI -> false
-                     | RSI, R8 -> false
-                     | R8, RSI -> false
-                     | RSI, RSP -> false
-                     | RSP, RSI -> false
-                     | RSI, RBP -> false
-                     | RBP, RSI -> false
-                     | RSI, RDI -> false
-                     | RDI, RSI -> false
-                     | RDX, R15 -> false
-                     | R15, RDX -> false
-                     | RDX, R14 -> false
-                     | R14, RDX -> false
-                     | RDX, R13 -> false
-                     | R13, RDX -> false
-                     | RDX, R12 -> false
-                     | R12, RDX -> false
-                     | RDX, R11 -> false
-                     | R11, RDX -> false
-                     | RDX, R10 -> false
-                     | R10, RDX -> false
-                     | RDX, R9 -> false
-                     | R9, RDX -> false
-                     | RDX, R8 -> false
-                     | R8, RDX -> false
-                     | RDX, RSP -> false
-                     | RSP, RDX -> false
-                     | RDX, RBP -> false
-                     | RBP, RDX -> false
-                     | RDX, RDI -> false
-                     | RDI, RDX -> false
-                     | RDX, RSI -> false
-                     | RSI, RDX -> false
-                     | RCX, R15 -> false
-                     | R15, RCX -> false
-                     | RCX, R14 -> false
-                     | R14, RCX -> false
-                     | RCX, R13 -> false
-                     | R13, RCX -> false
-                     | RCX, R12 -> false
-                     | R12, RCX -> false
-                     | RCX, R11 -> false
-                     | R11, RCX -> false
-                     | RCX, R10 -> false
-                     | R10, RCX -> false
-                     | RCX, R9 -> false
-                     | R9, RCX -> false
-                     | RCX, R8 -> false
-                     | R8, RCX -> false
-                     | RCX, RSP -> false
-                     | RSP, RCX -> false
-                     | RCX, RBP -> false
-                     | RBP, RCX -> false
-                     | RCX, RDI -> false
-                     | RDI, RCX -> false
-                     | RCX, RSI -> false
-                     | RSI, RCX -> false
-                     | RCX, RDX -> false
-                     | RDX, RCX -> false
-                     | RBX, R15 -> false
-                     | R15, RBX -> false
-                     | RBX, R14 -> false
-                     | R14, RBX -> false
-                     | RBX, R13 -> false
-                     | R13, RBX -> false
-                     | RBX, R12 -> false
-                     | R12, RBX -> false
-                     | RBX, R11 -> false
-                     | R11, RBX -> false
-                     | RBX, R10 -> false
-                     | R10, RBX -> false
-                     | RBX, R9 -> false
-                     | R9, RBX -> false
-                     | RBX, R8 -> false
-                     | R8, RBX -> false
-                     | RBX, RSP -> false
-                     | RSP, RBX -> false
-                     | RBX, RBP -> false
-                     | RBP, RBX -> false
-                     | RBX, RDI -> false
-                     | RDI, RBX -> false
-                     | RBX, RSI -> false
-                     | RSI, RBX -> false
-                     | RBX, RDX -> false
-                     | RDX, RBX -> false
-                     | RBX, RCX -> false
-                     | RCX, RBX -> false
-                     | RAX, R15 -> false
-                     | R15, RAX -> false
-                     | RAX, R14 -> false
-                     | R14, RAX -> false
-                     | RAX, R13 -> false
-                     | R13, RAX -> false
-                     | RAX, R12 -> false
-                     | R12, RAX -> false
-                     | RAX, R11 -> false
-                     | R11, RAX -> false
-                     | RAX, R10 -> false
-                     | R10, RAX -> false
-                     | RAX, R9 -> false
-                     | R9, RAX -> false
-                     | RAX, R8 -> false
-                     | R8, RAX -> false
-                     | RAX, RSP -> false
-                     | RSP, RAX -> false
-                     | RAX, RBP -> false
-                     | RBP, RAX -> false
-                     | RAX, RDI -> false
-                     | RDI, RAX -> false
-                     | RAX, RSI -> false
-                     | RSI, RAX -> false
-                     | RAX, RDX -> false
-                     | RDX, RAX -> false
-                     | RAX, RCX -> false
-                     | RCX, RAX -> false
-                     | RAX, RBX -> false
-                     | RBX, RAX -> false
-                     | R15, R15 -> true
-                     | R14, R14 -> true
-                     | R13, R13 -> true
-                     | R12, R12 -> true
-                     | R11, R11 -> true
-                     | R10, R10 -> true
-                     | R9, R9 -> true
-                     | R8, R8 -> true
-                     | RSP, RSP -> true
-                     | RBP, RBP -> true
-                     | RDI, RDI -> true
-                     | RSI, RSI -> true
-                     | RDX, RDX -> true
-                     | RCX, RCX -> true
-                     | RBX, RBX -> true
-                     | RAX, RAX -> true;;
 
 let rec zero_word _A = Word Zero_int;;
 
@@ -1573,6 +1318,118 @@ let rec x64_encode
                  (u8_of_ireg r1) (u8_of_ireg rd)
                in
               [rex; op; rop])
+          | Psubq_rr (rd, r1) ->
+            (let rex =
+               construct_rex_to_u8 true
+                 (not (equal_word (len_bit0 (len_bit0 (len_bit0 len_num1)))
+                        (and_word (len_bit0 (len_bit0 (len_bit0 len_num1)))
+                          (u8_of_ireg r1)
+                          (of_int (len_bit0 (len_bit0 (len_bit0 len_num1)))
+                            (Pos (Bit0 (Bit0 (Bit0 One))))))
+                        (zero_word (len_bit0 (len_bit0 (len_bit0 len_num1))))))
+                 false
+                 (not (equal_word (len_bit0 (len_bit0 (len_bit0 len_num1)))
+                        (and_word (len_bit0 (len_bit0 (len_bit0 len_num1)))
+                          (u8_of_ireg rd)
+                          (of_int (len_bit0 (len_bit0 (len_bit0 len_num1)))
+                            (Pos (Bit0 (Bit0 (Bit0 One))))))
+                        (zero_word (len_bit0 (len_bit0 (len_bit0 len_num1))))))
+               in
+             let op =
+               of_int (len_bit0 (len_bit0 (len_bit0 len_num1)))
+                 (Pos (Bit1 (Bit0 (Bit0 (Bit1 (Bit0 One))))))
+               in
+             let rop =
+               construct_modsib_to_u8
+                 (of_int (len_bit0 (len_bit0 (len_bit0 len_num1)))
+                   (Pos (Bit1 One)))
+                 (u8_of_ireg r1) (u8_of_ireg rd)
+               in
+              [rex; op; rop])
+          | Porq_rr (rd, r1) ->
+            (let rex =
+               construct_rex_to_u8 true
+                 (not (equal_word (len_bit0 (len_bit0 (len_bit0 len_num1)))
+                        (and_word (len_bit0 (len_bit0 (len_bit0 len_num1)))
+                          (u8_of_ireg r1)
+                          (of_int (len_bit0 (len_bit0 (len_bit0 len_num1)))
+                            (Pos (Bit0 (Bit0 (Bit0 One))))))
+                        (zero_word (len_bit0 (len_bit0 (len_bit0 len_num1))))))
+                 false
+                 (not (equal_word (len_bit0 (len_bit0 (len_bit0 len_num1)))
+                        (and_word (len_bit0 (len_bit0 (len_bit0 len_num1)))
+                          (u8_of_ireg rd)
+                          (of_int (len_bit0 (len_bit0 (len_bit0 len_num1)))
+                            (Pos (Bit0 (Bit0 (Bit0 One))))))
+                        (zero_word (len_bit0 (len_bit0 (len_bit0 len_num1))))))
+               in
+             let op =
+               of_int (len_bit0 (len_bit0 (len_bit0 len_num1)))
+                 (Pos (Bit1 (Bit0 (Bit0 One))))
+               in
+             let rop =
+               construct_modsib_to_u8
+                 (of_int (len_bit0 (len_bit0 (len_bit0 len_num1)))
+                   (Pos (Bit1 One)))
+                 (u8_of_ireg r1) (u8_of_ireg rd)
+               in
+              [rex; op; rop])
+          | Pandq_rr (rd, r1) ->
+            (let rex =
+               construct_rex_to_u8 true
+                 (not (equal_word (len_bit0 (len_bit0 (len_bit0 len_num1)))
+                        (and_word (len_bit0 (len_bit0 (len_bit0 len_num1)))
+                          (u8_of_ireg r1)
+                          (of_int (len_bit0 (len_bit0 (len_bit0 len_num1)))
+                            (Pos (Bit0 (Bit0 (Bit0 One))))))
+                        (zero_word (len_bit0 (len_bit0 (len_bit0 len_num1))))))
+                 false
+                 (not (equal_word (len_bit0 (len_bit0 (len_bit0 len_num1)))
+                        (and_word (len_bit0 (len_bit0 (len_bit0 len_num1)))
+                          (u8_of_ireg rd)
+                          (of_int (len_bit0 (len_bit0 (len_bit0 len_num1)))
+                            (Pos (Bit0 (Bit0 (Bit0 One))))))
+                        (zero_word (len_bit0 (len_bit0 (len_bit0 len_num1))))))
+               in
+             let op =
+               of_int (len_bit0 (len_bit0 (len_bit0 len_num1)))
+                 (Pos (Bit1 (Bit0 (Bit0 (Bit0 (Bit0 One))))))
+               in
+             let rop =
+               construct_modsib_to_u8
+                 (of_int (len_bit0 (len_bit0 (len_bit0 len_num1)))
+                   (Pos (Bit1 One)))
+                 (u8_of_ireg r1) (u8_of_ireg rd)
+               in
+              [rex; op; rop])
+          | Pxorq_rr (rd, r1) ->
+            (let rex =
+               construct_rex_to_u8 true
+                 (not (equal_word (len_bit0 (len_bit0 (len_bit0 len_num1)))
+                        (and_word (len_bit0 (len_bit0 (len_bit0 len_num1)))
+                          (u8_of_ireg r1)
+                          (of_int (len_bit0 (len_bit0 (len_bit0 len_num1)))
+                            (Pos (Bit0 (Bit0 (Bit0 One))))))
+                        (zero_word (len_bit0 (len_bit0 (len_bit0 len_num1))))))
+                 false
+                 (not (equal_word (len_bit0 (len_bit0 (len_bit0 len_num1)))
+                        (and_word (len_bit0 (len_bit0 (len_bit0 len_num1)))
+                          (u8_of_ireg rd)
+                          (of_int (len_bit0 (len_bit0 (len_bit0 len_num1)))
+                            (Pos (Bit0 (Bit0 (Bit0 One))))))
+                        (zero_word (len_bit0 (len_bit0 (len_bit0 len_num1))))))
+               in
+             let op =
+               of_int (len_bit0 (len_bit0 (len_bit0 len_num1)))
+                 (Pos (Bit1 (Bit0 (Bit0 (Bit0 (Bit1 One))))))
+               in
+             let rop =
+               construct_modsib_to_u8
+                 (of_int (len_bit0 (len_bit0 (len_bit0 len_num1)))
+                   (Pos (Bit1 One)))
+                 (u8_of_ireg r1) (u8_of_ireg rd)
+               in
+              [rex; op; rop])
           | Pret ->
             [of_int (len_bit0 (len_bit0 (len_bit0 len_num1)))
                (Pos (Bit1 (Bit1 (Bit0 (Bit0 (Bit0 (Bit0 (Bit1 One))))))))]
@@ -1661,7 +1518,33 @@ let rec x64_encode
                  (u8_of_ireg rd)
                in
               [rex; op] @ u8_list_of_u64 n)
-          | Pmulq_r r1 ->
+          | Pmovl_ri (rd, n) ->
+            (let rex =
+               construct_rex_to_u8 true false false
+                 (not (equal_word (len_bit0 (len_bit0 (len_bit0 len_num1)))
+                        (and_word (len_bit0 (len_bit0 (len_bit0 len_num1)))
+                          (u8_of_ireg rd)
+                          (of_int (len_bit0 (len_bit0 (len_bit0 len_num1)))
+                            (Pos (Bit0 (Bit0 (Bit0 One))))))
+                        (zero_word (len_bit0 (len_bit0 (len_bit0 len_num1))))))
+               in
+             let op =
+               of_int (len_bit0 (len_bit0 (len_bit0 len_num1)))
+                 (Pos (Bit1 (Bit1 (Bit1 (Bit0 (Bit0 (Bit0 (Bit1 One))))))))
+               in
+             let rop =
+               construct_modsib_to_u8
+                 (of_int (len_bit0 (len_bit0 (len_bit0 len_num1)))
+                   (Pos (Bit1 One)))
+                 (zero_word (len_bit0 (len_bit0 (len_bit0 len_num1))))
+                 (u8_of_ireg rd)
+               in
+              (if equal_word (len_bit0 (len_bit0 (len_bit0 len_num1))) rex
+                    (of_int (len_bit0 (len_bit0 (len_bit0 len_num1)))
+                      (Pos (Bit0 (Bit0 (Bit0 (Bit0 (Bit0 (Bit0 One))))))))
+                then [op; rop] @ u8_list_of_u32 n
+                else [rex; op; rop] @ u8_list_of_u32 n))
+          | Pimulq_r r1 ->
             (let rex =
                construct_rex_to_u8 true false false
                  (not (equal_word (len_bit0 (len_bit0 (len_bit0 len_num1)))
@@ -1680,7 +1563,7 @@ let rec x64_encode
                  (of_int (len_bit0 (len_bit0 (len_bit0 len_num1)))
                    (Pos (Bit1 One)))
                  (of_int (len_bit0 (len_bit0 (len_bit0 len_num1)))
-                   (Pos (Bit0 (Bit0 One))))
+                   (Pos (Bit1 (Bit0 One))))
                  (u8_of_ireg r1)
                in
               [rex; op; rop])
@@ -2151,11 +2034,25 @@ let rec x64_encode
 
 let rec per_jit_shift_arsh_reg64
   dst src =
-    (let _ = equal_ireg (bpf_to_x64_reg dst) RCX in
-     let len =
+    (let len =
        (match bpf_to_x64_reg dst with RAX -> nat_of_num (Bit0 (Bit0 One))
          | RBX -> nat_of_num (Bit0 (Bit0 One))
-         | RCX -> nat_of_num (Bit1 (Bit0 One))
+         | RCX ->
+           (match bpf_to_x64_reg src with RAX -> nat_of_num (Bit1 (Bit0 One))
+             | RBX -> nat_of_num (Bit1 (Bit0 One)) | RCX -> one_nat
+             | RDX -> nat_of_num (Bit1 (Bit0 One))
+             | RSI -> nat_of_num (Bit1 (Bit0 One))
+             | RDI -> nat_of_num (Bit1 (Bit0 One))
+             | RBP -> nat_of_num (Bit1 (Bit0 One))
+             | RSP -> nat_of_num (Bit1 (Bit0 One))
+             | R8 -> nat_of_num (Bit1 (Bit0 One))
+             | R9 -> nat_of_num (Bit1 (Bit0 One))
+             | R10 -> nat_of_num (Bit1 (Bit0 One))
+             | R11 -> nat_of_num (Bit1 (Bit0 One))
+             | R12 -> nat_of_num (Bit1 (Bit0 One))
+             | R13 -> nat_of_num (Bit1 (Bit0 One))
+             | R14 -> nat_of_num (Bit1 (Bit0 One))
+             | R15 -> nat_of_num (Bit1 (Bit0 One)))
          | RDX -> nat_of_num (Bit0 (Bit0 One))
          | RSI -> nat_of_num (Bit0 (Bit0 One))
          | RDI -> nat_of_num (Bit0 (Bit0 One))
@@ -2183,11 +2080,113 @@ let rec per_jit_shift_arsh_reg64
                x64_encode (Psarq_r (bpf_to_x64_reg dst)) @
                  x64_encode (Ppopl RCX)
          | RCX ->
-           x64_encode (Ppushl_r (bpf_to_x64_reg src)) @
-             x64_encode (Pxchgq_rr (bpf_to_x64_reg dst, bpf_to_x64_reg src)) @
-               x64_encode (Psarq_r (bpf_to_x64_reg src)) @
-                 x64_encode (Pmovq_rr (RCX, bpf_to_x64_reg src)) @
-                   x64_encode (Ppopl (bpf_to_x64_reg src))
+           (match bpf_to_x64_reg src
+             with RAX ->
+               x64_encode (Ppushl_r (bpf_to_x64_reg src)) @
+                 x64_encode
+                   (Pxchgq_rr (bpf_to_x64_reg dst, bpf_to_x64_reg src)) @
+                   x64_encode (Psarq_r (bpf_to_x64_reg src)) @
+                     x64_encode (Pmovq_rr (RCX, bpf_to_x64_reg src)) @
+                       x64_encode (Ppopl (bpf_to_x64_reg src))
+             | RBX ->
+               x64_encode (Ppushl_r (bpf_to_x64_reg src)) @
+                 x64_encode
+                   (Pxchgq_rr (bpf_to_x64_reg dst, bpf_to_x64_reg src)) @
+                   x64_encode (Psarq_r (bpf_to_x64_reg src)) @
+                     x64_encode (Pmovq_rr (RCX, bpf_to_x64_reg src)) @
+                       x64_encode (Ppopl (bpf_to_x64_reg src))
+             | RCX -> x64_encode (Psarq_r (bpf_to_x64_reg src))
+             | RDX ->
+               x64_encode (Ppushl_r (bpf_to_x64_reg src)) @
+                 x64_encode
+                   (Pxchgq_rr (bpf_to_x64_reg dst, bpf_to_x64_reg src)) @
+                   x64_encode (Psarq_r (bpf_to_x64_reg src)) @
+                     x64_encode (Pmovq_rr (RCX, bpf_to_x64_reg src)) @
+                       x64_encode (Ppopl (bpf_to_x64_reg src))
+             | RSI ->
+               x64_encode (Ppushl_r (bpf_to_x64_reg src)) @
+                 x64_encode
+                   (Pxchgq_rr (bpf_to_x64_reg dst, bpf_to_x64_reg src)) @
+                   x64_encode (Psarq_r (bpf_to_x64_reg src)) @
+                     x64_encode (Pmovq_rr (RCX, bpf_to_x64_reg src)) @
+                       x64_encode (Ppopl (bpf_to_x64_reg src))
+             | RDI ->
+               x64_encode (Ppushl_r (bpf_to_x64_reg src)) @
+                 x64_encode
+                   (Pxchgq_rr (bpf_to_x64_reg dst, bpf_to_x64_reg src)) @
+                   x64_encode (Psarq_r (bpf_to_x64_reg src)) @
+                     x64_encode (Pmovq_rr (RCX, bpf_to_x64_reg src)) @
+                       x64_encode (Ppopl (bpf_to_x64_reg src))
+             | RBP ->
+               x64_encode (Ppushl_r (bpf_to_x64_reg src)) @
+                 x64_encode
+                   (Pxchgq_rr (bpf_to_x64_reg dst, bpf_to_x64_reg src)) @
+                   x64_encode (Psarq_r (bpf_to_x64_reg src)) @
+                     x64_encode (Pmovq_rr (RCX, bpf_to_x64_reg src)) @
+                       x64_encode (Ppopl (bpf_to_x64_reg src))
+             | RSP ->
+               x64_encode (Ppushl_r (bpf_to_x64_reg src)) @
+                 x64_encode
+                   (Pxchgq_rr (bpf_to_x64_reg dst, bpf_to_x64_reg src)) @
+                   x64_encode (Psarq_r (bpf_to_x64_reg src)) @
+                     x64_encode (Pmovq_rr (RCX, bpf_to_x64_reg src)) @
+                       x64_encode (Ppopl (bpf_to_x64_reg src))
+             | R8 ->
+               x64_encode (Ppushl_r (bpf_to_x64_reg src)) @
+                 x64_encode
+                   (Pxchgq_rr (bpf_to_x64_reg dst, bpf_to_x64_reg src)) @
+                   x64_encode (Psarq_r (bpf_to_x64_reg src)) @
+                     x64_encode (Pmovq_rr (RCX, bpf_to_x64_reg src)) @
+                       x64_encode (Ppopl (bpf_to_x64_reg src))
+             | R9 ->
+               x64_encode (Ppushl_r (bpf_to_x64_reg src)) @
+                 x64_encode
+                   (Pxchgq_rr (bpf_to_x64_reg dst, bpf_to_x64_reg src)) @
+                   x64_encode (Psarq_r (bpf_to_x64_reg src)) @
+                     x64_encode (Pmovq_rr (RCX, bpf_to_x64_reg src)) @
+                       x64_encode (Ppopl (bpf_to_x64_reg src))
+             | R10 ->
+               x64_encode (Ppushl_r (bpf_to_x64_reg src)) @
+                 x64_encode
+                   (Pxchgq_rr (bpf_to_x64_reg dst, bpf_to_x64_reg src)) @
+                   x64_encode (Psarq_r (bpf_to_x64_reg src)) @
+                     x64_encode (Pmovq_rr (RCX, bpf_to_x64_reg src)) @
+                       x64_encode (Ppopl (bpf_to_x64_reg src))
+             | R11 ->
+               x64_encode (Ppushl_r (bpf_to_x64_reg src)) @
+                 x64_encode
+                   (Pxchgq_rr (bpf_to_x64_reg dst, bpf_to_x64_reg src)) @
+                   x64_encode (Psarq_r (bpf_to_x64_reg src)) @
+                     x64_encode (Pmovq_rr (RCX, bpf_to_x64_reg src)) @
+                       x64_encode (Ppopl (bpf_to_x64_reg src))
+             | R12 ->
+               x64_encode (Ppushl_r (bpf_to_x64_reg src)) @
+                 x64_encode
+                   (Pxchgq_rr (bpf_to_x64_reg dst, bpf_to_x64_reg src)) @
+                   x64_encode (Psarq_r (bpf_to_x64_reg src)) @
+                     x64_encode (Pmovq_rr (RCX, bpf_to_x64_reg src)) @
+                       x64_encode (Ppopl (bpf_to_x64_reg src))
+             | R13 ->
+               x64_encode (Ppushl_r (bpf_to_x64_reg src)) @
+                 x64_encode
+                   (Pxchgq_rr (bpf_to_x64_reg dst, bpf_to_x64_reg src)) @
+                   x64_encode (Psarq_r (bpf_to_x64_reg src)) @
+                     x64_encode (Pmovq_rr (RCX, bpf_to_x64_reg src)) @
+                       x64_encode (Ppopl (bpf_to_x64_reg src))
+             | R14 ->
+               x64_encode (Ppushl_r (bpf_to_x64_reg src)) @
+                 x64_encode
+                   (Pxchgq_rr (bpf_to_x64_reg dst, bpf_to_x64_reg src)) @
+                   x64_encode (Psarq_r (bpf_to_x64_reg src)) @
+                     x64_encode (Pmovq_rr (RCX, bpf_to_x64_reg src)) @
+                       x64_encode (Ppopl (bpf_to_x64_reg src))
+             | R15 ->
+               x64_encode (Ppushl_r (bpf_to_x64_reg src)) @
+                 x64_encode
+                   (Pxchgq_rr (bpf_to_x64_reg dst, bpf_to_x64_reg src)) @
+                   x64_encode (Psarq_r (bpf_to_x64_reg src)) @
+                     x64_encode (Pmovq_rr (RCX, bpf_to_x64_reg src)) @
+                       x64_encode (Ppopl (bpf_to_x64_reg src)))
          | RDX ->
            x64_encode (Ppushl_r RCX) @
              x64_encode (Pmovq_rr (RCX, bpf_to_x64_reg src)) @
@@ -2262,11 +2261,25 @@ let rec per_jit_shift_arsh_reg64
 
 let rec per_jit_shift_rsh_reg64
   dst src =
-    (let _ = equal_ireg (bpf_to_x64_reg dst) RCX in
-     let len =
+    (let len =
        (match bpf_to_x64_reg dst with RAX -> nat_of_num (Bit0 (Bit0 One))
          | RBX -> nat_of_num (Bit0 (Bit0 One))
-         | RCX -> nat_of_num (Bit1 (Bit0 One))
+         | RCX ->
+           (match bpf_to_x64_reg src with RAX -> nat_of_num (Bit1 (Bit0 One))
+             | RBX -> nat_of_num (Bit1 (Bit0 One)) | RCX -> one_nat
+             | RDX -> nat_of_num (Bit1 (Bit0 One))
+             | RSI -> nat_of_num (Bit1 (Bit0 One))
+             | RDI -> nat_of_num (Bit1 (Bit0 One))
+             | RBP -> nat_of_num (Bit1 (Bit0 One))
+             | RSP -> nat_of_num (Bit1 (Bit0 One))
+             | R8 -> nat_of_num (Bit1 (Bit0 One))
+             | R9 -> nat_of_num (Bit1 (Bit0 One))
+             | R10 -> nat_of_num (Bit1 (Bit0 One))
+             | R11 -> nat_of_num (Bit1 (Bit0 One))
+             | R12 -> nat_of_num (Bit1 (Bit0 One))
+             | R13 -> nat_of_num (Bit1 (Bit0 One))
+             | R14 -> nat_of_num (Bit1 (Bit0 One))
+             | R15 -> nat_of_num (Bit1 (Bit0 One)))
          | RDX -> nat_of_num (Bit0 (Bit0 One))
          | RSI -> nat_of_num (Bit0 (Bit0 One))
          | RDI -> nat_of_num (Bit0 (Bit0 One))
@@ -2294,11 +2307,113 @@ let rec per_jit_shift_rsh_reg64
                x64_encode (Pshrq_r (bpf_to_x64_reg dst)) @
                  x64_encode (Ppopl RCX)
          | RCX ->
-           x64_encode (Ppushl_r (bpf_to_x64_reg src)) @
-             x64_encode (Pxchgq_rr (bpf_to_x64_reg dst, bpf_to_x64_reg src)) @
-               x64_encode (Pshrq_r (bpf_to_x64_reg src)) @
-                 x64_encode (Pmovq_rr (RCX, bpf_to_x64_reg src)) @
-                   x64_encode (Ppopl (bpf_to_x64_reg src))
+           (match bpf_to_x64_reg src
+             with RAX ->
+               x64_encode (Ppushl_r (bpf_to_x64_reg src)) @
+                 x64_encode
+                   (Pxchgq_rr (bpf_to_x64_reg dst, bpf_to_x64_reg src)) @
+                   x64_encode (Pshrq_r (bpf_to_x64_reg src)) @
+                     x64_encode (Pmovq_rr (RCX, bpf_to_x64_reg src)) @
+                       x64_encode (Ppopl (bpf_to_x64_reg src))
+             | RBX ->
+               x64_encode (Ppushl_r (bpf_to_x64_reg src)) @
+                 x64_encode
+                   (Pxchgq_rr (bpf_to_x64_reg dst, bpf_to_x64_reg src)) @
+                   x64_encode (Pshrq_r (bpf_to_x64_reg src)) @
+                     x64_encode (Pmovq_rr (RCX, bpf_to_x64_reg src)) @
+                       x64_encode (Ppopl (bpf_to_x64_reg src))
+             | RCX -> x64_encode (Pshrq_r (bpf_to_x64_reg src))
+             | RDX ->
+               x64_encode (Ppushl_r (bpf_to_x64_reg src)) @
+                 x64_encode
+                   (Pxchgq_rr (bpf_to_x64_reg dst, bpf_to_x64_reg src)) @
+                   x64_encode (Pshrq_r (bpf_to_x64_reg src)) @
+                     x64_encode (Pmovq_rr (RCX, bpf_to_x64_reg src)) @
+                       x64_encode (Ppopl (bpf_to_x64_reg src))
+             | RSI ->
+               x64_encode (Ppushl_r (bpf_to_x64_reg src)) @
+                 x64_encode
+                   (Pxchgq_rr (bpf_to_x64_reg dst, bpf_to_x64_reg src)) @
+                   x64_encode (Pshrq_r (bpf_to_x64_reg src)) @
+                     x64_encode (Pmovq_rr (RCX, bpf_to_x64_reg src)) @
+                       x64_encode (Ppopl (bpf_to_x64_reg src))
+             | RDI ->
+               x64_encode (Ppushl_r (bpf_to_x64_reg src)) @
+                 x64_encode
+                   (Pxchgq_rr (bpf_to_x64_reg dst, bpf_to_x64_reg src)) @
+                   x64_encode (Pshrq_r (bpf_to_x64_reg src)) @
+                     x64_encode (Pmovq_rr (RCX, bpf_to_x64_reg src)) @
+                       x64_encode (Ppopl (bpf_to_x64_reg src))
+             | RBP ->
+               x64_encode (Ppushl_r (bpf_to_x64_reg src)) @
+                 x64_encode
+                   (Pxchgq_rr (bpf_to_x64_reg dst, bpf_to_x64_reg src)) @
+                   x64_encode (Pshrq_r (bpf_to_x64_reg src)) @
+                     x64_encode (Pmovq_rr (RCX, bpf_to_x64_reg src)) @
+                       x64_encode (Ppopl (bpf_to_x64_reg src))
+             | RSP ->
+               x64_encode (Ppushl_r (bpf_to_x64_reg src)) @
+                 x64_encode
+                   (Pxchgq_rr (bpf_to_x64_reg dst, bpf_to_x64_reg src)) @
+                   x64_encode (Pshrq_r (bpf_to_x64_reg src)) @
+                     x64_encode (Pmovq_rr (RCX, bpf_to_x64_reg src)) @
+                       x64_encode (Ppopl (bpf_to_x64_reg src))
+             | R8 ->
+               x64_encode (Ppushl_r (bpf_to_x64_reg src)) @
+                 x64_encode
+                   (Pxchgq_rr (bpf_to_x64_reg dst, bpf_to_x64_reg src)) @
+                   x64_encode (Pshrq_r (bpf_to_x64_reg src)) @
+                     x64_encode (Pmovq_rr (RCX, bpf_to_x64_reg src)) @
+                       x64_encode (Ppopl (bpf_to_x64_reg src))
+             | R9 ->
+               x64_encode (Ppushl_r (bpf_to_x64_reg src)) @
+                 x64_encode
+                   (Pxchgq_rr (bpf_to_x64_reg dst, bpf_to_x64_reg src)) @
+                   x64_encode (Pshrq_r (bpf_to_x64_reg src)) @
+                     x64_encode (Pmovq_rr (RCX, bpf_to_x64_reg src)) @
+                       x64_encode (Ppopl (bpf_to_x64_reg src))
+             | R10 ->
+               x64_encode (Ppushl_r (bpf_to_x64_reg src)) @
+                 x64_encode
+                   (Pxchgq_rr (bpf_to_x64_reg dst, bpf_to_x64_reg src)) @
+                   x64_encode (Pshrq_r (bpf_to_x64_reg src)) @
+                     x64_encode (Pmovq_rr (RCX, bpf_to_x64_reg src)) @
+                       x64_encode (Ppopl (bpf_to_x64_reg src))
+             | R11 ->
+               x64_encode (Ppushl_r (bpf_to_x64_reg src)) @
+                 x64_encode
+                   (Pxchgq_rr (bpf_to_x64_reg dst, bpf_to_x64_reg src)) @
+                   x64_encode (Pshrq_r (bpf_to_x64_reg src)) @
+                     x64_encode (Pmovq_rr (RCX, bpf_to_x64_reg src)) @
+                       x64_encode (Ppopl (bpf_to_x64_reg src))
+             | R12 ->
+               x64_encode (Ppushl_r (bpf_to_x64_reg src)) @
+                 x64_encode
+                   (Pxchgq_rr (bpf_to_x64_reg dst, bpf_to_x64_reg src)) @
+                   x64_encode (Pshrq_r (bpf_to_x64_reg src)) @
+                     x64_encode (Pmovq_rr (RCX, bpf_to_x64_reg src)) @
+                       x64_encode (Ppopl (bpf_to_x64_reg src))
+             | R13 ->
+               x64_encode (Ppushl_r (bpf_to_x64_reg src)) @
+                 x64_encode
+                   (Pxchgq_rr (bpf_to_x64_reg dst, bpf_to_x64_reg src)) @
+                   x64_encode (Pshrq_r (bpf_to_x64_reg src)) @
+                     x64_encode (Pmovq_rr (RCX, bpf_to_x64_reg src)) @
+                       x64_encode (Ppopl (bpf_to_x64_reg src))
+             | R14 ->
+               x64_encode (Ppushl_r (bpf_to_x64_reg src)) @
+                 x64_encode
+                   (Pxchgq_rr (bpf_to_x64_reg dst, bpf_to_x64_reg src)) @
+                   x64_encode (Pshrq_r (bpf_to_x64_reg src)) @
+                     x64_encode (Pmovq_rr (RCX, bpf_to_x64_reg src)) @
+                       x64_encode (Ppopl (bpf_to_x64_reg src))
+             | R15 ->
+               x64_encode (Ppushl_r (bpf_to_x64_reg src)) @
+                 x64_encode
+                   (Pxchgq_rr (bpf_to_x64_reg dst, bpf_to_x64_reg src)) @
+                   x64_encode (Pshrq_r (bpf_to_x64_reg src)) @
+                     x64_encode (Pmovq_rr (RCX, bpf_to_x64_reg src)) @
+                       x64_encode (Ppopl (bpf_to_x64_reg src)))
          | RDX ->
            x64_encode (Ppushl_r RCX) @
              x64_encode (Pmovq_rr (RCX, bpf_to_x64_reg src)) @
@@ -2373,11 +2488,25 @@ let rec per_jit_shift_rsh_reg64
 
 let rec per_jit_shift_lsh_reg64
   dst src =
-    (let _ = equal_ireg (bpf_to_x64_reg dst) RCX in
-     let len =
+    (let len =
        (match bpf_to_x64_reg dst with RAX -> nat_of_num (Bit0 (Bit0 One))
          | RBX -> nat_of_num (Bit0 (Bit0 One))
-         | RCX -> nat_of_num (Bit1 (Bit0 One))
+         | RCX ->
+           (match bpf_to_x64_reg src with RAX -> nat_of_num (Bit1 (Bit0 One))
+             | RBX -> nat_of_num (Bit1 (Bit0 One)) | RCX -> one_nat
+             | RDX -> nat_of_num (Bit1 (Bit0 One))
+             | RSI -> nat_of_num (Bit1 (Bit0 One))
+             | RDI -> nat_of_num (Bit1 (Bit0 One))
+             | RBP -> nat_of_num (Bit1 (Bit0 One))
+             | RSP -> nat_of_num (Bit1 (Bit0 One))
+             | R8 -> nat_of_num (Bit1 (Bit0 One))
+             | R9 -> nat_of_num (Bit1 (Bit0 One))
+             | R10 -> nat_of_num (Bit1 (Bit0 One))
+             | R11 -> nat_of_num (Bit1 (Bit0 One))
+             | R12 -> nat_of_num (Bit1 (Bit0 One))
+             | R13 -> nat_of_num (Bit1 (Bit0 One))
+             | R14 -> nat_of_num (Bit1 (Bit0 One))
+             | R15 -> nat_of_num (Bit1 (Bit0 One)))
          | RDX -> nat_of_num (Bit0 (Bit0 One))
          | RSI -> nat_of_num (Bit0 (Bit0 One))
          | RDI -> nat_of_num (Bit0 (Bit0 One))
@@ -2405,11 +2534,113 @@ let rec per_jit_shift_lsh_reg64
                x64_encode (Pshlq_r (bpf_to_x64_reg dst)) @
                  x64_encode (Ppopl RCX)
          | RCX ->
-           x64_encode (Ppushl_r (bpf_to_x64_reg src)) @
-             x64_encode (Pxchgq_rr (bpf_to_x64_reg dst, bpf_to_x64_reg src)) @
-               x64_encode (Pshlq_r (bpf_to_x64_reg src)) @
-                 x64_encode (Pmovq_rr (RCX, bpf_to_x64_reg src)) @
-                   x64_encode (Ppopl (bpf_to_x64_reg src))
+           (match bpf_to_x64_reg src
+             with RAX ->
+               x64_encode (Ppushl_r (bpf_to_x64_reg src)) @
+                 x64_encode
+                   (Pxchgq_rr (bpf_to_x64_reg dst, bpf_to_x64_reg src)) @
+                   x64_encode (Pshlq_r (bpf_to_x64_reg src)) @
+                     x64_encode (Pmovq_rr (RCX, bpf_to_x64_reg src)) @
+                       x64_encode (Ppopl (bpf_to_x64_reg src))
+             | RBX ->
+               x64_encode (Ppushl_r (bpf_to_x64_reg src)) @
+                 x64_encode
+                   (Pxchgq_rr (bpf_to_x64_reg dst, bpf_to_x64_reg src)) @
+                   x64_encode (Pshlq_r (bpf_to_x64_reg src)) @
+                     x64_encode (Pmovq_rr (RCX, bpf_to_x64_reg src)) @
+                       x64_encode (Ppopl (bpf_to_x64_reg src))
+             | RCX -> x64_encode (Pshlq_r (bpf_to_x64_reg src))
+             | RDX ->
+               x64_encode (Ppushl_r (bpf_to_x64_reg src)) @
+                 x64_encode
+                   (Pxchgq_rr (bpf_to_x64_reg dst, bpf_to_x64_reg src)) @
+                   x64_encode (Pshlq_r (bpf_to_x64_reg src)) @
+                     x64_encode (Pmovq_rr (RCX, bpf_to_x64_reg src)) @
+                       x64_encode (Ppopl (bpf_to_x64_reg src))
+             | RSI ->
+               x64_encode (Ppushl_r (bpf_to_x64_reg src)) @
+                 x64_encode
+                   (Pxchgq_rr (bpf_to_x64_reg dst, bpf_to_x64_reg src)) @
+                   x64_encode (Pshlq_r (bpf_to_x64_reg src)) @
+                     x64_encode (Pmovq_rr (RCX, bpf_to_x64_reg src)) @
+                       x64_encode (Ppopl (bpf_to_x64_reg src))
+             | RDI ->
+               x64_encode (Ppushl_r (bpf_to_x64_reg src)) @
+                 x64_encode
+                   (Pxchgq_rr (bpf_to_x64_reg dst, bpf_to_x64_reg src)) @
+                   x64_encode (Pshlq_r (bpf_to_x64_reg src)) @
+                     x64_encode (Pmovq_rr (RCX, bpf_to_x64_reg src)) @
+                       x64_encode (Ppopl (bpf_to_x64_reg src))
+             | RBP ->
+               x64_encode (Ppushl_r (bpf_to_x64_reg src)) @
+                 x64_encode
+                   (Pxchgq_rr (bpf_to_x64_reg dst, bpf_to_x64_reg src)) @
+                   x64_encode (Pshlq_r (bpf_to_x64_reg src)) @
+                     x64_encode (Pmovq_rr (RCX, bpf_to_x64_reg src)) @
+                       x64_encode (Ppopl (bpf_to_x64_reg src))
+             | RSP ->
+               x64_encode (Ppushl_r (bpf_to_x64_reg src)) @
+                 x64_encode
+                   (Pxchgq_rr (bpf_to_x64_reg dst, bpf_to_x64_reg src)) @
+                   x64_encode (Pshlq_r (bpf_to_x64_reg src)) @
+                     x64_encode (Pmovq_rr (RCX, bpf_to_x64_reg src)) @
+                       x64_encode (Ppopl (bpf_to_x64_reg src))
+             | R8 ->
+               x64_encode (Ppushl_r (bpf_to_x64_reg src)) @
+                 x64_encode
+                   (Pxchgq_rr (bpf_to_x64_reg dst, bpf_to_x64_reg src)) @
+                   x64_encode (Pshlq_r (bpf_to_x64_reg src)) @
+                     x64_encode (Pmovq_rr (RCX, bpf_to_x64_reg src)) @
+                       x64_encode (Ppopl (bpf_to_x64_reg src))
+             | R9 ->
+               x64_encode (Ppushl_r (bpf_to_x64_reg src)) @
+                 x64_encode
+                   (Pxchgq_rr (bpf_to_x64_reg dst, bpf_to_x64_reg src)) @
+                   x64_encode (Pshlq_r (bpf_to_x64_reg src)) @
+                     x64_encode (Pmovq_rr (RCX, bpf_to_x64_reg src)) @
+                       x64_encode (Ppopl (bpf_to_x64_reg src))
+             | R10 ->
+               x64_encode (Ppushl_r (bpf_to_x64_reg src)) @
+                 x64_encode
+                   (Pxchgq_rr (bpf_to_x64_reg dst, bpf_to_x64_reg src)) @
+                   x64_encode (Pshlq_r (bpf_to_x64_reg src)) @
+                     x64_encode (Pmovq_rr (RCX, bpf_to_x64_reg src)) @
+                       x64_encode (Ppopl (bpf_to_x64_reg src))
+             | R11 ->
+               x64_encode (Ppushl_r (bpf_to_x64_reg src)) @
+                 x64_encode
+                   (Pxchgq_rr (bpf_to_x64_reg dst, bpf_to_x64_reg src)) @
+                   x64_encode (Pshlq_r (bpf_to_x64_reg src)) @
+                     x64_encode (Pmovq_rr (RCX, bpf_to_x64_reg src)) @
+                       x64_encode (Ppopl (bpf_to_x64_reg src))
+             | R12 ->
+               x64_encode (Ppushl_r (bpf_to_x64_reg src)) @
+                 x64_encode
+                   (Pxchgq_rr (bpf_to_x64_reg dst, bpf_to_x64_reg src)) @
+                   x64_encode (Pshlq_r (bpf_to_x64_reg src)) @
+                     x64_encode (Pmovq_rr (RCX, bpf_to_x64_reg src)) @
+                       x64_encode (Ppopl (bpf_to_x64_reg src))
+             | R13 ->
+               x64_encode (Ppushl_r (bpf_to_x64_reg src)) @
+                 x64_encode
+                   (Pxchgq_rr (bpf_to_x64_reg dst, bpf_to_x64_reg src)) @
+                   x64_encode (Pshlq_r (bpf_to_x64_reg src)) @
+                     x64_encode (Pmovq_rr (RCX, bpf_to_x64_reg src)) @
+                       x64_encode (Ppopl (bpf_to_x64_reg src))
+             | R14 ->
+               x64_encode (Ppushl_r (bpf_to_x64_reg src)) @
+                 x64_encode
+                   (Pxchgq_rr (bpf_to_x64_reg dst, bpf_to_x64_reg src)) @
+                   x64_encode (Pshlq_r (bpf_to_x64_reg src)) @
+                     x64_encode (Pmovq_rr (RCX, bpf_to_x64_reg src)) @
+                       x64_encode (Ppopl (bpf_to_x64_reg src))
+             | R15 ->
+               x64_encode (Ppushl_r (bpf_to_x64_reg src)) @
+                 x64_encode
+                   (Pxchgq_rr (bpf_to_x64_reg dst, bpf_to_x64_reg src)) @
+                   x64_encode (Pshlq_r (bpf_to_x64_reg src)) @
+                     x64_encode (Pmovq_rr (RCX, bpf_to_x64_reg src)) @
+                       x64_encode (Ppopl (bpf_to_x64_reg src)))
          | RDX ->
            x64_encode (Ppushl_r RCX) @
              x64_encode (Pmovq_rr (RCX, bpf_to_x64_reg src)) @
@@ -2482,6 +2713,26 @@ let rec per_jit_shift_lsh_reg64
                         (len_bit0 (len_bit0 (len_bit0 (len_bit0 len_num1)))))),
                    l_bin)));;
 
+let rec per_jit_xor_reg64_1
+  dst src =
+    (let ins = Pxorq_rr (bpf_to_x64_reg dst, bpf_to_x64_reg src) in
+      Some (one_nat,
+             (zero_word
+                (len_bit0
+                  (len_bit0
+                    (len_bit0 (len_bit0 (len_bit0 (len_bit0 len_num1)))))),
+               x64_encode ins)));;
+
+let rec per_jit_sub_reg64_1
+  dst src =
+    (let ins = Psubq_rr (bpf_to_x64_reg dst, bpf_to_x64_reg src) in
+      Some (one_nat,
+             (zero_word
+                (len_bit0
+                  (len_bit0
+                    (len_bit0 (len_bit0 (len_bit0 (len_bit0 len_num1)))))),
+               x64_encode ins)));;
+
 let rec per_jit_store_reg64
   dst src chk off =
     (let l_bin =
@@ -2513,9 +2764,39 @@ let rec per_jit_store_reg64
                     (len_bit0 (len_bit0 (len_bit0 (len_bit0 len_num1)))))),
                l_bin)));;
 
+let rec per_jit_mov_reg64_1
+  dst src =
+    (let ins = Pmovq_rr (bpf_to_x64_reg dst, bpf_to_x64_reg src) in
+      Some (one_nat,
+             (zero_word
+                (len_bit0
+                  (len_bit0
+                    (len_bit0 (len_bit0 (len_bit0 (len_bit0 len_num1)))))),
+               x64_encode ins)));;
+
+let rec per_jit_and_reg64_1
+  dst src =
+    (let ins = Pandq_rr (bpf_to_x64_reg dst, bpf_to_x64_reg src) in
+      Some (one_nat,
+             (zero_word
+                (len_bit0
+                  (len_bit0
+                    (len_bit0 (len_bit0 (len_bit0 (len_bit0 len_num1)))))),
+               x64_encode ins)));;
+
 let rec per_jit_add_reg64_1
   dst src =
     (let ins = Paddq_rr (bpf_to_x64_reg dst, bpf_to_x64_reg src) in
+      Some (one_nat,
+             (zero_word
+                (len_bit0
+                  (len_bit0
+                    (len_bit0 (len_bit0 (len_bit0 (len_bit0 len_num1)))))),
+               x64_encode ins)));;
+
+let rec per_jit_or_reg64_1
+  dst src =
+    (let ins = Porq_rr (bpf_to_x64_reg dst, bpf_to_x64_reg src) in
       Some (one_nat,
              (zero_word
                 (len_bit0
@@ -2527,13 +2808,12 @@ let rec per_jit_load_reg64
   dst src chk off =
     (let l_bin =
        x64_encode
-         (Pmovq_ri
+         (Pmovl_ri
            (R11, signed_cast
                    (len_signed
                      (len_bit0 (len_bit0 (len_bit0 (len_bit0 len_num1)))))
                    (len_bit0
-                     (len_bit0
-                       (len_bit0 (len_bit0 (len_bit0 (len_bit0 len_num1))))))
+                     (len_bit0 (len_bit0 (len_bit0 (len_bit0 len_num1)))))
                    off)) @
          x64_encode (Paddq_rr (R11, bpf_to_x64_reg src)) @
            x64_encode
@@ -2559,13 +2839,13 @@ let rec per_jit_mul_reg64
          with RAX ->
            x64_encode (Pmovq_rr (R11, bpf_to_x64_reg src)) @
              x64_encode (Ppushl_r RDX) @
-               x64_encode (Pmulq_r R11) @ x64_encode (Ppopl RDX)
+               x64_encode (Pimulq_r R11) @ x64_encode (Ppopl RDX)
          | RBX ->
            x64_encode (Pmovq_rr (R11, bpf_to_x64_reg src)) @
              x64_encode (Ppushl_r RAX) @
                x64_encode (Pmovq_rr (RAX, bpf_to_x64_reg dst)) @
                  x64_encode (Ppushl_r RDX) @
-                   x64_encode (Pmulq_r R11) @
+                   x64_encode (Pimulq_r R11) @
                      x64_encode (Ppopl RDX) @
                        x64_encode (Pmovq_rr (bpf_to_x64_reg dst, RAX)) @
                          x64_encode (Ppopl RAX)
@@ -2574,7 +2854,7 @@ let rec per_jit_mul_reg64
              x64_encode (Ppushl_r RAX) @
                x64_encode (Pmovq_rr (RAX, bpf_to_x64_reg dst)) @
                  x64_encode (Ppushl_r RDX) @
-                   x64_encode (Pmulq_r R11) @
+                   x64_encode (Pimulq_r R11) @
                      x64_encode (Ppopl RDX) @
                        x64_encode (Pmovq_rr (bpf_to_x64_reg dst, RAX)) @
                          x64_encode (Ppopl RAX)
@@ -2582,14 +2862,14 @@ let rec per_jit_mul_reg64
            x64_encode (Pmovq_rr (R11, bpf_to_x64_reg src)) @
              x64_encode (Ppushl_r RAX) @
                x64_encode (Pmovq_rr (RAX, RDX)) @
-                 x64_encode (Pmulq_r R11) @
+                 x64_encode (Pimulq_r R11) @
                    x64_encode (Pmovq_rr (RDX, RAX)) @ x64_encode (Ppopl RAX)
          | RSI ->
            x64_encode (Pmovq_rr (R11, bpf_to_x64_reg src)) @
              x64_encode (Ppushl_r RAX) @
                x64_encode (Pmovq_rr (RAX, bpf_to_x64_reg dst)) @
                  x64_encode (Ppushl_r RDX) @
-                   x64_encode (Pmulq_r R11) @
+                   x64_encode (Pimulq_r R11) @
                      x64_encode (Ppopl RDX) @
                        x64_encode (Pmovq_rr (bpf_to_x64_reg dst, RAX)) @
                          x64_encode (Ppopl RAX)
@@ -2598,7 +2878,7 @@ let rec per_jit_mul_reg64
              x64_encode (Ppushl_r RAX) @
                x64_encode (Pmovq_rr (RAX, bpf_to_x64_reg dst)) @
                  x64_encode (Ppushl_r RDX) @
-                   x64_encode (Pmulq_r R11) @
+                   x64_encode (Pimulq_r R11) @
                      x64_encode (Ppopl RDX) @
                        x64_encode (Pmovq_rr (bpf_to_x64_reg dst, RAX)) @
                          x64_encode (Ppopl RAX)
@@ -2607,7 +2887,7 @@ let rec per_jit_mul_reg64
              x64_encode (Ppushl_r RAX) @
                x64_encode (Pmovq_rr (RAX, bpf_to_x64_reg dst)) @
                  x64_encode (Ppushl_r RDX) @
-                   x64_encode (Pmulq_r R11) @
+                   x64_encode (Pimulq_r R11) @
                      x64_encode (Ppopl RDX) @
                        x64_encode (Pmovq_rr (bpf_to_x64_reg dst, RAX)) @
                          x64_encode (Ppopl RAX)
@@ -2616,7 +2896,7 @@ let rec per_jit_mul_reg64
              x64_encode (Ppushl_r RAX) @
                x64_encode (Pmovq_rr (RAX, bpf_to_x64_reg dst)) @
                  x64_encode (Ppushl_r RDX) @
-                   x64_encode (Pmulq_r R11) @
+                   x64_encode (Pimulq_r R11) @
                      x64_encode (Ppopl RDX) @
                        x64_encode (Pmovq_rr (bpf_to_x64_reg dst, RAX)) @
                          x64_encode (Ppopl RAX)
@@ -2625,7 +2905,7 @@ let rec per_jit_mul_reg64
              x64_encode (Ppushl_r RAX) @
                x64_encode (Pmovq_rr (RAX, bpf_to_x64_reg dst)) @
                  x64_encode (Ppushl_r RDX) @
-                   x64_encode (Pmulq_r R11) @
+                   x64_encode (Pimulq_r R11) @
                      x64_encode (Ppopl RDX) @
                        x64_encode (Pmovq_rr (bpf_to_x64_reg dst, RAX)) @
                          x64_encode (Ppopl RAX)
@@ -2634,7 +2914,7 @@ let rec per_jit_mul_reg64
              x64_encode (Ppushl_r RAX) @
                x64_encode (Pmovq_rr (RAX, bpf_to_x64_reg dst)) @
                  x64_encode (Ppushl_r RDX) @
-                   x64_encode (Pmulq_r R11) @
+                   x64_encode (Pimulq_r R11) @
                      x64_encode (Ppopl RDX) @
                        x64_encode (Pmovq_rr (bpf_to_x64_reg dst, RAX)) @
                          x64_encode (Ppopl RAX)
@@ -2643,7 +2923,7 @@ let rec per_jit_mul_reg64
              x64_encode (Ppushl_r RAX) @
                x64_encode (Pmovq_rr (RAX, bpf_to_x64_reg dst)) @
                  x64_encode (Ppushl_r RDX) @
-                   x64_encode (Pmulq_r R11) @
+                   x64_encode (Pimulq_r R11) @
                      x64_encode (Ppopl RDX) @
                        x64_encode (Pmovq_rr (bpf_to_x64_reg dst, RAX)) @
                          x64_encode (Ppopl RAX)
@@ -2652,7 +2932,7 @@ let rec per_jit_mul_reg64
              x64_encode (Ppushl_r RAX) @
                x64_encode (Pmovq_rr (RAX, bpf_to_x64_reg dst)) @
                  x64_encode (Ppushl_r RDX) @
-                   x64_encode (Pmulq_r R11) @
+                   x64_encode (Pimulq_r R11) @
                      x64_encode (Ppopl RDX) @
                        x64_encode (Pmovq_rr (bpf_to_x64_reg dst, RAX)) @
                          x64_encode (Ppopl RAX)
@@ -2661,7 +2941,7 @@ let rec per_jit_mul_reg64
              x64_encode (Ppushl_r RAX) @
                x64_encode (Pmovq_rr (RAX, bpf_to_x64_reg dst)) @
                  x64_encode (Ppushl_r RDX) @
-                   x64_encode (Pmulq_r R11) @
+                   x64_encode (Pimulq_r R11) @
                      x64_encode (Ppopl RDX) @
                        x64_encode (Pmovq_rr (bpf_to_x64_reg dst, RAX)) @
                          x64_encode (Ppopl RAX)
@@ -2670,7 +2950,7 @@ let rec per_jit_mul_reg64
              x64_encode (Ppushl_r RAX) @
                x64_encode (Pmovq_rr (RAX, bpf_to_x64_reg dst)) @
                  x64_encode (Ppushl_r RDX) @
-                   x64_encode (Pmulq_r R11) @
+                   x64_encode (Pimulq_r R11) @
                      x64_encode (Ppopl RDX) @
                        x64_encode (Pmovq_rr (bpf_to_x64_reg dst, RAX)) @
                          x64_encode (Ppopl RAX)
@@ -2679,7 +2959,7 @@ let rec per_jit_mul_reg64
              x64_encode (Ppushl_r RAX) @
                x64_encode (Pmovq_rr (RAX, bpf_to_x64_reg dst)) @
                  x64_encode (Ppushl_r RDX) @
-                   x64_encode (Pmulq_r R11) @
+                   x64_encode (Pimulq_r R11) @
                      x64_encode (Ppopl RDX) @
                        x64_encode (Pmovq_rr (bpf_to_x64_reg dst, RAX)) @
                          x64_encode (Ppopl RAX)
@@ -2688,7 +2968,7 @@ let rec per_jit_mul_reg64
              x64_encode (Ppushl_r RAX) @
                x64_encode (Pmovq_rr (RAX, bpf_to_x64_reg dst)) @
                  x64_encode (Ppushl_r RDX) @
-                   x64_encode (Pmulq_r R11) @
+                   x64_encode (Pimulq_r R11) @
                      x64_encode (Ppopl RDX) @
                        x64_encode (Pmovq_rr (bpf_to_x64_reg dst, RAX)) @
                          x64_encode (Ppopl RAX))
@@ -2720,19 +3000,17 @@ let rec per_jit_mul_reg64
 let rec per_jit_call_reg
   src imm =
     Some (one_nat,
-           (zero_word
+           (cast (len_signed
+                   (len_bit0
+                     (len_bit0 (len_bit0 (len_bit0 (len_bit0 len_num1))))))
               (len_bit0
-                (len_bit0
-                  (len_bit0 (len_bit0 (len_bit0 (len_bit0 len_num1)))))),
+                (len_bit0 (len_bit0 (len_bit0 (len_bit0 (len_bit0 len_num1))))))
+              imm,
              x64_encode
                (Pcall_i
-                 (cast (len_signed
-                         (len_bit0
-                           (len_bit0
-                             (len_bit0 (len_bit0 (len_bit0 len_num1))))))
+                 (zero_word
                    (len_bit0
-                     (len_bit0 (len_bit0 (len_bit0 (len_bit0 len_num1)))))
-                   imm))));;
+                     (len_bit0 (len_bit0 (len_bit0 (len_bit0 len_num1)))))))));;
 
 let per_jit_exit :
   (nat *
@@ -2792,17 +3070,24 @@ let rec per_jit_ins
       | BPF_NEG32_REG _ -> None | BPF_LE (_, _) -> None | BPF_BE (_, _) -> None
       | BPF_ALU64 (BPF_ADD, _, SOImm _) -> None
       | BPF_ALU64 (BPF_ADD, dst, SOReg a) -> per_jit_add_reg64_1 dst a
-      | BPF_ALU64 (BPF_SUB, _, _) -> None
+      | BPF_ALU64 (BPF_SUB, _, SOImm _) -> None
+      | BPF_ALU64 (BPF_SUB, dst, SOReg a) -> per_jit_sub_reg64_1 dst a
       | BPF_ALU64 (BPF_MUL, _, SOImm _) -> None
       | BPF_ALU64 (BPF_MUL, dst, SOReg a) -> per_jit_mul_reg64 dst a
-      | BPF_ALU64 (BPF_DIV, _, _) -> None | BPF_ALU64 (BPF_OR, _, _) -> None
-      | BPF_ALU64 (BPF_AND, _, _) -> None
+      | BPF_ALU64 (BPF_DIV, _, _) -> None
+      | BPF_ALU64 (BPF_OR, _, SOImm _) -> None
+      | BPF_ALU64 (BPF_OR, dst, SOReg a) -> per_jit_or_reg64_1 dst a
+      | BPF_ALU64 (BPF_AND, _, SOImm _) -> None
+      | BPF_ALU64 (BPF_AND, dst, SOReg a) -> per_jit_and_reg64_1 dst a
       | BPF_ALU64 (BPF_LSH, _, SOImm _) -> None
       | BPF_ALU64 (BPF_LSH, dst, SOReg a) -> per_jit_shift_lsh_reg64 dst a
       | BPF_ALU64 (BPF_RSH, _, SOImm _) -> None
       | BPF_ALU64 (BPF_RSH, dst, SOReg a) -> per_jit_shift_rsh_reg64 dst a
-      | BPF_ALU64 (BPF_MOD, _, _) -> None | BPF_ALU64 (BPF_XOR, _, _) -> None
-      | BPF_ALU64 (BPF_MOV, _, _) -> None
+      | BPF_ALU64 (BPF_MOD, _, _) -> None
+      | BPF_ALU64 (BPF_XOR, _, SOImm _) -> None
+      | BPF_ALU64 (BPF_XOR, dst, SOReg a) -> per_jit_xor_reg64_1 dst a
+      | BPF_ALU64 (BPF_MOV, _, SOImm _) -> None
+      | BPF_ALU64 (BPF_MOV, dst, SOReg a) -> per_jit_mov_reg64_1 dst a
       | BPF_ALU64 (BPF_ARSH, _, SOImm _) -> None
       | BPF_ALU64 (BPF_ARSH, dst, SOReg a) -> per_jit_shift_arsh_reg64 dst a
       | BPF_NEG64_REG _ -> None | BPF_HOR64_IMM (_, _) -> None
@@ -3677,19 +3962,6 @@ let rec int_to_u8_list
 
 let rec divide_nat m n = fst (divmod_nat m n);;
 
-let rec list_embedd_in_list
-  x0 l = match x0, l with [], l -> Some l
-    | x :: xs, [] -> None
-    | x :: xs, y :: ys ->
-        (if equal_word (len_bit0 (len_bit0 (len_bit0 len_num1))) x y
-          then list_embedd_in_list xs ys
-          else list_embedd_in_list (x :: xs) ys);;
-
-let rec dlist_embedd_in_list
-  x0 uu = match x0, uu with [], uu -> true
-    | x :: xs, l ->
-        (match list_embedd_in_list x l with None -> false
-          | Some a -> dlist_embedd_in_list xs a);;    
 
 let i64_MIN
   = (Neg (Bit0 (Bit0 (Bit0 (Bit0 (Bit0 (Bit0
@@ -3730,6 +4002,22 @@ let int_of_standard_int (n: int64) =
 let int_list_of_standard_int_list lst =
   List.map int_of_standard_int lst
 
+let rec list_embedd_in_list
+  x0 l = match x0, l with [], l -> Some l
+    | x :: xs, [] -> None
+    | x :: xs, y :: ys ->
+        (if equal_word (len_bit0 (len_bit0 (len_bit0 len_num1))) x
+              (zero_word (len_bit0 (len_bit0 (len_bit0 len_num1))))
+          then list_embedd_in_list xs (y :: ys)
+          else (if equal_word (len_bit0 (len_bit0 (len_bit0 len_num1))) x y
+                 then list_embedd_in_list xs ys
+                 else list_embedd_in_list (x :: xs) ys));;
+
+let rec dlist_embedd_in_list
+  x0 uu = match x0, uu with [], uu -> true
+    | x :: xs, l ->
+        (match list_embedd_in_list x l with None -> false
+          | Some a -> dlist_embedd_in_list xs a);;
 
 let rec jit_evaluation
   ebpf_prog compiled_progam =

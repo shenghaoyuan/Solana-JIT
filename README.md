@@ -130,6 +130,8 @@ This will automatically compile the latest PerJIT model and display the passed r
 
 Note that you can ignore the warning messages as long as the program runs successfully.
 
+Use `make clean` to remove redundant files.
+
 
 ### 4.2 Code Statistics 
 Run the following command to get the lines of code:
