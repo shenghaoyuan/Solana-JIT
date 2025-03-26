@@ -2737,25 +2737,24 @@ let rec per_jit_store_reg64
   dst src chk off =
     (let l_bin =
        x64_encode
-         (Pmovq_ri
+         (Pmovl_ri
            (R11, signed_cast
                    (len_signed
                      (len_bit0 (len_bit0 (len_bit0 (len_bit0 len_num1)))))
                    (len_bit0
-                     (len_bit0
-                       (len_bit0 (len_bit0 (len_bit0 (len_bit0 len_num1))))))
+                     (len_bit0 (len_bit0 (len_bit0 (len_bit0 len_num1)))))
                    off)) @
          x64_encode (Paddq_rr (R11, bpf_to_x64_reg dst)) @
            x64_encode (Pmovq_rr (R10, bpf_to_x64_reg src)) @
              x64_encode
-               (Pmov_rm
-                 (R10, Addrmode
-                         (Some R11, None,
-                           zero_word
-                             (len_bit0
-                               (len_bit0
-                                 (len_bit0 (len_bit0 (len_bit0 len_num1)))))),
-                   chk))
+               (Pmov_mr
+                 (Addrmode
+                    (Some R11, None,
+                      zero_word
+                        (len_bit0
+                          (len_bit0
+                            (len_bit0 (len_bit0 (len_bit0 len_num1)))))),
+                   R10, chk))
        in
       Some (nat_of_num (Bit0 (Bit0 One)),
              (zero_word
@@ -2817,13 +2816,14 @@ let rec per_jit_load_reg64
                    off)) @
          x64_encode (Paddq_rr (R11, bpf_to_x64_reg src)) @
            x64_encode
-             (Pmov_mr
-               (Addrmode
-                  (Some R11, None,
-                    zero_word
-                      (len_bit0
-                        (len_bit0 (len_bit0 (len_bit0 (len_bit0 len_num1)))))),
-                 bpf_to_x64_reg dst, chk))
+             (Pmov_rm
+               (bpf_to_x64_reg dst,
+                 Addrmode
+                   (Some R11, None,
+                     zero_word
+                       (len_bit0
+                         (len_bit0 (len_bit0 (len_bit0 (len_bit0 len_num1)))))),
+                 chk))
        in
       Some (nat_of_num (Bit1 One),
              (zero_word
@@ -3962,6 +3962,22 @@ let rec int_to_u8_list
 
 let rec divide_nat m n = fst (divmod_nat m n);;
 
+let rec list_embedd_in_list
+  x0 l = match x0, l with [], l -> Some l
+    | x :: xs, [] -> None
+    | x :: xs, y :: ys ->
+        (if equal_word (len_bit0 (len_bit0 (len_bit0 len_num1))) x
+              (zero_word (len_bit0 (len_bit0 (len_bit0 len_num1))))
+          then list_embedd_in_list xs (y :: ys)
+          else (if equal_word (len_bit0 (len_bit0 (len_bit0 len_num1))) x y
+                 then list_embedd_in_list xs ys
+                 else list_embedd_in_list (x :: xs) ys));;
+
+let rec dlist_embedd_in_list
+  x0 uu = match x0, uu with [], uu -> true
+    | x :: xs, l ->
+        (match list_embedd_in_list x l with None -> false
+          | Some a -> dlist_embedd_in_list xs a);;
 
 let i64_MIN
   = (Neg (Bit0 (Bit0 (Bit0 (Bit0 (Bit0 (Bit0
@@ -4001,24 +4017,6 @@ let int_of_standard_int (n: int64) =
 
 let int_list_of_standard_int_list lst =
   List.map int_of_standard_int lst
-
-let rec list_embedd_in_list
-  x0 l = match x0, l with [], l -> Some l
-    | x :: xs, [] -> None
-    | x :: xs, y :: ys ->
-        (if equal_word (len_bit0 (len_bit0 (len_bit0 len_num1))) x
-              (zero_word (len_bit0 (len_bit0 (len_bit0 len_num1))))
-          then list_embedd_in_list xs (y :: ys)
-          else (if equal_word (len_bit0 (len_bit0 (len_bit0 len_num1))) x y
-                 then list_embedd_in_list xs ys
-                 else list_embedd_in_list (x :: xs) ys));;
-
-let rec dlist_embedd_in_list
-  x0 uu = match x0, uu with [], uu -> true
-    | x :: xs, l ->
-        (match list_embedd_in_list x l with None -> false
-          | Some a -> dlist_embedd_in_list xs a);;
-
 let rec jit_evaluation
   ebpf_prog compiled_progam =
     (let ebpf_binary = int_to_u8_list ebpf_prog in
