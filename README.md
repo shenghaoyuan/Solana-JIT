@@ -1,4 +1,4 @@
-# Formal verification of an eBPF Just-in-Time Compiler front-end for Solana
+# Towards a Formally Verified eBPF Just-in-Time Compiler for Solana
 
 We have tested our project on:
 - Windows 11 + WSL2 (Ubuntu 22.04 LTS)
@@ -148,7 +148,7 @@ Note that currently, `cloc` doesn't support Isabelle/HOL now, we specify the lan
 
 | Paper                            | Code                                                         |
 | -------------------------------- | ------------------------------------------------------------ |
-| Validation Framework (Section 6.1) | isabell/hol: glue code1 `theory/rBPFDecoder.thy#L335` + extraction declration `theory/JITExtraction.thy`, OCaml: glue code `tests/jit_val.ml`, PerJIT_test `tests/jit.ml` |
+| Validation Framework (Section 6.1) | isabell/hol: glue code `theory/rBPFDecoder.thy#L335` + extraction declration `theory/JITExtraction.thy`, OCaml: glue code `tests/jit.ml`, PerJIT_test `tests/jit_val.ml` |
 
 
 
