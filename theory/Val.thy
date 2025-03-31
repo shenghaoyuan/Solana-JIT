@@ -18,8 +18,8 @@ definition sub_overflowi64 :: "u64 \<Rightarrow> u64 \<Rightarrow> u64 \<Rightar
     if i64_MIN \<le>s s \<and> s \<le>s i64_MAX then 0 else 1
 )"
 
-
-datatype val = Vundef | Vbyte u8 | Vshort u16 | Vint u32 | Vlong u64
+(*| Vptr nat u64*)
+datatype val = Vundef | Vbyte u8 | Vshort u16 | Vint u32 | Vlong u64 | Vptr nat u64
 
 subsection \<open> 16-bit Arithmetic operations \<close>
 
@@ -307,6 +307,16 @@ definition mullhs64 :: "val \<Rightarrow> val \<Rightarrow> val" where
   Vlong n1 \<Rightarrow> (case v2 of Vlong n2 \<Rightarrow> 
                 Vlong (((scast n1) * (scast n2)) div (2 ^ 64) ) | _ \<Rightarrow> Vundef) |
   _ \<Rightarrow> Vundef
+)"
+
+definition addvptr :: "val \<Rightarrow> val \<Rightarrow> val" where
+"addvptr v1 v2 = (
+  case v1 of
+    Vptr b1 off1  \<Rightarrow> 
+      (case v2 of Vptr b2 off2 \<Rightarrow> 
+          if b1 = b2 then Vptr b1 (off1+off2) else Vundef |
+       _ \<Rightarrow> Vundef) |
+    _ \<Rightarrow> Vundef
 )"
 
 \<comment>\<open> ` x86 style extended division and modulusv` \<close>

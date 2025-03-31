@@ -10,24 +10,6 @@ subsection  \<open> x64 Syntax \<close>
 
 datatype ireg = RAX | RBX | RCX | RDX | RSI | RDI | RBP | RSP | R8 | R9 | R10 | R11 | R12 | R13 | R14 | R15
 
-(*
-fun u8_of_ireg ::"ireg \<Rightarrow> u8" where
-"u8_of_ireg RAX = 0" |
-"u8_of_ireg RBX = 1" |
-"u8_of_ireg RCX = 2" |
-"u8_of_ireg RDX = 3" |
-"u8_of_ireg RSI = 4" |
-"u8_of_ireg RDI = 5" |
-"u8_of_ireg RBP = 6" |
-"u8_of_ireg RSP = 7" |
-"u8_of_ireg R8  = 8" |
-"u8_of_ireg R9  = 9" |
-"u8_of_ireg R10 = 10" |
-"u8_of_ireg R11 = 11" |
-"u8_of_ireg R12 = 12" |
-"u8_of_ireg R13 = 13" |
-"u8_of_ireg R14 = 14" |
-"u8_of_ireg R15 = 15" *)
 
 text \<open> TODO: Solana rBPF uses the following mapping, very weird.
 I don't understand, see: https://github.com/solana-labs/rbpf/blob/main/src/x86.rs#L16 
@@ -90,10 +72,14 @@ definition ireg_of_u8 ::"u8 \<Rightarrow> ireg option" where
     None
 )"
 
+
 text \<open> skip float registers, as Solana rBPF doesn't deal with float \<close>
 
 datatype crbit = ZF | CF | PF | SF | OF
 
+datatype preg = IR ireg | CR crbit 
+
+type_synonym label = nat
 (*
 datatype preg = PC | IR ireg | CR crbit
 
@@ -101,8 +87,6 @@ abbreviation "RIP \<equiv> PC"  \<comment> \<open> the RIP register in x86-64 (x
     *)
 
 abbreviation "SP \<equiv> RSP"
-
-type_synonym label = nat
 
 datatype addrmode =
   Addrmode "ireg option" "(ireg * u8) option" u32
@@ -183,11 +167,30 @@ definition cond_of_u8 :: "u8 \<Rightarrow> testcond option" where
   (and first argument), the second suffix describes the second argument.
 *)
 
+(*Pcall_r ireg*)
 datatype instruction =
   Paddq_rr ireg ireg
+  | Psubq_rr ireg ireg
+  | Porq_rr ireg ireg
+  | Pandq_rr ireg ireg
+  | Pxorq_rr ireg ireg
   | Pret
-  | Pnop
-
+  | Ppushl_r ireg
+  | Ppopl  ireg
+  | Pmovq_rr ireg ireg       (**r [mov] (integer) *)
+  | Pmovq_ri ireg u64      (**r [mov] (integer) *)
+  | Pmovl_ri ireg u32        (**imm   to reg *)
+  | Pimulq_r ireg
+  | Pjcc testcond i32
+  | Pcmpq_rr ireg ireg
+  | Pmov_mr addrmode ireg memory_chunk
+  | Pxchgq_rr ireg ireg
+  | Pshrq_r ireg
+  | Pshlq_r ireg
+  | Psarq_r ireg
+  | Pmov_rm ireg addrmode memory_chunk
+  | Pcall_i u32
+  | Ptestq_rr ireg ireg
 
 type_synonym x64_asm = "instruction list"
 type_synonym x64_bin = "u8 list"

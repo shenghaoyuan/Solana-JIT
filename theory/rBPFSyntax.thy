@@ -23,7 +23,7 @@ fun arch2int :: "arch \<Rightarrow> int" where
 "arch2int A32 = 32" |
 "arch2int A64 = 64"
 
-datatype condition = Eq | Gt | Ge | Lt | Le | SEt | Ne | SGt | SGe | SLt | SLe
+datatype condition = Eq | Gt | Ge | Lt | Le | SLe | Ne | SGt | SGe | SLt (*| SEt*)
 
 datatype binop = BPF_ADD | BPF_SUB | BPF_MUL | BPF_DIV | BPF_OR | BPF_AND |
   BPF_LSH | BPF_RSH | BPF_MOD | BPF_XOR | BPF_MOV | BPF_ARSH 
