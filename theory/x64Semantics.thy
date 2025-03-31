@@ -98,7 +98,6 @@ definition exec_load :: "nat \<Rightarrow> nat \<Rightarrow> memory_chunk \<Righ
                           _ \<Rightarrow> Stuck)
 )"
 
-(*preg list?*)
 definition exec_store :: "nat \<Rightarrow> nat \<Rightarrow> memory_chunk \<Rightarrow> mem \<Rightarrow> stack_state \<Rightarrow> addrmode \<Rightarrow> regset \<Rightarrow> preg \<Rightarrow> outcome" where
 "exec_store pc sz chunk m ss a rs r1 = (
   let addr =  eval_addrmode64 a rs in (
@@ -107,16 +106,6 @@ definition exec_store :: "nat \<Rightarrow> nat \<Rightarrow> memory_chunk \<Rig
       Some m' \<Rightarrow> Next (pc+ sz) rs m' ss
   )
 )"
-(*
-definition exec_call :: "usize \<Rightarrow> u64 \<Rightarrow> memory_chunk \<Rightarrow> mem \<Rightarrow> stack_state \<Rightarrow> regset \<Rightarrow> preg \<Rightarrow> outcome" where
-"exec_call pc sz chunk m ss rs r1 = (
-  let nsp = (rs (IR SP))-(u64_of_memory_chunk chunk) in (
-      case Mem.storev M64 m (Vptr sp_block nsp) (Vlong (rs r1)) of
-        None \<Rightarrow> Stuck |
-        Some m' \<Rightarrow> let rs1 = rs#(IR SP) <- nsp in
-                    Next (rs r1) rs1 m' ss
-))"*)
-
 
 definition exec_call :: "nat \<Rightarrow> nat \<Rightarrow> memory_chunk \<Rightarrow> mem \<Rightarrow> stack_state \<Rightarrow> regset \<Rightarrow> u32 \<Rightarrow> outcome" where
 "exec_call pc sz chunk m ss rs n = (
@@ -139,47 +128,6 @@ definition exec_ret :: "memory_chunk \<Rightarrow> mem \<Rightarrow> stack_state
       _ \<Rightarrow> Stuck)
 )"
 
-
-(*
-definition exec_jcc::"usize \<Rightarrow> u64 \<Rightarrow> regset \<Rightarrow> mem \<Rightarrow> testcond \<Rightarrow> i32 \<Rightarrow> outcome" where
-"exec_jcc pc sz rs m t d \<equiv> 
-  (case eval_testcond t rs of 
-     Some b \<Rightarrow> if b then Next (scast d) rs m 
-     else Next (pc+sz) rs m |
-          None \<Rightarrow> Stuck)"*)
-(*
-definition eval_testcond :: "testcond \<Rightarrow> regset \<Rightarrow> bool option" where
-"eval_testcond c rs = (
-  case c of
-  Cond_e  \<Rightarrow> (case rs (CR ZF) of Vint n \<Rightarrow> Some (n = 1) | _ \<Rightarrow> None) |      
-  Cond_ne \<Rightarrow> (case rs (CR ZF) of Vint n \<Rightarrow> Some (n = 0) | _ \<Rightarrow> None) |
-  Cond_b  \<Rightarrow> (case rs (CR CF) of Vint n \<Rightarrow> Some (n = 1) | _ \<Rightarrow> None) |      
-  Cond_be \<Rightarrow> (case rs (CR CF) of Vint c \<Rightarrow> (
-                case rs (CR ZF) of  Vint z \<Rightarrow> Some (c = 1 \<or> z = 1) |
-                                    _ \<Rightarrow> None) | _ \<Rightarrow> None) |
-  Cond_ae \<Rightarrow> (case rs (CR CF) of Vint n \<Rightarrow> Some (n = 0) | _ \<Rightarrow> None) |      
-  Cond_a  \<Rightarrow> (case rs (CR CF) of Vint c \<Rightarrow> (
-                case rs (CR ZF) of  Vint z \<Rightarrow> Some (c = 0 \<or> z = 0) |
-                                    _ \<Rightarrow> None) | _ \<Rightarrow> None) |
-  Cond_l  \<Rightarrow> (case rs (CR OF) of Vint n \<Rightarrow> (
-                case rs (CR SF) of  Vint s \<Rightarrow> Some ((xor n s) = 1) |
-                                    _ \<Rightarrow> None) | _ \<Rightarrow> None) |
-  Cond_le \<Rightarrow> (case rs (CR OF) of Vint n \<Rightarrow> (
-                case rs (CR SF) of  Vint s \<Rightarrow> (
-                  case rs (CR ZF) of Vint z \<Rightarrow> Some ((xor n s) = 1 \<or> z = 1) | _ \<Rightarrow> None) |
-                                    _ \<Rightarrow> None) | _ \<Rightarrow> None) |
-  Cond_ge \<Rightarrow> (case rs (CR OF) of Vint n \<Rightarrow> (
-                case rs (CR SF) of  Vint s \<Rightarrow> Some ((xor n s) = 0) |
-                                    _ \<Rightarrow> None) | _ \<Rightarrow> None) |
-  Cond_g  \<Rightarrow> (case rs (CR OF) of Vint n \<Rightarrow> (
-                case rs (CR SF) of  Vint s \<Rightarrow> (
-                  case rs (CR ZF) of Vint z \<Rightarrow> Some ((xor n s) = 0 \<and> z = 0) | _ \<Rightarrow> None) |
-                                    _ \<Rightarrow> None) | _ \<Rightarrow> None) |
-  Cond_p  \<Rightarrow> (case rs (CR PF) of Vint n \<Rightarrow> Some (n = 1) | _ \<Rightarrow> None) |
-  Cond_np \<Rightarrow> (case rs (CR PF) of Vint n \<Rightarrow> Some (n = 0) | _ \<Rightarrow> None)
-)"*)
-
-(*Pjmp       d    \<Rightarrow> Next (scast d) rs m*)
 definition exec_instr :: "instruction \<Rightarrow> nat \<Rightarrow> nat \<Rightarrow> regset \<Rightarrow> mem \<Rightarrow> stack_state \<Rightarrow> outcome" where
 "exec_instr i sz pc rs m ss = (\<comment> \<open> sz is the binary size (n-byte) of current instruction  \<close>
   case i of
@@ -200,8 +148,8 @@ definition exec_instr :: "instruction \<Rightarrow> nat \<Rightarrow> nat \<Righ
                         None \<Rightarrow> Stuck) |
   Pcmpq_rr rd r1 \<Rightarrow> Next (pc+sz)(compare_longs (rs (IR r1)) (rs (IR rd)) rs) m ss |
   Pmovq_ri rd n  \<Rightarrow> Next (pc + sz) (rs#(IR rd) <- n) m ss |
-  Pmovl_ri rd n   \<Rightarrow> Next (pc + sz) (rs#(IR rd) <- (scast n)) m ss|   
-  Pmov_mr  a r1 c \<Rightarrow> exec_store pc sz c m ss a rs (IR r1) |              \<comment> \<open> store reg to mem \<close>      
+  Pmovl_ri rd n   \<Rightarrow> Next (pc + sz) (rs#(IR rd) <- (scast n)) m ss|    \<comment> \<open> load imm32 to reg \<close>
+  Pmov_mr  a r1 c \<Rightarrow> exec_load pc sz c m ss a rs (IR r1) |                    
   Pxchgq_rr rd r1 \<Rightarrow> let tmp = rs (IR rd) in
                      let rs1 = (rs#(IR rd)<- (rs (IR r1))) in
                        Next (pc + sz) (rs1#(IR r1)<- tmp) m ss |
@@ -209,10 +157,10 @@ definition exec_instr :: "instruction \<Rightarrow> nat \<Rightarrow> nat \<Righ
   Pshrq_r   rd    \<Rightarrow> Next (pc + sz) (rs#(IR rd) <- ((rs (IR rd))>> (unat (and ( (ucast (rs(IR RCX)))::u32) (63::u32))))) m ss |
   Psarq_r   rd    \<Rightarrow> Next (pc + sz) (rs#(IR rd) <- (ucast (arsh64 ((scast (rs (IR rd)))::i64) (unat (and ( (ucast (rs(IR RCX)))::u32) (63::u32)))))) m ss |
 \<comment> \<open>TODO  Psarq_r   rd    \<Rightarrow> Next (pc + sz) (rs#(IR rd) <- (ucast (((scast (rs (IR rd)))::i64) >> (unat (and ( (ucast (rs(IR RCX)))::u32) (63::u32)))))) m ss | \<close>
-  Pmov_rm  rd a c \<Rightarrow> exec_load pc sz c m ss a rs (IR rd) |         \<comment> \<open> load imm32 to reg \<close>    
+  Pmov_rm  rd a c \<Rightarrow> exec_store pc sz c m ss a rs (IR rd) |            \<comment> \<open> store reg to mem \<close>
   Pcall_i   n   \<Rightarrow> exec_call pc sz M64 m ss rs n
 )"
-(*Pcall_r   r1    \<Rightarrow> exec_call pc sz M64 m ss rs (IR r1)*)
+(*Ptestq_rr r1 r2 \<Rightarrow> Next (pc+sz) (compare_longs (and (rs (IR r1)) (rs (IR r2))) 0 rs) m ss*)
 
 fun x64_sem :: "nat \<Rightarrow> x64_bin \<Rightarrow> outcome \<Rightarrow> outcome" where
 "x64_sem 0 _ st = st" |
@@ -274,12 +222,9 @@ definition restore_x64_caller::"regset \<Rightarrow> u64 list \<Rightarrow> u64 
               #(IR R14)  <-- (caller!(2)))
               #(IR R13)  <-- (caller!(1)))
               #(IR R12)  <-- (caller!(0))) in rs')"
-(*
-definition get_target_addr::"regset \<Rightarrow> u8 \<Rightarrow> u64" where
-"get_target_addr xrs xrid = xrs (IR (the (ireg_of_u8 xrid)))"*)
-(*Some ra \<Rightarrow> (ucast(the (u32_of_u8_list (tl l))), Next xpc rs' m ra))*)
-definition one_step:: " (nat \<times> u64 \<times> x64_bin) list \<Rightarrow> hybrid_state\<Rightarrow> hybrid_state" where
-"one_step lt st  \<equiv>
+
+definition perir_step:: " (nat \<times> u64 \<times> x64_bin) list \<Rightarrow> hybrid_state\<Rightarrow> hybrid_state" where
+"perir_step lt st  \<equiv>
   let pc = fst st; xst = snd st in 
   let (num,off,l) = lt!(unat pc) in
     case xst of
@@ -305,11 +250,11 @@ definition one_step:: " (nat \<times> u64 \<times> x64_bin) list \<Rightarrow> h
           (pc+1, xst'))
     | Stuck \<Rightarrow> (pc,Stuck)"
 
-fun x64_sem1 :: "nat \<Rightarrow> (nat \<times> u64 \<times> x64_bin) list \<Rightarrow> hybrid_state \<Rightarrow> hybrid_state" where
-"x64_sem1 0 _ (pc,st) = (pc,st)" |
-"x64_sem1 (Suc n) lt (pc,xst) = (
-  let pair = one_step lt (pc,xst) in
-    (x64_sem1 n lt pair))"
+fun perir_sem :: "nat \<Rightarrow> (nat \<times> u64 \<times> x64_bin) list \<Rightarrow> hybrid_state \<Rightarrow> hybrid_state" where
+"perir_sem 0 _ (pc,st) = (pc,st)" |
+"perir_sem (Suc n) lt (pc,xst) = (
+  let pair = perir_step lt (pc,xst) in
+    (perir_sem n lt pair))"
 
 type_synonym x64_state = outcome
 

@@ -232,15 +232,15 @@ lemma load_m64_one_step1:
   a6:"prog \<noteq> [] \<and> unat pc < length prog \<and> unat pc \<ge> 0" and
   a8:"prog!(unat pc) = BPF_LDX chk dst src off" and
   a9:"chk = M64"
-shows "\<exists> xst'. x64_sem1 1 x64_prog (pc,xst) = (pc',xst') \<and> 
+shows "\<exists> xst'. perir_sem 1 x64_prog (pc,xst) = (pc',xst') \<and> 
   match_state s' (pc',xst')"
   
 (* 1. as BPF_LDX64 generates a single list of jited x64 assembly, so we only need one step  *)
-  apply(subgoal_tac "\<exists>xst'::outcome. one_step x64_prog (pc, xst) = (pc', xst') \<and> match_state s' (pc', xst')")
+  apply(subgoal_tac "\<exists>xst'::outcome. perir_step x64_prog (pc, xst) = (pc', xst') \<and> match_state s' (pc', xst')")
   subgoal
     by auto
   subgoal
-    apply (unfold one_step_def Let_def)
+    apply (unfold perir_step_def Let_def)
 (* 2. according to the code structure of JITPer, removing the first case statement *)
     apply(subgoal_tac "x64_prog ! unat (fst (pc, xst)) = the (per_jit_load_reg64 dst src chk off)")
      prefer 2

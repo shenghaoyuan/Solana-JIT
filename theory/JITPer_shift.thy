@@ -91,15 +91,15 @@ lemma shiftq_lsh_one_step1:
   a6:"prog \<noteq> [] \<and> unat pc < length prog \<and> unat pc \<ge> 0" and
   a8:"prog!(unat pc) = BPF_ALU64 BPF_LSH dst (SOReg src)" and
   a9:"(bpf_to_x64_reg dst) \<noteq> RCX"
-shows "\<exists> xst'. x64_sem1 1 x64_prog (pc,xst) = (pc',xst') \<and> 
+shows "\<exists> xst'. perir_sem 1 x64_prog (pc,xst) = (pc',xst') \<and> 
   match_state s' (pc',xst')"
   apply simp
 (* 1. as BPF_LDX generates a single list of jited x64 assembly, so we only need one step  *)
-  apply(subgoal_tac "\<exists>xst'::outcome. one_step x64_prog (pc, xst) = (pc', xst') \<and> match_state s' (pc', xst')")
+  apply(subgoal_tac "\<exists>xst'::outcome. perir_step x64_prog (pc, xst) = (pc', xst') \<and> match_state s' (pc', xst')")
   subgoal
     by auto
   subgoal
-    apply (unfold one_step_def Let_def)
+    apply (unfold perir_step_def Let_def)
 (* 2. according to the code structure of JITPer, removing the first case statement *)
     apply(subgoal_tac "x64_prog ! unat (fst (pc, xst)) = the (per_jit_shift_lsh_reg64 dst src)")
      prefer 2
@@ -357,15 +357,15 @@ lemma shiftq_rsh_one_step1:
   a6:"prog \<noteq> [] \<and> unat pc < length prog \<and> unat pc \<ge> 0" and
   a8:"prog!(unat pc) = BPF_ALU64 BPF_RSH dst (SOReg src)" and
   a9:"(bpf_to_x64_reg dst) \<noteq> RCX"
-shows "\<exists> xst'. x64_sem1 1 x64_prog (pc,xst) = (pc',xst') \<and> 
+shows "\<exists> xst'. perir_sem 1 x64_prog (pc,xst) = (pc',xst') \<and> 
   match_state s' (pc',xst')"
   apply simp
 (* 1. as BPF_LDX generates a single list of jited x64 assembly, so we only need one step  *)
-  apply(subgoal_tac "\<exists>xst'::outcome. one_step x64_prog (pc, xst) = (pc', xst') \<and> match_state s' (pc', xst')")
+  apply(subgoal_tac "\<exists>xst'::outcome. perir_step x64_prog (pc, xst) = (pc', xst') \<and> match_state s' (pc', xst')")
   subgoal
     by auto
   subgoal
-    apply (unfold one_step_def Let_def)
+    apply (unfold perir_step_def Let_def)
 (* 2. according to the code structure of JITPer, removing the first case statement *)
     apply(subgoal_tac "x64_prog ! unat (fst (pc, xst)) = the (per_jit_shift_rsh_reg64 dst src)")
      prefer 2
@@ -632,15 +632,15 @@ lemma shiftq_arsh_one_step1:
   a6:"prog \<noteq> [] \<and> unat pc < length prog \<and> unat pc \<ge> 0" and
   a8:"prog!(unat pc) = BPF_ALU64 BPF_ARSH dst (SOReg src)" and
   a9:"(bpf_to_x64_reg dst) \<noteq> RCX"
-shows "\<exists> xst'. x64_sem1 1 x64_prog (pc,xst) = (pc',xst') \<and> 
+shows "\<exists> xst'. perir_sem 1 x64_prog (pc,xst) = (pc',xst') \<and> 
   match_state s' (pc',xst')"
   apply simp
 (* 1. as BPF_ARSH generates a single list of jited x64 assembly, so we only need one step  *)
-  apply(subgoal_tac "\<exists>xst'::outcome. one_step x64_prog (pc, xst) = (pc', xst') \<and> match_state s' (pc', xst')")
+  apply(subgoal_tac "\<exists>xst'::outcome. perir_step x64_prog (pc, xst) = (pc', xst') \<and> match_state s' (pc', xst')")
   subgoal
     by auto
   subgoal
-    apply (unfold one_step_def Let_def)
+    apply (unfold perir_step_def Let_def)
 (* 2. according to the code structure of JITPer, removing the first case statement *)
     apply(subgoal_tac "x64_prog ! unat (fst (pc, xst)) = the (per_jit_shift_arsh_reg64 dst src)")
      prefer 2

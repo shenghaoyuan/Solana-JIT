@@ -202,7 +202,7 @@ Paddq_rr rd r1 \<Rightarrow>
     let (op:: u8) = 0xd3 in
     let (rop::u8) = construct_modsib_to_u8 0b11 0b100 (u8_of_ireg rd) in
       [ rex, op, rop ] |
-   \<comment> \<open> store P2882 ` MOV: qwordregister to memory64` ->  `0100 1RXB : 1000 1011 : mod qwordreg r/m`\<close>
+   \<comment> \<open> P2882 ` MOV: memory64 to qwordregister` ->  `0100 1RXB 1000 1001 : mod qwordreg r/m` \<close>
   Pmov_mr  a r1 c \<Rightarrow> (
     case a of Addrmode (Some rb) None dis \<Rightarrow> 
       let (rex::u8) = ( construct_rex_to_u8 \<comment> \<open> WRXB \<close>
@@ -246,7 +246,7 @@ Paddq_rr rd r1 \<Rightarrow>
         let (rop::u8) = construct_modsib_to_u8 0b10 (u8_of_ireg r1) 0b100 in
         let (sib::u8) = construct_modsib_to_u8 scale (u8_of_ireg ri) (u8_of_ireg rb) in
             ([rex, op, rop, sib] @ (u8_list_of_u32 dis))) |
- \<comment> \<open> load P2882 ` MOV: memory64 to qwordregister` ->  `0100 1RXB 1000 1001 : mod qwordreg r/m` \<close>
+ \<comment> \<open> P2882 ` MOV: qwordregister to memory64` ->  `0100 1RXB : 1000 1011 : mod qwordreg r/m`\<close>
   Pmov_rm rd a c \<Rightarrow>( 
     case a of Addrmode (Some rb) None dis \<Rightarrow> 
       let (rex::u8) =  construct_rex_to_u8 \<comment> \<open> WRXB \<close>
@@ -293,6 +293,8 @@ fun list_in_list :: "'a list \<Rightarrow> nat \<Rightarrow> 'a list \<Rightarro
 "list_in_list [] _ _ = True" |
 "list_in_list (h#t) n l = (h = l!n \<and> list_in_list t (Suc n) l)"
 
+value "x64_encode (Pjcc Cond_e 3)"
 
+value "unsigned_bitfield_extract_u8 0 4 0x84"
 
 end

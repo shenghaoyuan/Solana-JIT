@@ -104,13 +104,12 @@ definition eval_jmp :: "condition \<Rightarrow> dst_ty \<Rightarrow> snd_op \<Ri
   Ge  \<Rightarrow> udv \<ge> usv |
   Lt  \<Rightarrow> udv < usv |
   Le  \<Rightarrow> udv \<le> usv |
-  SEt \<Rightarrow> and udv usv\<noteq>0 |
   Ne  \<Rightarrow> udv \<noteq> usv |
   SGt \<Rightarrow> ssv <s sdv |
   SGe \<Rightarrow> ssv \<le>s sdv |
   SLt \<Rightarrow> sdv <s ssv |
   SLe \<Rightarrow> sdv \<le>s ssv ))))
-)"
+)" (*  SEt \<Rightarrow> and udv usv\<noteq>0 |*)
 
 
 definition eval_store :: "memory_chunk \<Rightarrow> dst_ty \<Rightarrow> snd_op \<Rightarrow> off_ty \<Rightarrow> reg_map \<Rightarrow> mem \<Rightarrow> mem option" where
@@ -122,7 +121,7 @@ definition eval_store :: "memory_chunk \<Rightarrow> dst_ty \<Rightarrow> snd_op
   (storev chk mem (Vlong vm_addr) (memory_chunk_value_of_u64 chk sv))
 ))))"
 
-
+(*
 definition eval_load :: "memory_chunk \<Rightarrow> dst_ty \<Rightarrow> src_ty \<Rightarrow> off_ty \<Rightarrow> reg_map \<Rightarrow> mem \<Rightarrow> reg_map option" where
 "eval_load chk dst sop off rs mem = (
   let sv :: u64 = eval_snd_op_u64 (SOReg sop) rs in (
@@ -135,6 +134,21 @@ definition eval_load :: "memory_chunk \<Rightarrow> dst_ty \<Rightarrow> src_ty 
     Some (Vint v) \<Rightarrow> Some (rs#dst <-- (ucast v)) |
     Some (Vshort v) \<Rightarrow> Some (rs#dst <-- (ucast v)) |
     Some (Vbyte v) \<Rightarrow> Some (rs#dst <-- (ucast v))
+))))"*)
+
+
+definition eval_load :: "memory_chunk \<Rightarrow> dst_ty \<Rightarrow> src_ty \<Rightarrow> off_ty \<Rightarrow> reg_map \<Rightarrow> mem \<Rightarrow> reg_map option" where
+"eval_load chk dst sop off rs mem = (
+  let sv :: u64 = eval_snd_op_u64 (SOReg sop) rs in (
+  let vm_addr :: val = Vlong (sv + (scast off)) in (  
+  let v = loadv chk mem vm_addr in (
+    case v of 
+    None \<Rightarrow> None |
+    Some Vundef \<Rightarrow>  None | 
+    Some (Vlong v) \<Rightarrow>  Some (rs#dst <-- v) |
+    Some (Vint v) \<Rightarrow> Some (rs#dst <-- (ucast v)) |
+    Some (Vshort v) \<Rightarrow> None |
+    Some (Vbyte v) \<Rightarrow> None
 ))))"
 
 definition update_stack ::"u64 list \<Rightarrow> u64 \<Rightarrow> u64 \<Rightarrow> stack_state \<Rightarrow> stack_state option" where
@@ -260,19 +274,30 @@ fun sbpf_step :: "ebpf_asm \<Rightarrow> sbpf_state \<Rightarrow> sbpf_state" wh
     _ \<Rightarrow> SBPF_Err) |
 
     BPF_LDX chk dst sop off \<Rightarrow> (
-      case eval_load chk dst sop off rs m of
+    (case chk of M64 \<Rightarrow>
+      (case eval_load chk dst sop off rs m of
         None \<Rightarrow> SBPF_Err |
         Some rs' \<Rightarrow> SBPF_OK (pc+1) rs' m ss) |
+                  M32 \<Rightarrow>
+      (case eval_load chk dst sop off rs m of
+        None \<Rightarrow> SBPF_Err |
+        Some rs' \<Rightarrow> SBPF_OK (pc+1) rs' m ss) |
+                  _ \<Rightarrow> SBPF_Err)) |
+
 
     BPF_JUMP cond dst snd_op off \<Rightarrow> 
       (case snd_op of (SOImm x) \<Rightarrow> SBPF_Err | SOReg x \<Rightarrow> 
-      if eval_jmp cond dst snd_op rs then SBPF_OK (pc+1+scast off) rs m ss
-      else SBPF_OK (pc + 1) rs m ss) | 
+        (case cond of Eq \<Rightarrow> 
+          if eval_jmp cond dst snd_op rs then SBPF_OK (pc+1+scast off) rs m ss
+          else SBPF_OK (pc + 1) rs m ss |
+                    _ \<Rightarrow> SBPF_Err )) | 
 
     BPF_ST chk dst sop off \<Rightarrow> (
-      case eval_store chk dst sop off rs m of
+    (case chk of M64 \<Rightarrow>
+      (case eval_store chk dst sop off rs m of
         None \<Rightarrow> SBPF_Err |
         Some m' \<Rightarrow> SBPF_OK (pc+1) rs m' ss) |
+                  _ \<Rightarrow> SBPF_Err))|
    
     BPF_CALL_IMM src imm \<Rightarrow> (
     case eval_call_imm src imm rs ss pc of

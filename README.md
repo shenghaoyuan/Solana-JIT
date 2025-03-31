@@ -1,4 +1,4 @@
-# Towards a Formally Verified eBPF Just-in-Time Compiler for Solana
+# Formal verification of an eBPF Just-in-Time Compiler front-end for Solana
 
 We have tested our project on:
 - Windows 11 + WSL2 (Ubuntu 22.04 LTS)
@@ -83,8 +83,8 @@ sudo apt-get install cloc
 
 | Paper                   | Code                           |
 | ----------------------- | ------------------------------ |
-| Syntax (Section 4.1)    | `theory/x64Semtancis.thy#L258` |
-| Semantics (Section 4.2) | `theory/x64Semtancis.thy#L258` |
+| Syntax (Section 4.1)    |                                |
+| Semantics (Section 4.2) | `theory/x64Semtancis.thy#L253` |
 
 # 3. PerJIT
 
@@ -96,13 +96,15 @@ make
 ```
 If you want to check another file, just click it on JEdit and the Isabelle/HOL checker then validates it automatically.
 
+Note that we have
+
 ### 3.2 Link to paper
 
 | Paper      | Code      |
 | ------------- | ------------- |
-| JIT Design (Section 5.1) | `theory/JITPer_aux.thy#L244` |
-| JIT Rules (Section 5.2) | `theory/x64Semtancis.thy#L258` |
-| Proof of JIT Correctness (Section 5.3) | `theory/JITPer.thy#L429` |
+| JIT Design (Section 5.1) | `theory/JITPer_aux.thy#L259` |
+| JIT Rules (Section 5.2) | `theory/JITPer_aux.thy#L71` |
+| Proof of JIT Correctness (Section 5.3) | `theory/JITPer.thy#L472` |
 
 
 
@@ -130,7 +132,7 @@ Note that you can ignore the warning messages as long as the program runs succes
 Use `make clean` to remove redundant files.
 
 
-### 4.2 Code Statistics (Section 6.2)
+### 4.2 Code Statistics 
 Run the following command to get the lines of code:
 
 ```shell
@@ -138,10 +140,15 @@ Run the following command to get the lines of code:
 make code
 ```
 
+The code shown here includes all components of the formal model. In contrast, the code statistics in our paper reflect only the newly added code in this paper.
+
 Note that currently, `cloc` doesn't support Isabelle/HOL now, we specify the language to OCaml because both use `(* *)` as comments.
 
 ### 4.3 Link to paper
 
-| Paper                              | Code                                                         |
-| ---------------------------------- | ------------------------------------------------------------ |
-| Validation Framework (Section 6.1) | Isabelle/HOL: glue code `theory/rBPFDecoder.thy#L335`, <br />Extraction declaration `theory/JITExtraction.thy`,<br /> OCaml: glue code `tests/jit.ml`,<br /> PerJIT_test `tests/jit_val.ml` |
+| Paper                            | Code                                                         |
+| -------------------------------- | ------------------------------------------------------------ |
+| Validation Framework (Section 6.1) | isabell/hol: glue code1 `theory/rBPFDecoder.thy#L335` + extraction declration `theory/JITExtraction.thy`, OCaml: glue code `tests/jit_val.ml`, PerJIT_test `tests/jit.ml` |
+
+
+

@@ -129,8 +129,25 @@ definition per_jit_mul_reg64::"bpf_ireg \<Rightarrow> bpf_ireg \<Rightarrow> (na
     RDX \<Rightarrow> 6 |
     _ \<Rightarrow> 8
     in Some (len, 0, ins_list)"
-                              
+
 definition per_jit_jcc ::"condition \<Rightarrow> bpf_ireg \<Rightarrow> bpf_ireg \<Rightarrow> u64 \<Rightarrow> (nat \<times> u64 \<times> x64_bin) option" where
+  "per_jit_jcc cond dst src off \<equiv> 
+    let tcond = (case cond of Eq \<Rightarrow> Cond_e |
+                              Ne \<Rightarrow> Cond_ne | 
+                              Lt \<Rightarrow> Cond_b | 
+                              Le \<Rightarrow> Cond_be | 
+                              Ge \<Rightarrow> Cond_ae | 
+                              Gt \<Rightarrow> Cond_a | 
+                              SLt \<Rightarrow> Cond_l | 
+                              SLe \<Rightarrow> Cond_le | 
+                              SGe \<Rightarrow> Cond_ge | 
+                              SGt \<Rightarrow> Cond_g ) in 
+  if tcond = Cond_e then
+  let ins1 = Pcmpq_rr (bpf_to_x64_reg dst) (bpf_to_x64_reg src) in
+  let ins2 = (Pjcc tcond 0) in Some (1,off+1,x64_encode ins1@x64_encode ins2 ) else None"
+
+
+(*definition per_jit_jcc ::"condition \<Rightarrow> bpf_ireg \<Rightarrow> bpf_ireg \<Rightarrow> u64 \<Rightarrow> (nat \<times> u64 \<times> x64_bin) option" where
   "per_jit_jcc cond dst src off \<equiv> 
     let tcond = (case cond of Eq \<Rightarrow> Some Cond_e |
                               Ne \<Rightarrow> Some Cond_ne | 
@@ -146,7 +163,7 @@ definition per_jit_jcc ::"condition \<Rightarrow> bpf_ireg \<Rightarrow> bpf_ire
   if tcond = None then None else
   let ins1 = Pcmpq_rr (bpf_to_x64_reg dst) (bpf_to_x64_reg src) in
   let ins2 = (Pjcc (the tcond) 0) in Some (1,off+1,x64_encode ins1@x64_encode ins2 )"
-
+*)
 
 definition per_jit_call_reg :: "bpf_ireg \<Rightarrow> imm_ty \<Rightarrow> (nat \<times> u64 \<times> x64_bin) option" where
   "per_jit_call_reg src imm = Some (1, ucast imm, x64_encode (Pcall_i 0))"
@@ -227,19 +244,17 @@ definition per_jit_load_reg64 :: "bpf_ireg \<Rightarrow> bpf_ireg \<Rightarrow> 
 "per_jit_load_reg64 dst src chk off = (
   let l_bin = 
     x64_encode (Pmovl_ri R11 (scast off))@x64_encode (Paddq_rr R11 (bpf_to_x64_reg src))@
-    x64_encode (Pmov_rm (bpf_to_x64_reg dst) (Addrmode (Some R11) None 0) chk) in
+    x64_encode (Pmov_mr (Addrmode (Some R11) None 0) (bpf_to_x64_reg dst) chk) in
     Some (3, 0, l_bin)
 )"
 
 definition per_jit_store_reg64 :: "bpf_ireg \<Rightarrow> bpf_ireg \<Rightarrow> memory_chunk \<Rightarrow> off_ty \<Rightarrow> (nat \<times> u64 \<times> x64_bin) option" where
 "per_jit_store_reg64 dst src chk off = (
   let l_bin = 
-    x64_encode (Pmovl_ri R11 (scast off))@x64_encode (Paddq_rr R11 (bpf_to_x64_reg dst))@
-    x64_encode (Pmovq_rr R10 (bpf_to_x64_reg src))@x64_encode (Pmov_mr (Addrmode (Some R11) None 0) R10 chk) in
+    x64_encode (Pmovq_ri R11 (scast off))@x64_encode (Paddq_rr R11 (bpf_to_x64_reg dst))@
+    x64_encode (Pmovq_rr R10 (bpf_to_x64_reg src))@x64_encode (Pmov_rm R10 (Addrmode (Some R11) None 0) chk) in
     Some (4, 0, l_bin)
 )"
-
-
 
 definition per_jit_ins ::" bpf_instruction \<Rightarrow> (nat \<times> u64 \<times> x64_bin) option" where
 "per_jit_ins bins = (
@@ -262,13 +277,6 @@ definition per_jit_ins ::" bpf_instruction \<Rightarrow> (nat \<times> u64 \<tim
   _ \<Rightarrow> None
 )"
 
-value "per_jit_ins (BPF_ALU64 BPF_MUL BR7 (SOReg BR3))"
-
-value "x64_decode 0  [73, 137, 203, 80, 76, 137, 232, 82, 73, 247, 227, 90, 73, 137, 197, 88]"
-
-value "x64_decode 0  [73, 247, 227, 90, 73, 137, 197, 88]"
-
-value "x64_encode (Pimulq_r R11)"
 
 fun jitper :: "ebpf_asm \<Rightarrow> (nat \<times> u64 \<times> x64_bin) list option" where
   "jitper [] = Some []" |
@@ -316,8 +324,6 @@ definition match_state :: "sbpf_state \<Rightarrow> hybrid_state \<Rightarrow> b
   ) |
   _ \<Rightarrow> False
 )"
-
-
 
 
 lemma match_mem_store_equiv: "
@@ -414,6 +420,7 @@ lemma aux1:"length prog \<noteq> 0 \<and> unat pc < length prog \<and> unat pc \
   apply(cases "prog!(unat pc)",simp_all)
   subgoal for x31 x32 x33 x34
     apply(unfold eval_store_def Let_def)
+    apply(cases x31,simp_all)
     by(cases x33,simp_all)
     subgoal for x91 x92 x93
    apply(unfold eval_alu_def Let_def)
@@ -524,9 +531,19 @@ proof-
       apply(cases x91,simp_all)
         apply(unfold eval_alu64_aux2_def Let_def) apply(cases BPF_LSH,simp_all)
       apply(unfold eval_alu64_aux3_def Let_def) apply(cases BPF_ARSH,simp_all)
+      done 
+    subgoal
+      apply(subgoal_tac "chk = M64 \<or> chk = M32")
+       apply(cases "prog!(unat pc)",simp_all)
+      subgoal for x21 using assm4 assm3 assm0 assm1 apply(cases x21,simp_all)
+         apply(cases "eval_load M32 dst src d rs m ",simp_all)
+        apply(cases "eval_load M64 dst src d rs m ",simp_all)
+        done
+      using assm0 assm1 assm3 assm4 assm5 apply(cases "prog!(unat pc)",simp_all) subgoal for x21 by(cases chk,simp_all)
       done
-    apply (smt (z3) assm4 bpf_instruction.simps(362) option.case_eq_if sbpf_state.inject(1) sbpf_state.simps(6) sbpf_step.simps(1))
-    using assm4 assm3 eval_store_def by(cases "eval_store chk dst (SOReg src) d rs m",simp_all)
+    using assm0 assm1 assm3 assm4 assm5 eval_store_def apply(cases "eval_store chk dst (SOReg src) d rs m",simp_all) apply(cases chk,simp_all)
+    subgoal for a apply(cases chk,simp_all) done
+    done
   thus ?thesis using c1 by simp
 qed
 
@@ -548,18 +565,18 @@ lemma x64_sem1_pc_aux1:
   BPF_ALU64 BPF_MOV dst (SOReg src), BPF_ALU64 BPF_OR dst (SOReg src), BPF_ALU64 BPF_AND dst (SOReg src), BPF_ALU64 BPF_XOR dst (SOReg src),
   BPF_ALU64 BPF_LSH dst (SOReg src),BPF_ALU64 BPF_RSH dst (SOReg src), BPF_ALU64 BPF_ARSH dst (SOReg src),
   BPF_LDX chk dst src d, BPF_ST chk dst (SOReg src) d}"
-shows "x64_sem1 1 x64_prog (pc,xst) = (pc', Next xpc1 xrs1 xm1 xss1)"
+shows "perir_sem 1 x64_prog (pc,xst) = (pc', Next xpc1 xrs1 xm1 xss1)"
 proof-
-  have "x64_sem1 1 x64_prog (pc,xst) = (let (num,off,l) = x64_prog!(unat pc) in
-  let pair = let xst_temp = Next 0 xrs xm xss; xst' = x64_sem num l xst_temp in (pc+1, xst') in (x64_sem1 0 x64_prog pair))"
-    using a5 a8 a6 one_step_def by simp
-  hence "x64_sem1 1 x64_prog (pc,xst) = (x64_sem1 0 x64_prog (pc+1,xst1))" using a3 a4 a5 a6 a7 a8 one_step_def by simp
-  hence "x64_sem1 1 x64_prog (pc,xst) = (pc+1, Next xpc1 xrs1 xm1 xss1)" using a10 by simp
-  moreover have "pc+1=pc'" using corr_pc_aux2 a3 a0 a1 a2 a4 a11 a6 a8 by force
-  hence "x64_sem1 1 x64_prog (pc,xst) = (pc', Next xpc1 xrs1 xm1 xss1)" using calculation by blast
+  have "perir_sem 1 x64_prog (pc,xst) = (let (num,off,l) = x64_prog!(unat pc) in
+  let pair = let xst_temp = Next 0 xrs xm xss; xst' = x64_sem num l xst_temp in (pc+1, xst') in (perir_sem 0 x64_prog pair))"
+    using a5 a8 a6 perir_step_def by simp
+  hence "perir_sem 1 x64_prog (pc,xst) = (perir_sem 0 x64_prog (pc+1,xst1))" using a3 a4 a5 a6 a7 a8 perir_step_def by simp
+  hence "perir_sem 1 x64_prog (pc,xst) = (pc+1, Next xpc1 xrs1 xm1 xss1)" using a10 by simp
+  moreover have "pc+1=pc'" using corr_pc_aux2 a3 a0 a1 a2 a4 a11 a6 a8
+    by (smt (verit) insertCI insertE)
+  hence "perir_sem 1 x64_prog (pc,xst) = (pc', Next xpc1 xrs1 xm1 xss1)" using calculation by blast
   thus ?thesis by blast
 qed
-
 
 lemma x64_sem1_pc_aux2:
   assumes 
@@ -573,55 +590,51 @@ lemma x64_sem1_pc_aux2:
   a7:"x64_sem num l (Next 0 xrs xm xss) = xst1 " and
   a8:"l!0 \<noteq> 0xc3 \<and> l!0 \<noteq> 0xe8 \<and> l!1 = 0x39" and
   a10:"xst1 = Next xpc1 xrs1 xm1 xss1" and
-  a11:"prog!(unat pc) \<in> {BPF_JUMP cond dst (SOReg src) d}" and
+  a11:"prog!(unat pc) = BPF_JUMP cond dst (SOReg src) d" and
   a12:"match_state s (pc,xst)" and
   a13:"xrs (IR (bpf_to_x64_reg dst)) = xrs (IR (bpf_to_x64_reg src)) \<longrightarrow> xrs1 (CR ZF) = 1" and
   a14: "xrs (IR (bpf_to_x64_reg dst)) \<noteq> xrs (IR (bpf_to_x64_reg src)) \<longrightarrow> xrs1 (CR ZF) = 0"
-shows "x64_sem1 1 x64_prog (pc,xst) = (pc', Next xpc1 xrs1 xm1 xss1)" 
+shows "perir_sem 1 x64_prog (pc,xst) = (pc', Next xpc1 xrs1 xm1 xss1)" 
 proof-
-  have c0:"x64_sem1 1 x64_prog (pc,xst) = (let (num,off,l) = x64_prog!(unat pc) in
+  have n0:"cond = Eq" using a0 a1 a2 a4 a11 apply(cases "prog!(unat pc)",simp_all) 
+    subgoal for x161 by(cases cond,simp_all) done
+  have c0:"perir_sem 1 x64_prog (pc,xst) = (let (num,off,l) = x64_prog!(unat pc) in
   let pair = (let xst_temp = Next 0 xrs xm xss; xst' = x64_sem num l xst_temp in
         case xst' of Next xpc' rs' m' s' \<Rightarrow>
           if rs' (CR ZF) = 1 then (off+pc, xst')
           else (pc+1, xst')|
          Stuck \<Rightarrow> (pc, Stuck))
-   in (x64_sem1 0 x64_prog pair))"
-    using a5 a8 a6 one_step_def by auto
+   in (perir_sem 0 x64_prog pair))"
+    using a5 a8 a6 perir_step_def by auto
   have b0:"(num,off,l) = the (per_jit_ins (prog!(unat pc)))" using aux5 a0 a1 a2 a7 a11 a3 a4 a6 by blast
   have b1:"(num,off,l) = the (per_jit_jcc cond dst src (scast d))" using b0 a11 per_jit_ins_def by simp
-  have b2:"cond = Eq" sorry
   thus ?thesis
   proof(cases "rs src = rs dst")
-    case True
-    hence b3:"eval_jmp cond dst (SOReg src) rs" using a2 a3 a4 a5 a6 b2 eval_jmp_def eval_reg_def by fastforce
-    hence b4:"pc' = pc + scast d + 1" using a11 a4 b2 eval_reg_def a0 a1 a2 by simp
+  case True
+    have b3:"eval_jmp cond dst (SOReg src) rs" using a0 a2 a3 a4 a5 a6 eval_reg_def n0 True 
+      apply(unfold eval_jmp_def Let_def, simp_all) done
+    hence b4:"pc' = pc + scast d + 1" using a11 a4 n0 eval_reg_def a0 a1 a2 by simp
     have c1:"xrs (IR (bpf_to_x64_reg dst)) = xrs (IR (bpf_to_x64_reg src))" 
       using bpf_to_x64_reg_def True a12 match_state_def a0 a5 match_reg_def by auto
     have c2:"xrs1 (CR ZF) = 1" using True a10 a7 a13 c1 by simp
-    have c3:"x64_sem1 1 x64_prog (pc,xst) = (let (num,off,l) = x64_prog!(unat pc)
-      in (x64_sem1 0 x64_prog ((off+pc, xst1))))" using c2 c0 a5 a7 a10 a6 one_step_def by auto
-    have c4:"x64_sem1 1 x64_prog (pc,xst) = (off+pc, Next xpc1 xrs1 xm1 xss1)" using c3 a6 a10 by force
-    have c5:"off = scast d + 1" using b1 per_jit_jcc_def b2 by auto
+    have c3:"perir_sem 1 x64_prog (pc,xst) = (let (num,off,l) = x64_prog!(unat pc) in (perir_sem 0 x64_prog ((off+pc, xst1))))" 
+      using c2 c0 a5 a7 a10 a6 perir_step_def by auto
+    have c4:"perir_sem 1 x64_prog (pc,xst) = (off+pc, Next xpc1 xrs1 xm1 xss1)" using c3 a6 a10 by force
+    have c5:"off = scast d + 1" using b1 per_jit_jcc_def n0 by auto
     then show ?thesis using b4 c4 c5 by simp
   next
-    case False
+  case False
     have b3:"rs src \<noteq> rs dst" using False by simp
-    hence "\<not> eval_jmp cond dst (SOReg src) rs" 
-      apply(unfold eval_jmp_def Let_def eval_reg_def,simp_all)
-      using b2 by(cases cond,simp_all)
-    hence b4:"pc' = pc + 1" 
-    using a11 a4 a5 a6 b2 eval_reg_def a0 a1 a2 eval_reg_def by auto
+    hence "\<not> eval_jmp cond dst (SOReg src) rs" apply(unfold eval_jmp_def Let_def eval_reg_def,simp_all) using n0 by(cases cond,simp_all)
+    hence b4:"pc' = pc + 1" using a11 a4 a5 a6 n0 eval_reg_def a0 a1 a2 eval_reg_def by auto
     
-    have c1:"xrs (IR (bpf_to_x64_reg dst)) \<noteq> xrs (IR (bpf_to_x64_reg src))"
-      using bpf_to_x64_reg_def False a12 match_state_def a0 a5 match_reg_def by auto
+    have c1:"xrs (IR (bpf_to_x64_reg dst)) \<noteq> xrs (IR (bpf_to_x64_reg src))" using bpf_to_x64_reg_def False a12 match_state_def a0 a5 match_reg_def by auto
     have c2:"xrs1 (CR ZF) = 0" using False a10 a7 a14 c1 by auto
-    have c3:"x64_sem1 1 x64_prog (pc,xst) = (let (num,off,l) = x64_prog!(unat pc)
-      in (x64_sem1 0 x64_prog ((1+pc, xst1))))" using c2 c0 a5 a7 a10 a6 by auto
-    have c4:"x64_sem1 1 x64_prog (pc,xst) = (1+pc, Next xpc1 xrs1 xm1 xss1)" using c3 a6 a10 by force
+    have c3:"perir_sem 1 x64_prog (pc,xst) = (let (num,off,l) = x64_prog!(unat pc) in (perir_sem 0 x64_prog ((1+pc, xst1))))" using c2 c0 a5 a7 a10 a6 by auto
+    have c4:"perir_sem 1 x64_prog (pc,xst) = (1+pc, Next xpc1 xrs1 xm1 xss1)" using c3 a6 a10 by force
     then show ?thesis using c4 b4 by simp
   qed
 qed
-
 
 lemma match_state_eqiv:"match_state s (pc,Next xpc' xrs' xm' xss') = match_state s (pc,Next 0 xrs' xm' xss')"
   using match_state_def 

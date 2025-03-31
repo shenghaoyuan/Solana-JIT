@@ -163,7 +163,7 @@ lemma exit_one_step:
        a6:"match_state s (pc,xst) " and
        a7:"prog!(unat pc) = bins" and
        a8:"prog \<noteq> [] \<and> unat pc < length prog \<and> unat pc \<ge> 0"
-     shows "\<exists> xst'. x64_sem1 1 x64_prog (pc,xst) = (pc',xst') \<and> 
+     shows "\<exists> xst'. perir_sem 1 x64_prog (pc,xst) = (pc',xst') \<and> 
   match_state s' (pc',xst')"
 proof-
   have b0:"\<not> (call_depth ss = 0)" using a0 a4 a7 a8 a4 a3 a2 by auto
@@ -176,10 +176,10 @@ proof-
   then obtain num off l where c_aux:"x64_prog!(unat pc) = (num,off,l)" by auto
   have c2:"l = ?l_bin" using a8 c0 a1 aux5 c_aux by fastforce
       
-  let "?one_step" = "x64_sem1 1 x64_prog (pc,xst)"
+  let "?one_step" = "perir_sem 1 x64_prog (pc,xst)"
   let "?st" = "snd ?one_step"
-  have c2_1:"?st = snd (one_step x64_prog (pc,xst))" 
-      by (metis One_nat_def prod.collapse x64_sem1.simps(1) x64_sem1.simps(2))
+  have c2_1:"?st = snd (perir_step x64_prog (pc,xst))" 
+      by (metis One_nat_def prod.collapse perir_sem.simps(1) perir_sem.simps(2))
 
   have "x64_prog!(unat pc) = the (per_jit_ins ?bpf_ins)" using aux5 a1 a8 by blast
   hence c3:"x64_prog!(unat pc) = the (per_jit_exit)" using a0 per_jit_ins_def by simp
@@ -191,8 +191,8 @@ proof-
   have c4_1:"\<not>(l!0 = 0xff \<or> (l!0 = 0x40 \<and> l!1 = 0xff))" using c4 by simp
 
   have c5:"?one_step = (let (pc', ss', caller,fp) = update_stack2 xss in 
-          let rs' = restore_x64_caller xrs caller fp in (pc', Next xpc rs' xm ss'))" using c4 c4_1 one_step_def a5 c_aux c2_1 
-    by (smt (z3) One_nat_def case_prod_conv fst_conv outcome.simps(4) snd_conv update_stack2_def x64_sem1.simps(1) x64_sem1.simps(2))
+          let rs' = restore_x64_caller xrs caller fp in (pc', Next xpc rs' xm ss'))" using c4 c4_1 perir_step_def a5 c_aux c2_1 
+    by (smt (z3) One_nat_def case_prod_conv fst_conv outcome.simps(4) snd_conv update_stack2_def perir_sem.simps(1) perir_sem.simps(2))
 
   have "\<exists> xpc1 xrs1 xm1 xss1. Next xpc1 xrs1 xm1 xss1 = ?st" using a5 c5 restore_x64_caller_def update_stack2_def c2_1 
     by (metis (mono_tags, lifting) case_prod_conv snd_conv)

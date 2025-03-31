@@ -97,6 +97,7 @@ lemma store_mem_one_step2:
     match_state (SBPF_OK pc rs m ss) (pc,xst) \<Longrightarrow>
     prog \<noteq> [] \<and> unat pc < length prog \<and> unat pc \<ge> 0 \<Longrightarrow>
     prog!(unat pc) = BPF_ST chk dst (SOReg src) off  \<Longrightarrow>
+    chk = M64 \<Longrightarrow>
     storev chk xm (Vlong (scast off + xrs (IR (bpf_to_x64_reg dst)))) (Vlong (xrs (IR (bpf_to_x64_reg src)))) = Some a \<Longrightarrow>
     match_reg rs' (\<lambda>a::preg. if a = IR REG_OTHER_SCRATCH then xrs (IR (bpf_to_x64_reg src)) else if a = IR REG_SCRATCH then scast off + xrs (IR (bpf_to_x64_reg dst)) else if a = IR REG_SCRATCH then scast off else xrs a)"
   apply (simp add: match_state_def match_reg_def eval_load_def)
@@ -123,8 +124,9 @@ proof-
   let vm_addr  = (dv + (scast off)) in (  
   let sv :: u64 = eval_snd_op_u64 (SOReg src) rs in (
   (storev chk m (Vlong vm_addr) (memory_chunk_value_of_u64 chk sv))))))" using a0 a3 a4 eval_store_def
-    by (smt (z3) bpf_instruction.case(3) option.case_eq_if option.collapse sbpf_state.inject(1) sbpf_state.simps(6) sbpf_step.simps(1) snd_op.simps(6))
-  
+  by (smt (z3) a6 bpf_instruction.case(3) memory_chunk.case(4) option.case_eq_if option.collapse sbpf_state.inject(1) sbpf_state.simps(6) sbpf_step.simps(1) snd_op.simps(6))
+
+
   let "?x_addr" = "(xrs (IR (bpf_to_x64_reg dst)) + scast off)"
 
   let "?b_addr" = "((rs dst) + (scast off))"
@@ -161,6 +163,7 @@ lemma store_mem_one_step4:
     match_state (SBPF_OK pc rs m ss) (pc,xst) \<Longrightarrow>
     prog \<noteq> [] \<and> unat pc < length prog \<and> unat pc \<ge> 0 \<Longrightarrow>
     prog!(unat pc) =  BPF_ST chk dst (SOReg src) off   \<Longrightarrow>
+    chk = M64 \<Longrightarrow>
     storev chk xm (Vlong (scast off + xrs (IR (bpf_to_x64_reg dst)))) (Vlong (xrs (IR (bpf_to_x64_reg src)))) = Some a \<Longrightarrow>
     match_stack(\<lambda>a::preg. if a = IR REG_OTHER_SCRATCH then xrs (IR (bpf_to_x64_reg src)) else if a = IR REG_SCRATCH then scast off + xrs (IR (bpf_to_x64_reg dst)) else if a = IR REG_SCRATCH then scast off else xrs a)"
   by (simp add: match_state_def match_stack_def eval_alu_def eval_reg_def)
@@ -185,8 +188,9 @@ lemma store_one_step5:
     match_state (SBPF_OK pc rs m ss) (pc,xst) \<Longrightarrow>
     prog \<noteq> [] \<and> unat pc < length prog \<and> unat pc \<ge> 0 \<Longrightarrow>
     prog!(unat pc) =  BPF_ST chk dst (SOReg src) off   \<Longrightarrow>
+    chk = M64 \<Longrightarrow>
     xss = ss'"
-  by (smt (z3) bpf_instruction.case(3) match_state_def option.case_eq_if outcome.case(1) prod.sel(2) sbpf_state.case(1) sbpf_state.distinct(3) sbpf_state.inject(1) sbpf_step.simps(1))
+  by (smt (z3) bpf_instruction.case(3) match_state_def memory_chunk.case(4) option.case_eq_if outcome.case(1) prod.sel(2) sbpf_state.case(1) sbpf_state.inject(1) sbpf_state.simps(6) sbpf_step.simps(1)) 
   
 
 lemma store_one_step1:
@@ -199,14 +203,14 @@ lemma store_one_step1:
   a6:"prog \<noteq> [] \<and> unat pc < length prog \<and> unat pc \<ge> 0" and
   a8:"prog!(unat pc) = BPF_ST chk dst (SOReg src) off" and
   a9:"chk = M64"
-shows "\<exists> xst'. x64_sem1 1 x64_prog (pc,xst) = (pc',xst') \<and> 
+shows "\<exists> xst'. perir_sem 1 x64_prog (pc,xst) = (pc',xst') \<and> 
   match_state s' (pc',xst')"
 (* 1. as BPF_ADD generates a single list of jited x64 assembly, so we only need one step  *)
-  apply(subgoal_tac "\<exists>xst'::outcome. one_step x64_prog (pc, xst) = (pc', xst') \<and> match_state s' (pc', xst')")
+  apply(subgoal_tac "\<exists>xst'::outcome. perir_step x64_prog (pc, xst) = (pc', xst') \<and> match_state s' (pc', xst')")
   subgoal
     by auto
   subgoal
-    apply (unfold one_step_def Let_def)
+    apply (unfold perir_step_def Let_def)
 (* 2. according to the code structure of JITPer, removing the first case statement *)
     apply(subgoal_tac "x64_prog ! unat (fst (pc, xst)) = the (per_jit_store_reg64 dst src chk off)")
      prefer 2

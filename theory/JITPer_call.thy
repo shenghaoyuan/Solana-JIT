@@ -133,7 +133,7 @@ lemma call_imm_one_step:
   a5:"jitper prog = Some x64_prog" and                      
   a6:"prog \<noteq> [] \<and> unat pc < length prog \<and> unat pc \<ge> 0" and
   a8:"prog!(unat pc) = BPF_CALL_IMM src imm"
-shows "\<exists> xst'. x64_sem1 1 x64_prog (pc,xst) = (pc',xst') \<and> 
+shows "\<exists> xst'. perir_sem 1 x64_prog (pc,xst) = (pc',xst') \<and> 
   match_state s' (pc',xst')"
 proof-
   have b0:"\<forall> r. r\<noteq>BR10 \<longrightarrow> rs r = rs' r" using a0 a1 a2 a6 a8 call_reg_subgoal_aux2 by simp 
@@ -148,10 +148,10 @@ proof-
   then obtain num off l where c_aux:"x64_prog!(unat pc) = (num,off,l)" by auto
   have c2:"l = ?l_bin" using a6 c0 a5 aux5 c_aux by fastforce
       
-  let "?one_step" = "x64_sem1 1 x64_prog (pc,xst)"
-  let "?st" = "snd ?one_step"
-  have c2_1:"?st = snd (one_step x64_prog (pc,xst))" 
-      by (metis One_nat_def prod.collapse x64_sem1.simps(1) x64_sem1.simps(2))
+  let "?perir_step" = "perir_sem 1 x64_prog (pc,xst)"
+  let "?st" = "snd ?perir_step"
+  have c2_1:"?st = snd (perir_step x64_prog (pc,xst))" 
+      by (metis One_nat_def prod.collapse perir_sem.simps(1) perir_sem.simps(2))
 
   have "x64_prog!(unat pc) = the (per_jit_ins ?bpf_ins)" using aux5 a5 a6 by blast
   hence c3:"x64_prog!(unat pc) = the (per_jit_call_reg src imm)" using a8 per_jit_ins_def by simp
@@ -167,13 +167,13 @@ proof-
     subgoal for x16 by auto[1]
     done
   have c4_1:"l!0 \<noteq> 0xc3" using c4 by simp
-  have c5:"?one_step = (let caller = save_x64_caller xrs; fp = save_x64_frame_pointer xrs;
+  have c5:"?perir_step = (let caller = save_x64_caller xrs; fp = save_x64_frame_pointer xrs;
                            xrs' = upate_x64_stack_pointer xrs (stack_pointer xss) in
             let ss' = update_stack caller fp (pc+1) xss in
               (case ss' of None \<Rightarrow> (pc, Stuck) | 
               Some ra \<Rightarrow> (off, Next xpc xrs' xm ra)))" 
-    using c4 c2_1 one_step_def a3 c_aux c_aux c4_1
-    by (smt (z3) One_nat_def case_prod_conv fst_conv option.case_eq_if outcome.simps(4) snd_conv x64_sem1.simps(1) x64_sem1.simps(2)) 
+    using c4 c2_1 perir_step_def a3 c_aux c_aux c4_1
+    by (smt (z3) One_nat_def case_prod_conv fst_conv option.case_eq_if outcome.simps(4) snd_conv perir_sem.simps(1) perir_sem.simps(2)) 
 
   have d1_1:"xss = ss" using match_state_def a0 a1 a2 a3 a4 by auto
   have d2_0:"call_depth xss +1 \<noteq>  max_call_depth" using c5 update_stack_def call_reg_subgoal_aux3 a0 a1 a2 a6 d1_1 using a8 by auto
@@ -210,8 +210,8 @@ proof-
 
   have d4:"match_state s' (pc', ?st)" using a4 match_state_def match_mem_def match_stack_def match_reg_def c6 a0 a1 a2 a3 d0 d1 d2 d3 by force
                                                                                                       
-  have "fst ?one_step = off" using c5 by (metis (no_types, lifting) d2_1 option.case_eq_if split_pairs)
-  hence "fst ?one_step = pc'" using c4_0 call_reg_subgoal_aux4 a0 a1 a2 a6 a8 c_aux by blast
+  have "fst ?perir_step = off" using c5 by (metis (no_types, lifting) d2_1 option.case_eq_if split_pairs)
+  hence "fst ?perir_step = pc'" using c4_0 call_reg_subgoal_aux4 a0 a1 a2 a6 a8 c_aux by blast
     thus ?thesis using d4 by (metis split_pairs)
   qed
 

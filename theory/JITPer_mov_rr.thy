@@ -38,7 +38,7 @@ lemma movq_rr_one_step_match_stack:
   apply (simp add: match_state_def match_stack_def eval_alu_def eval_reg_def)
   done
 
-lemma movq_rr_one_step:
+lemma movq_one_step:
  assumes a0:"s' = sbpf_step prog s" and
   a1:"s = (SBPF_OK pc rs m ss)" and
   a2:"s' = (SBPF_OK pc' rs' m' ss')" and
@@ -47,16 +47,16 @@ lemma movq_rr_one_step:
   a5:"jitper prog = Some x64_prog" and                      
   a6:"prog \<noteq> [] \<and> unat pc < length prog \<and> unat pc \<ge> 0" and
   a8:"prog!(unat pc) = BPF_ALU64 BPF_MOV dst (SOReg src)" 
-shows "\<exists> xst'. x64_sem1 1 x64_prog (pc,xst) = (pc',xst') \<and> 
+shows "\<exists> xst'. perir_sem 1 x64_prog (pc,xst) = (pc',xst') \<and> 
   match_state s' (pc',xst')"
   apply simp
 
 (* 1. as BPF_MOV generates a single list of jited x64 assembly, so we only need one step  *)
-  apply(subgoal_tac "\<exists>xst'::outcome. one_step x64_prog (pc, xst) = (pc', xst') \<and> match_state s' (pc', xst')")
+  apply(subgoal_tac "\<exists>xst'::outcome. perir_step x64_prog (pc, xst) = (pc', xst') \<and> match_state s' (pc', xst')")
   subgoal
     by auto
   subgoal
-    apply (unfold one_step_def Let_def)
+    apply (unfold perir_step_def Let_def)
 (* 2. according to the code structure of JITPer, removing the first case statement *)
     apply(subgoal_tac "x64_prog ! unat (fst (pc, xst)) = the (per_jit_mov_reg64_1 dst src)")
      prefer 2

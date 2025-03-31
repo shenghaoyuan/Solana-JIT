@@ -22,7 +22,7 @@ imports
   JITPer_load JITPer_shift
   JITPer_store JITPer_call JITPer_exit
   JITPer_sub JITPer_and JITPer_xor JITPer_or JITPer_mov_rr
-  JITPer_shift JITPer_shift_rcx
+  JITPer_shift JITPer_shift_rcx JITPer_load_32         
 begin
 
 
@@ -34,7 +34,7 @@ lemma one_step_equiv_proof:
   a4:"match_state s (pc,xst)" and
   a5:"jitper prog = Some x64_prog" and                      
   a6:"prog \<noteq> [] \<and> unat pc < length prog \<and> unat pc \<ge> 0" 
-shows "\<exists> xst'. x64_sem1 1 x64_prog (pc,xst) = (pc',xst') \<and> 
+shows "\<exists> xst'. perir_sem 1 x64_prog (pc,xst) = (pc',xst') \<and> 
   match_state s' (pc',xst')"
 (* \<and> snd xst' = unat (pc+1)*)
 proof-
@@ -248,8 +248,23 @@ proof-
                 then show ?thesis
                 proof(cases "?bpf_ins = BPF_LDX chk dst src off")
                   case True
-                  have "chk = M64" sorry
-                  then show ?thesis using load_one_step1 a0 a1 a2 a3 a4 a5 a6 True by simp
+                    have c8_1:"chk = M64 \<or> chk = M32" using a0 a1 a2 a6 True apply(cases "prog!(unat pc)",simp_all)
+                      subgoal for x21 by(cases chk,simp_all) done
+                  thus ?thesis
+                  proof(cases chk)
+                    case M8
+                    then show ?thesis using c8_1 by blast
+                  next
+                    case M16
+                    then show ?thesis using c8_1 by simp
+                  next
+                    case M32
+                    then show ?thesis using load_m32_one_step1 a0 a1 a2 a3 a4 a5 a6 True by simp
+                  next
+                    case M64
+                    then show ?thesis using load_m64_one_step1 a0 a1 a2 a3 a4 a5 a6 True by simp
+                  qed
+             
                 next
                   case False
                   have c9:"?bpf_ins = BPF_ST chk dst (SOReg src) off\<or>
@@ -258,12 +273,27 @@ proof-
                   ?bpf_ins  = BPF_ALU64 BPF_SUB dst (SOReg src) \<or>
                   ?bpf_ins = BPF_ALU64 BPF_XOR dst (SOReg src) \<or>
                   ?bpf_ins = BPF_ALU64 BPF_OR dst (SOReg src) \<or>
-                  ?bpf_ins = BPF_ALU64 BPF_AND dst (SOReg src)" using False c8 by simp
+                  ?bpf_ins = BPF_ALU64 BPF_AND dst (SOReg src)\<or>
+                  ?bpf_ins = BPF_ALU64 BPF_MOV dst (SOReg src)" using False c8 by simp
                   then show ?thesis
                    proof(cases "?bpf_ins = BPF_ST chk dst (SOReg src) off")
                      case True
-                     have "chk = M64" sorry
-                     then show ?thesis using store_one_step1 a0 a1 a2 a3 a4 a5 a6 True by simp
+                     have c9_1:"chk = M64" using a0 a1 a2 a6 True apply(cases "prog!(unat pc)",simp_all)
+                      subgoal for x21 by(cases chk,simp_all) done
+                     thus ?thesis
+                     proof(cases chk)
+                       case M8
+                       then show ?thesis using c9_1 by simp
+                     next
+                       case M16
+                       then show ?thesis using c9_1 by simp
+                     next
+                       case M32
+                       then show ?thesis using c9_1 by simp
+                     next
+                       case M64
+                       then show ?thesis using store_one_step1 a0 a1 a2 a3 a4 a5 a6 True by simp
+                     qed
                    next
                      case False
                      have c10:"?bpf_ins = BPF_CALL_IMM src imm \<or>
@@ -271,7 +301,8 @@ proof-
                      ?bpf_ins  = BPF_ALU64 BPF_SUB dst (SOReg src) \<or>
                      ?bpf_ins = BPF_ALU64 BPF_XOR dst (SOReg src) \<or>
                      ?bpf_ins = BPF_ALU64 BPF_OR dst (SOReg src) \<or>
-                     ?bpf_ins = BPF_ALU64 BPF_AND dst (SOReg src)" using False c9 by simp
+                     ?bpf_ins = BPF_ALU64 BPF_AND dst (SOReg src)\<or>
+                     ?bpf_ins = BPF_ALU64 BPF_MOV dst (SOReg src)" using False c9 by simp
                      then show ?thesis
                       proof(cases "?bpf_ins = BPF_CALL_IMM src imm")
                         case True
@@ -282,7 +313,8 @@ proof-
                               ?bpf_ins  = BPF_ALU64 BPF_SUB dst (SOReg src) \<or>
                               ?bpf_ins = BPF_ALU64 BPF_XOR dst (SOReg src) \<or>
                               ?bpf_ins = BPF_ALU64 BPF_OR dst (SOReg src) \<or>
-                              ?bpf_ins = BPF_ALU64 BPF_AND dst (SOReg src)" using c10 False by simp
+                              ?bpf_ins = BPF_ALU64 BPF_AND dst (SOReg src)\<or>
+                              ?bpf_ins = BPF_ALU64 BPF_MOV dst (SOReg src)" using c10 False by simp
 
                         then show ?thesis 
                         proof(cases "?bpf_ins = BPF_EXIT")
@@ -293,7 +325,8 @@ proof-
                           have c12:"?bpf_ins  = BPF_ALU64 BPF_SUB dst (SOReg src) \<or>
                               ?bpf_ins = BPF_ALU64 BPF_XOR dst (SOReg src) \<or>
                               ?bpf_ins = BPF_ALU64 BPF_OR dst (SOReg src) \<or>
-                              ?bpf_ins = BPF_ALU64 BPF_AND dst (SOReg src)" using c11 False by simp
+                              ?bpf_ins = BPF_ALU64 BPF_AND dst (SOReg src)\<or>
+                              ?bpf_ins = BPF_ALU64 BPF_MOV dst (SOReg src)" using c11 False by simp
                           then show ?thesis 
                           proof(cases "?bpf_ins  = BPF_ALU64 BPF_SUB dst (SOReg src)")
                             case True
@@ -302,7 +335,8 @@ proof-
                             case False
                               have c13:"?bpf_ins = BPF_ALU64 BPF_XOR dst (SOReg src) \<or>
                               ?bpf_ins = BPF_ALU64 BPF_OR dst (SOReg src) \<or>
-                              ?bpf_ins = BPF_ALU64 BPF_AND dst (SOReg src)" using c12 False by simp
+                              ?bpf_ins = BPF_ALU64 BPF_AND dst (SOReg src)\<or>
+                              ?bpf_ins = BPF_ALU64 BPF_MOV dst (SOReg src)" using c12 False by simp
                             then show ?thesis 
                             proof(cases "?bpf_ins = BPF_ALU64 BPF_XOR dst (SOReg src)")
                               case True
@@ -310,23 +344,33 @@ proof-
                             next
                               case False
                               have c14:"?bpf_ins = BPF_ALU64 BPF_OR dst (SOReg src) \<or>
-                              ?bpf_ins = BPF_ALU64 BPF_AND dst (SOReg src)" using c13 False by simp
+                              ?bpf_ins = BPF_ALU64 BPF_AND dst (SOReg src)\<or>
+                              ?bpf_ins = BPF_ALU64 BPF_MOV dst (SOReg src)" using c13 False by simp
                               then show ?thesis 
                               proof(cases "?bpf_ins = BPF_ALU64 BPF_OR dst (SOReg src)")
                                 case True
                                 then show ?thesis using orq_one_step a0 a1 a2 a3 a4 a5 a6 True by blast
                               next
                                 case False
-                                have "?bpf_ins = BPF_ALU64 BPF_AND dst (SOReg src)" using c14 False by simp
-                                then show ?thesis using andq_one_step a0 a1 a2 a3 a4 a5 a6 False by blast
+                                have c15:"?bpf_ins = BPF_ALU64 BPF_AND dst (SOReg src)\<or>
+                                      ?bpf_ins = BPF_ALU64 BPF_MOV dst (SOReg src)" using c14 False by simp
+
+                                then show ?thesis 
+                                proof(cases "?bpf_ins = BPF_ALU64 BPF_AND dst (SOReg src)")
+                                  case True
+                                  then show ?thesis using andq_one_step a0 a1 a2 a3 a4 a5 a6  by blast
+                                next
+                                  case False
+                                  have "?bpf_ins = BPF_ALU64 BPF_MOV dst (SOReg src)" using False c15 by simp
+                                  then show ?thesis using movq_one_step a0 a1 a2 a3 a4 a5 a6 by blast
+                                  qed
                                 qed
                               qed
                             qed
                           qed
                         qed
-                          
                       qed
-                    qed
+                   qed
                 qed
               qed
             qed
@@ -337,9 +381,9 @@ proof-
 
 
 lemma x64_sem1_induct_aux1:
- "x64_sem1 (m+n) x64_prog xst = xst'\<Longrightarrow> 
-  \<exists> xst1. x64_sem1 m x64_prog xst = xst1 \<and>
-  x64_sem1 n x64_prog xst1 = xst'"
+ "perir_sem (m+n) x64_prog xst = xst'\<Longrightarrow> 
+  \<exists> xst1. perir_sem m x64_prog xst = xst1 \<and>
+  perir_sem n x64_prog xst1 = xst'"
  apply(induct m arbitrary: n x64_prog xst xst' )
    apply auto[1]
   subgoal for m n x64_prog xst xst'
@@ -349,10 +393,10 @@ lemma x64_sem1_induct_aux1:
   done
 
 lemma x64_sem1_induct_aux3:
-  "x64_sem1 (Suc n) x64_prog xst = xst' \<Longrightarrow> 
+  "perir_sem (Suc n) x64_prog xst = xst' \<Longrightarrow> 
   x64_prog!(unat pc) = (num,off,l) \<Longrightarrow>
-  x64_sem1 1 x64_prog xst = xst1 \<Longrightarrow> 
-  x64_sem1 n x64_prog xst1 = xst'"  
+  perir_sem 1 x64_prog xst = xst1 \<Longrightarrow> 
+  perir_sem n x64_prog xst1 = xst'"  
 using x64_sem1_induct_aux1
   by (metis plus_1_eq_Suc)
 
@@ -365,9 +409,9 @@ lemma n_steps_equiv_proof_aux:
    match_state s (pc,xst);
    jitper prog = Some x64_prog;
    prog \<noteq> [];
-   x64_sem1 n x64_prog (pc,xst) = xst' \<rbrakk> \<Longrightarrow>
+   perir_sem n x64_prog (pc,xst) = xst' \<rbrakk> \<Longrightarrow>
    match_state s' xst'"
-(* \<exists> xst'. x64_sem1 n pc x64_prog xst = xst' \<and> match_state s' xst'"*)
+(* \<exists> xst'. perir_sem n pc x64_prog xst = xst' \<and> match_state s' xst'"*)
 proof (induction n arbitrary: prog s s' pc rs m ss pc' rs' m' ss' xst' xst xpc xrs xm xss x64_prog xst')
   case 0
   then show ?case
@@ -382,7 +426,7 @@ next
        assm5:"match_state s (pc,xst)" and
        assm6:"jitper prog = Some x64_prog" and
        assm7:"prog \<noteq> [] " and
-       assm9:"x64_sem1 (Suc n) x64_prog (pc,xst) = xst'"
+       assm9:"perir_sem (Suc n) x64_prog (pc,xst) = xst'"
   then obtain s1 where s1_eq: "s1 = sbpf_step prog s" by simp
   have n_step_def:"sbpf_sem n prog s1 = s'" using s1_eq assm1 sbpf_sem_induct
     by (metis sbpf_sem.simps(2))
@@ -392,16 +436,15 @@ next
   moreover have a1:"\<exists> pc1 rs1 m1 ss1 . s1 = (SBPF_OK pc1 rs1 m1 ss1)"
     by (metis Suc.prems(3) bot_nat_0.not_eq_extremum intermediate_step_is_ok n_step_def sbpf_sem.simps(1) sbpf_state.simps(6))
   obtain pc1 rs1 m1 ss1 where a2:"s1 = (SBPF_OK pc1 rs1 m1 ss1)" using a1 by auto
-  (*have a3:"m1 = m" using s1_eq assm2 a2 sorry*)
 
   have "\<exists> num off l. x64_prog!(unat pc) = (num,off,l)" by (metis split_pairs)
   then obtain num off l where a6:"x64_prog!(unat pc) = (num,off,l)" by auto
   have a7:"l = (snd (snd ((x64_prog!(unat pc)))))" using a6 by simp
 
-  have "\<exists> xst1. x64_sem1 1 x64_prog (pc,xst) = (pc1,xst1) \<and> match_state s1 (pc1,xst1)"
+  have "\<exists> xst1. perir_sem 1 x64_prog (pc,xst) = (pc1,xst1) \<and> match_state s1 (pc1,xst1)"
     using s1_eq assm2 a2 assm4 assm5 assm6 assm7 one_step_equiv_proof a6 a7 a0 by blast
-  then obtain xst1 where a4:"x64_sem1 1 x64_prog (pc,xst) = (pc1,xst1) \<and> match_state s1 (pc1,xst1)" by auto
-  hence a4_1:"x64_sem1 1 x64_prog (pc,xst) = (pc1,xst1)" by auto
+  then obtain xst1 where a4:"perir_sem 1 x64_prog (pc,xst) = (pc1,xst1) \<and> match_state s1 (pc1,xst1)" by auto
+  hence a4_1:"perir_sem 1 x64_prog (pc,xst) = (pc1,xst1)" by auto
   have an:"\<exists> xpc1 xrs1 xm1 xss1. xst1 = Next xpc1 xrs1 xm1 xss1" using a4 by (metis match_s_not_stuck outcome.exhaust)
   then obtain xpc1 xrs1 xm1 xss1 where a10:"xst1 = Next xpc1 xrs1 xm1 xss1" by auto
   have a5:"match_state s1 (pc1,xst1)" using an match_state_def
@@ -413,11 +456,11 @@ next
            match_state s (pc, xst) \<Longrightarrow>
            jitper prog = Some x64_prog \<Longrightarrow> 
            prog \<noteq> [] \<Longrightarrow> 
-           x64_sem1 n x64_prog (pc, xst) = xst' \<Longrightarrow> 
+           perir_sem n x64_prog (pc, xst) = xst' \<Longrightarrow> 
            match_state s' xst'" using Suc by blast
 
-  have "\<exists> xst''. x64_sem1 n x64_prog (pc1, xst1) = xst''" by blast
-  then obtain xst'' where b0:"x64_sem1 n x64_prog (pc1, xst1) = xst''" by auto
+  have "\<exists> xst''. perir_sem n x64_prog (pc1, xst1) = xst''" by blast
+  then obtain xst'' where b0:"perir_sem n x64_prog (pc1, xst1) = xst''" by auto
   hence b1:"xst' = xst''" 
     using x64_sem1_induct_aux1 a2 assm2 s1_eq assm4 assm9 a6 a4 a10 by (metis plus_1_eq_Suc)
   hence "match_state s' xst''"
@@ -434,7 +477,7 @@ lemma n_steps_equiv_proof:
    match_state s (pc,xst);
    jitper prog = Some x64_prog;
    prog \<noteq> [] \<rbrakk> \<Longrightarrow>
-   \<exists> xst'.  x64_sem1 n x64_prog (pc,xst) = xst' \<and>
+   \<exists> xst'.  perir_sem n x64_prog (pc,xst) = xst' \<and>
    match_state s' xst'"
   using n_steps_equiv_proof_aux
   by blast
