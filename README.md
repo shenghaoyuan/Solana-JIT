@@ -84,7 +84,7 @@ sudo apt-get install cloc
 | Paper                   | Code                           |
 | ----------------------- | ------------------------------ |
 | Syntax (Section 4.1)    |                                |
-| Semantics (Section 4.2) | `theory/x64Semtancis.thy#L253` |
+| Semantics (Section 4.2) | `theory/x64Semtancis.thy#L226` |
 
 # 3. PerJIT
 

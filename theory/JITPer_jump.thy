@@ -175,7 +175,7 @@ proof-
     then have c3:"x64_prog!(unat pc) = the (per_jit_jcc cond dst src (scast x))" using a8 per_jit_ins_def by simp
     have c3_0:"per_jit_jcc cond dst src (scast x) = Some (num,off,l)" using c_aux c3 per_jit_jcc_def n0
       by(cases cond,simp_all)     
-    then have c3_1:"num = 1" using per_jit_jcc_def c_aux by(cases cond,simp_all) 
+    then have c3_1:"num = 1" using per_jit_jcc_def c_aux n0 by(cases cond,simp_all) 
 
     have e3_0:"l!1 = 0x39" using c_aux c3 n0
       apply(unfold per_jit_jcc_def Let_def) 
