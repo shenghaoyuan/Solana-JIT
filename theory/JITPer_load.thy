@@ -8,7 +8,7 @@ imports
 begin
 
 lemma length_of_addrmode_instr:
-  assumes a0:"xins = (Pmov_mr (Addrmode (Some R11) None 0) (bpf_to_x64_reg dst) chk)" and
+  assumes a0:"xins = (Pmov_rm (bpf_to_x64_reg dst) (Addrmode (Some R11) None 0) chk)" and
   a1:"l_bin = x64_encode xins" and
   a2:"chk = M64"
   shows "length l_bin = 4"
@@ -17,9 +17,9 @@ proof-
   let "?r1" =  "(bpf_to_x64_reg dst)"
   let "?c" = "chk"
   have b1:"construct_rex_to_u8 (?c = M64) (and (u8_of_ireg ?r1) 0b1000 \<noteq> 0) False (and (u8_of_ireg R11) 0b1000 \<noteq> 0) \<noteq> 0x40"
-    using a2 apply(unfold construct_rex_to_u8_def Let_def bitfield_insert_u8_def u8_of_bool_def,simp_all) 
-    apply(cases "and (u8_of_ireg (bpf_to_x64_reg dst)) (8::8 word) \<noteq> (0::8 word)",simp_all)
-    done
+    using a2 apply(unfold construct_rex_to_u8_def Let_def bitfield_insert_u8_def u8_of_bool_def,simp_all)
+    by (metis bit_1_iff bit_and_iff bit_minus_numeral_Bit1_0 bit_or_iff not_bit_numeral_Bit0_0) 
+    
   have b3:"l_bin = (case ?a of Addrmode (Some rb) None dis \<Rightarrow> 
       let (rex::u8) = ( construct_rex_to_u8 \<comment> \<open> WRXB \<close>
         (?c = M64) \<comment> \<open> W \<close>
@@ -29,7 +29,7 @@ proof-
         ) in
         let (dis::u8) = scast dis in
         let (rop::u8) = construct_modsib_to_u8 0b01 (u8_of_ireg ?r1) (u8_of_ireg rb) in
-        ([rex, 0x89, rop, dis]))" using b1 using a0 a1 x64_encode_def a2 by(cases chk,simp_all)
+        ([rex, 0x8b, rop, dis]))" using b1 using a0 a1 x64_encode_def a2 by(cases chk,simp_all)
   thus ?thesis by simp
 qed
 
@@ -248,13 +248,13 @@ shows "\<exists> xst'. perir_sem 1 x64_prog (pc,xst) = (pc',xst') \<and>
       using a5 a6 a8 aux5 per_jit_ins_def by fastforce
     subgoal
       apply (subgoal_tac "the (per_jit_load_reg64 dst src chk off) = (3, 0, x64_encode(Pmovl_ri R11 (scast off))@x64_encode (Paddq_rr R11 (bpf_to_x64_reg src))@
-    x64_encode (Pmov_mr (Addrmode (Some R11) None 0) (bpf_to_x64_reg dst) chk))")
+    x64_encode (Pmov_rm (bpf_to_x64_reg dst) (Addrmode (Some R11) None 0) chk))")
        prefer 2
       subgoal by (simp add: per_jit_load_reg64_def Let_def)
       apply (subgoal_tac "(x64_encode(Pmovl_ri R11 (scast off))@x64_encode (Paddq_rr R11 (bpf_to_x64_reg src))@
-    x64_encode (Pmov_mr (Addrmode (Some R11) None 0) (bpf_to_x64_reg dst) chk))!1 \<noteq> 0x39 \<and> (x64_encode(Pmovl_ri R11 (scast off))@x64_encode (Paddq_rr R11 (bpf_to_x64_reg src))@
-    x64_encode (Pmov_mr (Addrmode (Some R11) None 0) (bpf_to_x64_reg dst) chk))!0 \<noteq> 0xc3 \<and>  (x64_encode(Pmovl_ri R11 (scast off))@x64_encode (Paddq_rr R11 (bpf_to_x64_reg src))@
-    x64_encode (Pmov_mr (Addrmode (Some R11) None 0) (bpf_to_x64_reg dst) chk))!0 \<noteq> 0xe8")
+    x64_encode (Pmov_rm (bpf_to_x64_reg dst) (Addrmode (Some R11) None 0) chk))!1 \<noteq> 0x39 \<and> (x64_encode(Pmovl_ri R11 (scast off))@x64_encode (Paddq_rr R11 (bpf_to_x64_reg src))@
+    x64_encode (Pmov_rm (bpf_to_x64_reg dst) (Addrmode (Some R11) None 0) chk))!0 \<noteq> 0xc3 \<and>  (x64_encode(Pmovl_ri R11 (scast off))@x64_encode (Paddq_rr R11 (bpf_to_x64_reg src))@
+    x64_encode (Pmov_rm (bpf_to_x64_reg dst) (Addrmode (Some R11) None 0) chk))!0 \<noteq> 0xe8")
        prefer 2
       subgoal apply(unfold x64_encode_def) 
         apply(cases "Pmovl_ri REG_SCRATCH (scast off)",simp_all)
@@ -273,7 +273,7 @@ shows "\<exists> xst'. perir_sem 1 x64_prog (pc,xst) = (pc',xst') \<and>
 (* 3.1.1 using consistency to get x64 assembly *)
         apply (subgoal_tac "x64_decode (0::nat)
             (x64_encode(Pmovl_ri R11 (scast off))@x64_encode (Paddq_rr R11 (bpf_to_x64_reg src))@
-    x64_encode (Pmov_mr (Addrmode (Some R11) None 0) (bpf_to_x64_reg dst) chk))
+    x64_encode (Pmov_rm (bpf_to_x64_reg dst) (Addrmode (Some R11) None 0) chk))
             = Some (7, Pmovl_ri REG_SCRATCH (scast off))")
          prefer 2
         subgoal
@@ -293,7 +293,7 @@ shows "\<exists> xst'. perir_sem 1 x64_prog (pc,xst) = (pc',xst') \<and>
         apply (simp only: x64_sem.simps)
         apply (subgoal_tac "x64_decode (7::nat)
             (x64_encode(Pmovl_ri R11 (scast off))@x64_encode (Paddq_rr R11 (bpf_to_x64_reg src))@
-    x64_encode (Pmov_mr (Addrmode (Some R11) None 0) (bpf_to_x64_reg dst) chk))
+    x64_encode (Pmov_rm (bpf_to_x64_reg dst) (Addrmode (Some R11) None 0) chk))
             = Some (3, Paddq_rr R11 (bpf_to_x64_reg src))")
          prefer 2
 (* this is necessary for later list_in_list_prop_aux2 *)
@@ -325,14 +325,14 @@ shows "\<exists> xst'. perir_sem 1 x64_prog (pc,xst) = (pc',xst') \<and>
 (* using consistency to get x64 assembly *)
         apply (subgoal_tac "x64_decode (10::nat)
             (x64_encode(Pmovl_ri R11 (scast off))@x64_encode (Paddq_rr R11 (bpf_to_x64_reg src))@
-    x64_encode (Pmov_mr (Addrmode (Some R11) None 0) (bpf_to_x64_reg dst) chk))
-            = Some (4, Pmov_mr (Addrmode (Some R11) None 0) (bpf_to_x64_reg dst) chk)")
+    x64_encode (Pmov_rm (bpf_to_x64_reg dst) (Addrmode (Some R11) None 0) chk))
+            = Some (4, Pmov_rm (bpf_to_x64_reg dst) (Addrmode (Some R11) None 0) chk)")
          prefer 2
 (* this is necessary for later list_in_list_prop_aux2 *)
         apply (subgoal_tac "length ((x64_encode(Pmovl_ri R11 (scast off))@x64_encode (Paddq_rr R11 (bpf_to_x64_reg src)))) = 10")
          prefer 2 subgoal using x64_encode_def construct_rex_to_u8_def bitfield_insert_u8_def Let_def u8_list_of_u32_def by auto
         subgoal
-          apply (rule_tac l_bin = "x64_encode (Pmov_mr (Addrmode (Some R11) None 0) (bpf_to_x64_reg dst) chk)" in x64_encode_decode_consistency)
+          apply (rule_tac l_bin = "x64_encode (Pmov_rm (bpf_to_x64_reg dst) (Addrmode (Some R11) None 0) chk)" in x64_encode_decode_consistency)
           subgoal using list_in_list_prop_aux2
             by (metis (no_types, opaque_lifting) append_eq_append_conv2)
           subgoal by simp

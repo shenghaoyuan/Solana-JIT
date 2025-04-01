@@ -14,7 +14,7 @@ code:
 	@echo "SBPF Semantics"
 	cd theory && cloc --force-lang="OCaml" rBPFSem.thy 
 	@echo "SBPF JIT"
-	cd theory && cloc --force-lang="OCaml" JITPer_aux.thy 
+	cd theory && cloc --force-lang="OCaml" JITPer_aux.thy  
 	@echo "SBPF JIT Proof"
 	cd theory && cloc --force-lang="OCaml" JITPer_*.thy JITPer.thy 
 	@echo "SBPF x64 Model"
