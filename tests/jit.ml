@@ -1,11 +1,11 @@
 open Yojson.Basic.Util
 open Jit_eval
 
-(* 定义测试用例类型 *)
+(* define the type of testing cases *)
 type test_case = {
   dis : string;
-  lp_std : int64 list;  (* eBPF 字节码 *)
-  lx_std : int64 list;  (* JIT 编译后的机器码 *)
+  lp_std : int64 list;  (* eBPF bytecode *)
+  lx_std : int64 list;  (* JIT compiled x64 binary *)
 }
 
 let green = "\027[32m"  (* ANSI green *)

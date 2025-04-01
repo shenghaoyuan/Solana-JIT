@@ -83,8 +83,8 @@ sudo apt-get install cloc
 
 | Paper                   | Code                           |
 | ----------------------- | ------------------------------ |
-| Syntax (Section 4.1)    |                                |
-| Semantics (Section 4.2) | `theory/x64Semtancis.thy#L226` |
+| Step:per_step (Section 4.2)    |    `theory/x64Semtancis.thy#L226`                            |
+| Semantics:per_sem (Section 4.2) | `theory/x64Semtancis.thy#L253` |
 
 # 3. PerJIT
 
@@ -103,7 +103,7 @@ Note that we have
 | Paper      | Code      |
 | ------------- | ------------- |
 | JIT Design (Section 5.1) | `theory/JITPer_aux.thy#L259` |
-| JIT Rules (Section 5.2) | `theory/JITPer_aux.thy#L71` |
+| JIT Rules (Section 5.2) | `theory/JITPer_aux.thy#L71-L257` |
 | Proof of JIT Correctness (Section 5.3) | `theory/JITPer.thy#L472` |
 
 
@@ -148,7 +148,7 @@ Note that currently, `cloc` doesn't support Isabelle/HOL now, we specify the lan
 
 | Paper                            | Code                                                         |
 | -------------------------------- | ------------------------------------------------------------ |
-| Validation Framework (Section 6.1) | isabell/hol: glue code `theory/rBPFDecoder.thy#L335` + extraction declration `theory/JITExtraction.thy`, OCaml: glue code `tests/jit.ml`, PerJIT_test `tests/jit_val.ml` |
+| Validation Framework (Section 6.1) | isabell/hol: glue code `theory/JITExtraction.thy#L44` + extraction declration `theory/JITExtraction.thy#L59`, OCaml: glue code `tests/jit.ml`, PerJIT_test `tests/jit_val.ml` |
 
 
 

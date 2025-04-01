@@ -65,7 +65,7 @@ proof-
                       m 0 i))" 
     using storev_def apply(cases "(xrs (IR (bpf_to_x64_reg src)))",simp_all)
     subgoal for n by metis done
-  then obtain xm' where "Some xm' = (let off = (xrs (IR (bpf_to_x64_reg dst)) + scast off); l = u8_list_of_u64 (ucast (xrs (IR (bpf_to_x64_reg src)))) in
+  then obtain xm' where "Some (xm'::mem) = (let off = (xrs (IR (bpf_to_x64_reg dst)) + scast off); l = u8_list_of_u64 (ucast (xrs (IR (bpf_to_x64_reg src)))) in
                Some (\<lambda> x i. if x = 0 \<and> i = (uint off)    then Some (l!(0)) else
                    if x = 0 \<and> i = (uint off)+1  then Some (l!(1)) else
                    if x = 0 \<and> i = (uint off)+2  then Some (l!(2)) else
