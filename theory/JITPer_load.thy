@@ -341,11 +341,12 @@ shows "\<exists> xst'. perir_sem 1 x64_prog (pc,xst) = (pc',xst') \<and>
         apply (erule subst)
         apply (simp add: exec_instr_def exec_load_def eval_addrmode64_def Let_def)
          apply (rule conjI)
-        using a9 apply(cases chk,simp_all)
         
 (* 4. now we get exec_instr (one step of x64 add assembly), we prove the \<and>, first left, then right *)
         subgoal
           using a0 a1 a2 a5 a6 a8 corr_pc_aux2 insert_iff prod_cases3 by metis
+
+        using a9 apply(cases chk,simp_all)
         unfolding a1 a2
 (* 4.1  match_reg *)
         apply (simp add: match_state_def)
