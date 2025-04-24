@@ -75,9 +75,9 @@ lemma scast_aux1:"((scast (scast (imm::i32)::u32))::u64) = ((scast imm)::u64)"
 
 (*(\<And>(r::ireg) dst::bpf_ireg. r = bpf_to_x64_reg dst \<Longrightarrow> bpf_to_x64_reg dst \<noteq> REG_OTHER_SCRATCH) \<Longrightarrow> *)
 lemma addq_imm_one_step_match_reg:
-  " (SBPF_OK pc' rs' m' ss') = sbpf_step prog (SBPF_OK pc rs m ss) \<Longrightarrow>
+  " s' = sbpf_step prog s \<Longrightarrow> s = (SBPF_OK pc rs m ss) \<Longrightarrow> s' = (SBPF_OK pc' rs' m' ss') \<Longrightarrow> 
     xst = (Next xpc xrs xm xss) \<Longrightarrow>
-    match_state (SBPF_OK pc rs m ss) (pc,xst) \<Longrightarrow>
+    match_state s (pc,xst) \<Longrightarrow>
     prog \<noteq> [] \<and> unat pc < length prog \<and> unat pc \<ge> 0 \<Longrightarrow>
     prog!(unat pc) = BPF_ALU64 BPF_ADD dst (SOImm (imm::i32)) \<Longrightarrow>
     bpf_to_x64_reg dst \<noteq> REG_OTHER_SCRATCH \<Longrightarrow> 
@@ -87,7 +87,6 @@ lemma addq_imm_one_step_match_reg:
   subgoal for r apply rule using scast_aux1 by presburger 
   subgoal for r apply rule apply rule using reg_r10_consist by simp
   done
-
 
 
 lemma addq_imm_one_step:
@@ -184,9 +183,9 @@ shows "\<exists> xst'. perir_sem 1 x64_prog (pc,xst) = (pc',xst') \<and>
           subgoal
             unfolding a1 a2
             apply (simp add: match_state_def)
-            apply (rule conjI)
-            subgoal using addq_imm_one_step_match_reg a0 a1 a2 a3 a4 a5 a6 a8 
-            by (metis a0 a1 a2 a3 a4 a8 list_in_list_prop match_state_eqiv per_jit_add_reg64_1_def x64_encode_decode_consistency)
+            apply (rule conjI) 
+            subgoal using addq_imm_one_step_match_reg a0 a1 a2 a3 a4 a6 a8 by blast
+            oops
           done
         done
       done
