@@ -42,7 +42,7 @@ datatype sbpf_state =
   SBPF_Err
 
 fun eval_snd_op_u64 :: "snd_op \<Rightarrow> reg_map \<Rightarrow> u64" where
-"eval_snd_op_u64 (SOImm i) _ = scast i" |
+"eval_snd_op_u64 (SOImm i) _ = ((scast (i::i32))::u64)" |
 "eval_snd_op_u64 (SOReg r) rs = rs r"
 
 fun eval_snd_op_i64 :: "snd_op \<Rightarrow> reg_map \<Rightarrow> i64" where
@@ -75,22 +75,28 @@ definition eval_alu64_aux3 :: "binop \<Rightarrow> dst_ty \<Rightarrow> snd_op \
 
 definition eval_alu :: "binop \<Rightarrow> dst_ty \<Rightarrow> snd_op \<Rightarrow> reg_map \<Rightarrow> reg_map option" where
 "eval_alu bop dst sop rs = (
-  case sop of (SOImm x) \<Rightarrow> None | SOReg x \<Rightarrow> 
-  let dv :: u64 = eval_reg dst rs in (
-  let sv :: u64 = eval_snd_op_u64 sop rs in (
-  case bop of
-  BPF_ADD   \<Rightarrow> Some (rs#dst <-- (dv+sv)) |
-  BPF_SUB   \<Rightarrow> Some (rs#dst <-- (dv-sv)) |
-  BPF_MOV   \<Rightarrow> Some (rs#dst <-- (sv)) |
-  BPF_OR  \<Rightarrow> Some (rs#dst <-- (or dv sv)) |
-  BPF_AND  \<Rightarrow> Some (rs#dst <-- (and dv sv)) |
-  BPF_XOR  \<Rightarrow> Some (rs#dst <-- (xor dv sv)) |
-  BPF_MUL   \<Rightarrow> Some (rs#dst <-- (dv*sv)) |
-  BPF_LSH   \<Rightarrow>  eval_alu64_aux2 bop dst sop rs |
-  BPF_RSH   \<Rightarrow>  eval_alu64_aux2 bop dst sop rs |
-  BPF_ARSH  \<Rightarrow>  eval_alu64_aux3 bop dst sop rs |
-  _ \<Rightarrow> None
-)))"
+  case sop of SOReg x \<Rightarrow> (
+    let dv :: u64 = eval_reg dst rs in (
+    let sv :: u64 = eval_snd_op_u64 sop rs in (
+    case bop of
+      BPF_ADD   \<Rightarrow> Some (rs#dst <-- (dv+sv)) |
+      BPF_SUB   \<Rightarrow> Some (rs#dst <-- (dv-sv)) |
+      BPF_MOV   \<Rightarrow> Some (rs#dst <-- (sv)) |
+      BPF_OR  \<Rightarrow> Some (rs#dst <-- (or dv sv)) |
+      BPF_AND  \<Rightarrow> Some (rs#dst <-- (and dv sv)) |
+      BPF_XOR  \<Rightarrow> Some (rs#dst <-- (xor dv sv)) |
+      BPF_MUL   \<Rightarrow> Some (rs#dst <-- (dv*sv)) |
+      BPF_LSH   \<Rightarrow>  eval_alu64_aux2 bop dst sop rs |
+      BPF_RSH   \<Rightarrow>  eval_alu64_aux2 bop dst sop rs |
+      BPF_ARSH  \<Rightarrow>  eval_alu64_aux3 bop dst sop rs |
+    _ \<Rightarrow> None)))|
+  (SOImm x) \<Rightarrow> 
+    let dv :: u64 = eval_reg dst rs in (
+    let sv :: u64 = eval_snd_op_u64 sop rs in (
+    case bop of
+      BPF_ADD   \<Rightarrow> Some (rs#dst <-- (dv+sv)) |
+      _ \<Rightarrow> None))
+)"
 
 definition eval_jmp :: "condition \<Rightarrow> dst_ty \<Rightarrow> snd_op \<Rightarrow> reg_map \<Rightarrow> bool" where
 "eval_jmp cond dst sop rs = (

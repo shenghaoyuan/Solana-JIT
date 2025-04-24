@@ -74,6 +74,11 @@ definition per_jit_add_reg64_1 :: "bpf_ireg \<Rightarrow> bpf_ireg \<Rightarrow>
     Some (1, 0, x64_encode ins) 
 )"
 
+definition per_jit_add_imm64_1 :: "bpf_ireg \<Rightarrow> imm_ty \<Rightarrow> (nat \<times> u64 \<times> x64_bin) option" where
+"per_jit_add_imm64_1 dst imm = (
+  let ins1 = Pmovl_ri R10 ((scast (imm::i32))::u32); ins2 = Paddq_rr (bpf_to_x64_reg dst) R10 in
+    Some (2, 0, x64_encode ins1@x64_encode ins2) 
+)"
 
 definition per_jit_sub_reg64_1 :: "bpf_ireg \<Rightarrow> bpf_ireg \<Rightarrow> (nat \<times> u64 \<times> x64_bin) option" where
 "per_jit_sub_reg64_1 dst src = (
@@ -260,6 +265,7 @@ definition per_jit_ins ::" bpf_instruction \<Rightarrow> (nat \<times> u64 \<tim
 "per_jit_ins bins = (
   case bins of
   BPF_ALU64 BPF_ADD dst (SOReg src) \<Rightarrow> (per_jit_add_reg64_1 dst src) |
+  BPF_ALU64 BPF_ADD dst (SOImm imm) \<Rightarrow> (per_jit_add_imm64_1 dst imm) |
   BPF_ALU64 BPF_SUB dst (SOReg src) \<Rightarrow> (per_jit_sub_reg64_1 dst src) |
   BPF_ALU64 BPF_MOV dst (SOReg src) \<Rightarrow> (per_jit_mov_reg64_1 dst src) |
   BPF_ALU64 BPF_OR dst (SOReg src) \<Rightarrow> (per_jit_or_reg64_1 dst src) |
@@ -402,7 +408,8 @@ lemma aux1:"length prog \<noteq> 0 \<and> unat pc < length prog \<and> unat pc \
   s' = sbpf_step prog s \<Longrightarrow>
   s = (SBPF_OK pc rs m ss) \<Longrightarrow> 
   s' = (SBPF_OK pc' rs' m' ss') \<Longrightarrow> 
-  (\<exists> dst src. prog!(unat pc) = BPF_ALU64 BPF_ADD dst (SOReg src) \<or> 
+  (\<exists> dst src imm. prog!(unat pc) = BPF_ALU64 BPF_ADD dst (SOReg src) \<or> 
+    prog!(unat pc) = BPF_ALU64 BPF_ADD dst (SOImm imm) \<or> 
     prog!(unat pc) = BPF_ALU64 BPF_SUB dst (SOReg src) \<or>
     prog!(unat pc) = BPF_ALU64 BPF_MOV dst (SOReg src) \<or>
     prog!(unat pc) = BPF_ALU64 BPF_XOR dst (SOReg src) \<or>
@@ -506,7 +513,7 @@ lemma corr_pc_aux2:
   s =  SBPF_OK pc rs m ss \<Longrightarrow>
   s' = sbpf_step prog s \<Longrightarrow> s' = SBPF_OK pc' rs' m' ss' \<Longrightarrow> 
   (num,off,l) = x64_prog!(unat pc) \<Longrightarrow>
-  prog!(unat pc) \<in> {BPF_ALU64 BPF_ADD dst (SOReg src), BPF_ALU64 BPF_SUB dst (SOReg src), BPF_ALU64 BPF_MOV dst (SOReg src),  
+  prog!(unat pc) \<in> {BPF_ALU64 BPF_ADD dst (SOReg src), BPF_ALU64 BPF_ADD dst (SOImm imm), BPF_ALU64 BPF_SUB dst (SOReg src), BPF_ALU64 BPF_MOV dst (SOReg src),  
   BPF_ALU64 BPF_OR dst (SOReg src), BPF_ALU64 BPF_AND dst (SOReg src), BPF_ALU64 BPF_XOR dst (SOReg src),
   BPF_ALU64 BPF_MUL dst (SOReg src), BPF_ALU64 BPF_LSH dst (SOReg src),BPF_ALU64 BPF_RSH dst (SOReg src), 
   BPF_ALU64 BPF_ARSH dst (SOReg src), BPF_LDX chk dst src d, BPF_ST chk dst (SOReg src) d} \<Longrightarrow>
@@ -518,7 +525,8 @@ proof-
          assm3:"prog \<noteq> [] \<and> unat pc \<ge> 0 \<and> unat pc < length prog" and
          assm4:"s = SBPF_OK pc rs m ss" and
          assm5:"(num,off,l) = x64_prog!(unat pc)" and
-         assm6:" prog!(unat pc) \<in> {BPF_ALU64 BPF_ADD dst (SOReg src), BPF_ALU64 BPF_SUB dst (SOReg src), BPF_ALU64 BPF_MOV dst (SOReg src),
+         assm6:" prog!(unat pc) \<in> {BPF_ALU64 BPF_ADD dst (SOReg src), BPF_ALU64 BPF_ADD dst (SOImm imm), 
+  BPF_ALU64 BPF_SUB dst (SOReg src), BPF_ALU64 BPF_MOV dst (SOReg src),
   BPF_ALU64 BPF_OR dst (SOReg src), BPF_ALU64 BPF_AND dst (SOReg src), BPF_ALU64 BPF_XOR dst (SOReg src),
   BPF_ALU64 BPF_MUL dst (SOReg src), BPF_ALU64 BPF_LSH dst (SOReg src),BPF_ALU64 BPF_RSH dst (SOReg src), 
   BPF_ALU64 BPF_ARSH dst (SOReg src), BPF_LDX chk dst src d, BPF_ST chk dst (SOReg src) d}"
@@ -561,7 +569,7 @@ lemma x64_sem1_pc_aux1:
   a7:"x64_sem num l (Next 0 xrs xm xss) = xst1 " and
   a8:"l!1 \<noteq> 0x39 \<and> l!0 \<noteq> 0xe8 \<and> l!0 \<noteq> 0xc3" and
   a10:"xst1 = Next xpc1 xrs1 xm1 xss1" and
-  a11:"prog!(unat pc) \<in> {BPF_ALU64 BPF_ADD dst (SOReg src), BPF_ALU64 BPF_MUL dst (SOReg src),  BPF_ALU64 BPF_SUB dst (SOReg src), 
+  a11:"prog!(unat pc) \<in> {BPF_ALU64 BPF_ADD dst (SOReg src), BPF_ALU64 BPF_ADD dst (SOImm imm), BPF_ALU64 BPF_MUL dst (SOReg src),  BPF_ALU64 BPF_SUB dst (SOReg src), 
   BPF_ALU64 BPF_MOV dst (SOReg src), BPF_ALU64 BPF_OR dst (SOReg src), BPF_ALU64 BPF_AND dst (SOReg src), BPF_ALU64 BPF_XOR dst (SOReg src),
   BPF_ALU64 BPF_LSH dst (SOReg src),BPF_ALU64 BPF_RSH dst (SOReg src), BPF_ALU64 BPF_ARSH dst (SOReg src),
   BPF_LDX chk dst src d, BPF_ST chk dst (SOReg src) d}"

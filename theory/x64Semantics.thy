@@ -148,7 +148,7 @@ definition exec_instr :: "instruction \<Rightarrow> nat \<Rightarrow> nat \<Righ
                         None \<Rightarrow> Stuck) |
   Pcmpq_rr rd r1 \<Rightarrow> Next (pc+sz)(compare_longs (rs (IR r1)) (rs (IR rd)) rs) m ss |
   Pmovq_ri rd n  \<Rightarrow> Next (pc + sz) (rs#(IR rd) <- n) m ss |
-  Pmovl_ri rd n   \<Rightarrow> Next (pc + sz) (rs#(IR rd) <- (scast n)) m ss|    \<comment> \<open> load imm32 to reg \<close>
+  Pmovl_ri rd n   \<Rightarrow> Next (pc + sz) (rs#(IR rd) <- ((scast (n::u32))::u64)) m ss|    \<comment> \<open> load imm32 to reg \<close>
   Pmov_mr  a r1 c \<Rightarrow> exec_store pc sz c m ss a rs (IR r1) |                    
   Pxchgq_rr rd r1 \<Rightarrow> let tmp = rs (IR rd) in
                      let rs1 = (rs#(IR rd)<- (rs (IR r1))) in
