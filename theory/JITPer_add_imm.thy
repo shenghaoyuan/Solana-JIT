@@ -70,8 +70,29 @@ lemma mem_is_not_changed_by_add:"Next spc' reg' m' xss'= exec_instr xins sz spc 
 value "((scast ((-1)::i32))::u64)"*)
 
 
-lemma scast_aux1:"((scast (scast (imm::i32)::u32))::u64) = ((scast imm)::u64)"
-  sorry
+lemma scast_aux0:"((scast((scast (x::i32))::u32))::u64) = ((scast((scast (x::i32))::i32))::u64)"
+  apply (simp add: signed_scast_eq)
+  apply(simp add: signed_take_bit_def bit_eq_iff bit_signed_take_bit_iff)
+  apply rule
+   apply rule
+   apply (rule allI)
+  subgoal for n
+  apply (simp add: bit_simps)
+    by linarith 
+  apply rule
+  apply (rule allI)
+  subgoal for n
+  apply (simp add: bit_simps)
+    by linarith 
+  done
+
+lemma scast_aux0_1:"((scast((scast (x::i32))::i32))::u64) = ((scast (x::i32))::u64)"
+  apply (simp add: signed_scast_eq)
+  done
+
+lemma scast_aux1:"((scast((scast (x::i32))::u32))::u64) = ((scast (x::i32))::u64)"
+  using scast_aux0 scast_aux0_1
+  by simp 
 
 (*(\<And>(r::ireg) dst::bpf_ireg. r = bpf_to_x64_reg dst \<Longrightarrow> bpf_to_x64_reg dst \<noteq> REG_OTHER_SCRATCH) \<Longrightarrow> *)
 lemma addq_imm_one_step_match_reg:
@@ -88,6 +109,34 @@ lemma addq_imm_one_step_match_reg:
   subgoal for r apply rule apply rule using reg_r10_consist by simp
   done
 
+lemma addq_imm_one_step_match_mem:
+  " (SBPF_OK pc' rs' m' ss') = sbpf_step prog (SBPF_OK pc rs m ss) \<Longrightarrow>
+    xst = (Next xpc xrs xm xss) \<Longrightarrow>
+    match_state (SBPF_OK pc rs m ss) (pc,xst) \<Longrightarrow>
+    prog \<noteq> [] \<and> unat pc < length prog \<and> unat pc \<ge> 0 \<Longrightarrow>
+    prog!(unat pc) = BPF_ALU64 BPF_ADD dst (SOImm (imm::i32)) \<Longrightarrow>
+    match_mem m' xm"
+  by (simp add: match_state_def match_mem_def eval_alu_def)
+
+lemma addq_imm_one_step_match_stack:
+  " (SBPF_OK pc' rs' m' ss') = sbpf_step prog (SBPF_OK pc rs m ss) \<Longrightarrow>
+    xst = (Next xpc xrs xm xss) \<Longrightarrow>
+    match_state (SBPF_OK pc rs m ss) (pc,xst) \<Longrightarrow>
+    prog \<noteq> [] \<and> unat pc < length prog \<and> unat pc \<ge> 0 \<Longrightarrow>
+    prog!(unat pc) = BPF_ALU64 BPF_ADD dst (SOImm (imm::i32)) \<Longrightarrow>
+    match_stack ((\<lambda>a::preg. if a = IR REG_OTHER_SCRATCH then scast (scast imm) else xrs a)(IR (bpf_to_x64_reg dst) := xrs (IR (bpf_to_x64_reg dst)) + scast (scast imm)))"
+  apply (simp add: match_state_def match_stack_def)
+  using reg_rsp_consist by blast
+
+
+lemma addq_imm_one_step_match_stack2:
+  " (SBPF_OK pc' rs' m' ss') = sbpf_step prog (SBPF_OK pc rs m ss) \<Longrightarrow>
+    xst = (Next xpc xrs xm xss) \<Longrightarrow>
+    match_state (SBPF_OK pc rs m ss) (pc,xst) \<Longrightarrow>
+    prog \<noteq> [] \<and> unat pc < length prog \<and> unat pc \<ge> 0 \<Longrightarrow>
+    prog!(unat pc) = BPF_ALU64 BPF_ADD dst (SOImm (imm::i32)) \<Longrightarrow>
+    xss=ss'"
+  by (simp add: match_state_def eval_alu_def)
 
 lemma addq_imm_one_step:
  assumes a0:"s' = sbpf_step prog s" and
@@ -185,11 +234,16 @@ shows "\<exists> xst'. perir_sem 1 x64_prog (pc,xst) = (pc',xst') \<and>
             apply (simp add: match_state_def)
             apply (rule conjI) 
             subgoal using addq_imm_one_step_match_reg a0 a1 a2 a3 a4 a6 a8 by blast
-            oops
+            apply (rule conjI) 
+            subgoal using addq_imm_one_step_match_mem a0 a1 a2 a3 a4 a5 a6 a8 by simp
+            apply (rule conjI) 
+            subgoal using addq_imm_one_step_match_stack a0 a1 a2 a3 a4 a5 a6 a8 by simp
+            subgoal using addq_imm_one_step_match_stack2 a0 a1 a2 a3 a4 a5 a6 a8 by metis
           done
         done
       done
     done
+  done
   done
 
 
