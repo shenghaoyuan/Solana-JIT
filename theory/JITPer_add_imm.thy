@@ -7,65 +7,6 @@ imports
 
 begin
 
-lemma aluq_imm_subgoal_rr_aux1:
-     "bins = BPF_ALU64 BPF_ADD dst (SOReg src) \<Longrightarrow>
-     xins = Paddq_rr (bpf_to_x64_reg dst) (bpf_to_x64_reg src) \<Longrightarrow>
-     prog!(unat pc) = bins \<Longrightarrow>
-     sbpf_step prog (SBPF_OK pc rs m ss) = (SBPF_OK pc' rs' m' ss')  \<Longrightarrow>
-     Next spc' reg' xm' xss' = exec_instr xins sz spc reg xm xss \<Longrightarrow>
-     reg (IR (bpf_to_x64_reg dst)) = rs dst \<Longrightarrow>
-     reg (IR (bpf_to_x64_reg src)) = rs src \<Longrightarrow>
-     reg' (IR (bpf_to_x64_reg dst)) = (rs' dst)"
-  apply (unfold exec_instr_def step)
-  apply simp
-  apply(cases "prog ! unat pc",simp_all)
-  subgoal for x91 apply(simp split:if_split_asm) 
-    apply(unfold eval_alu_def eval_reg_def,simp_all)
-    by auto
-  done
-
-
-lemma aluq_imm_subgoal_rr_aux2_1:"xins = Paddq_rr dst src \<Longrightarrow> 
-  Next pc' reg' m' xss' = exec_instr xins sz pc reg m xss \<Longrightarrow>
-  \<forall> r \<noteq> dst. reg' (IR r) = reg (IR r)"
-  by (simp add: exec_instr_def)
-
-
-lemma aluq_imm_subgoal_rr_aux2:"xins = Paddq_rr (bpf_to_x64_reg dst) (bpf_to_x64_reg src) \<Longrightarrow> 
-  Next pc' reg' m' xss' = exec_instr xins sz pc reg m xss \<Longrightarrow>
-  \<forall> r \<noteq> dst. reg' (IR (bpf_to_x64_reg r)) = reg (IR (bpf_to_x64_reg r))"
-  using aluq_imm_subgoal_rr_aux2_1 by simp
-
-
-
-lemma aluq_imm_subgoal_rr_aux3:"bins = BPF_ALU64 BPF_ADD dst (SOReg src) \<Longrightarrow> 
-  sbpf_step prog (SBPF_OK pc rs m ss) = (SBPF_OK pc' rs' m' ss') \<Longrightarrow> 
-  prog!(unat pc) = bins \<Longrightarrow>
-  \<forall> r \<noteq> dst. rs' r = rs r"
-  apply(cases bins,simp_all)
-  apply(cases "prog ! unat pc", simp_all)
-  subgoal for x91 apply(simp split:if_split_asm) 
-    apply(unfold eval_alu_def eval_reg_def,simp_all)
-    by auto
-  done
-
-lemma stack_is_not_changed_by_add:"Next spc' reg' m' xss' = exec_instr xins sz spc reg m xss \<Longrightarrow> xins = Paddq_rr (bpf_to_x64_reg dst) (bpf_to_x64_reg src) 
-   \<Longrightarrow> match_stack reg \<Longrightarrow> match_stack reg' "
-proof-
-  assume a0:"Next spc' reg' m' xss' = exec_instr xins sz spc reg m xss" and
-  a1:"xins = Paddq_rr (bpf_to_x64_reg dst) (bpf_to_x64_reg src) " and
-  a2:"match_stack reg"
-  have b0:"bpf_to_x64_reg dst \<noteq> RSP" using bpf_to_x64_reg_def by (cases dst,simp_all)
-  have b1:"reg (IR SP) = reg' (IR SP)" using exec_instr_def a0 a1 b0
-    by (metis (no_types, opaque_lifting) aluq_imm_subgoal_rr_aux2_1)
-  have "match_stack reg' " using b1 a2 match_stack_def by auto
-  thus ?thesis by blast
-qed
-
-lemma mem_is_not_changed_by_add:"Next spc' reg' m' xss'= exec_instr xins sz spc reg m xss\<Longrightarrow> xins = Paddq_rr (bpf_to_x64_reg dst) (bpf_to_x64_reg src) 
-   \<Longrightarrow> m = m'"
-  using exec_instr_def by simp
-
 (*value "((scast (scast (-1::i32)::u32))::u64)"
 value "((scast ((-1)::i32))::u64)"*)
 
