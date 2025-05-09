@@ -23,6 +23,10 @@ lemma list_in_list_prop:"list_in_list l 0 l"
   using list_in_list_prop_aux1
   by (metis append_Nil list_in_list_prop_aux2 list.size(3))
 
+(*
+lemma list_in_list_prop2:"list_in_list l1 0 l2 \<Longrightarrow> list_in_list l2 0 l3 \<Longrightarrow> list_in_list l1 0 l3"
+  using list_in_list_prop_aux1
+  sorry*)
 
 axiomatization where x64_encode_decode_consistency: 
   "list_in_list l_bin pc l \<Longrightarrow>

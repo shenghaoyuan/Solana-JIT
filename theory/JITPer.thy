@@ -394,7 +394,6 @@ lemma x64_sem1_induct_aux1:
 
 lemma x64_sem1_induct_aux3:
   "perir_sem (Suc n) x64_prog xst = xst' \<Longrightarrow> 
-  x64_prog!(unat pc) = (num,off,l) \<Longrightarrow>
   perir_sem 1 x64_prog xst = xst1 \<Longrightarrow> 
   perir_sem n x64_prog xst1 = xst'"  
 using x64_sem1_induct_aux1
