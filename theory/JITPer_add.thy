@@ -117,8 +117,10 @@ shows "\<exists> xst'. perir_sem 1 x64_prog (pc,xst) = (pc',xst') \<and>
 
 (* 1. as BPF_ADD generates a single list of jited x64 assembly, so we only need one step  *)
   apply(subgoal_tac "\<exists>xst'::outcome. perir_step x64_prog (pc, xst) = (pc', xst') \<and> match_state s' (pc', xst')")
-  subgoal
-    by auto
+  (*apply(subgoal_tac "length x64_prog = length prog")
+  subgoal using a6 by force
+ *)
+  subgoal using a5 by auto
   subgoal
     apply (unfold perir_step_def Let_def)
 (* 2. according to the code structure of JITPer, removing the first case statement *)

@@ -577,7 +577,7 @@ shows "perir_sem 1 x64_prog (pc,xst) = (pc', Next xpc1 xrs1 xm1 xss1)"
 proof-
   have "perir_sem 1 x64_prog (pc,xst) = (let (num,off,l) = x64_prog!(unat pc) in
   let pair = let xst_temp = Next 0 xrs xm xss; xst' = x64_sem num l xst_temp in (pc+1, xst') in (perir_sem 0 x64_prog pair))"
-    using a5 a8 a6 perir_step_def by simp
+    using a5 a8 a6 perir_step_def a4 by auto
   hence "perir_sem 1 x64_prog (pc,xst) = (perir_sem 0 x64_prog (pc+1,xst1))" using a3 a4 a5 a6 a7 a8 perir_step_def by simp
   hence "perir_sem 1 x64_prog (pc,xst) = (pc+1, Next xpc1 xrs1 xm1 xss1)" using a10 by simp
   moreover have "pc+1=pc'" using corr_pc_aux2 a3 a0 a1 a2 a4 a11 a6 a8

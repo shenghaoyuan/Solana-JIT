@@ -250,6 +250,8 @@ definition perir_step:: " (nat \<times> u64 \<times> x64_bin) list \<Rightarrow>
           (pc+1, xst'))
     | Stuck \<Rightarrow> (pc,Stuck)"
 
+(*if unat pc \<ge> length lt \<or> unat pc < 0 then (pc,Stuck)
+  else*) 
 fun perir_sem :: "nat \<Rightarrow> (nat \<times> u64 \<times> x64_bin) list \<Rightarrow> hybrid_state \<Rightarrow> hybrid_state" where
 "perir_sem 0 _ (pc,st) = (pc,st)" |
 "perir_sem (Suc n) lt (pc,xst) = (

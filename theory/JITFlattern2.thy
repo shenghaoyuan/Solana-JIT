@@ -311,6 +311,323 @@ fun flat_bpf_sem :: "nat \<Rightarrow> flat_bpf_prog \<Rightarrow> hybrid_state 
     flat_bpf_sem n lt pair
 )"
 
+(*
+lemma one_step_equiv:
+  assumes a0:"flat_bpf_sem 1 (l_bin,l_pc,l_jump) (pc, xst) = fxst" and
+   a1:"jitflat_bpf lt init_second_layer = (l_bin,l_pc,l_jump)" and
+   a2:"perir_sem 1 lt (pc,xst) = xxst" and
+   a3:"xst = Next xpc xrs xm xss" and
+   a4:"lt \<noteq> []"
+  shows"fxst = xxst"
+proof-
+  let "?curr_ins" = "lt!(unat pc)"
+  let "?num" = "fst (lt!(unat pc))"
+  let "?off" = "fst (snd (lt!(unat pc)))"
+  let "?l" = "snd (snd (lt!(unat pc)))"
+  have b0:"(?num, ?off, ?l) = lt!(unat pc)" by simp
+ 
+  let "?xpc" = "fst (l_pc ! (unat pc))"
+  have c0:"list_in_list ?l (unat ?xpc) l_bin" 
+    using flattern_l_bin0 init_second_layer_def a1 b0 a4 by (metis add_0 list.size(3)) 
+  have c1:"unat ?xpc= xpc" sorry
+
+
+
+  have "fxst = flat_bpf_one_step (l_bin,l_pc,l_jump) (pc, xst)" using a0
+    by (metis One_nat_def flat_bpf_sem.simps(1) flat_bpf_sem.simps(2) old.prod.exhaust) 
+  hence c2:"fxst = (
+  let num = snd (l_pc!(unat pc)) in 
+        if l_bin!(xpc+1) = (0x39::u8) then \<comment>\<open> TODO: if the first byte is the opcode of cmp? \<close>
+          \<comment>\<open> case: BPF JMP \<close>
+          (case x64_sem 1 l_bin (Next xpc xrs xm xss) of
+          Stuck \<Rightarrow> (pc, Stuck) | \<comment>\<open> if one step error, stop, it should be impossible \<close>
+          Next xpc1 rs1 m1 ss1 \<Rightarrow> (
+            if rs1 (CR ZF) = 1 then \<comment>\<open> must JUMP \<close>
+              (case find_target_pc_in_l_pc l_jump pc of
+              None \<Rightarrow> (pc, Stuck) |
+              Some npc \<Rightarrow>
+                (npc, (Next (unat (fst (l_pc!(unat npc)))) rs1 m1 ss1))) \<comment>\<open> go to the target address in the jited x64 binary \<close>
+            else \<comment>\<open> donot JUMP \<close>
+              (pc+1, xst)
+          ))
+         else
+          \<comment>\<open> case: NOT BPF JMP \<close>
+          (pc+1, x64_sem num l_bin (Next xpc xrs xm xss)))" 
+    apply(unfold flat_bpf_one_step_def Let_def) 
+    using a3 apply(cases xst,simp_all)
+    subgoal for x11 by meson 
+    done
+
+
+  have "xxst = perir_step lt (pc,xst)
+    " using a2 by (metis One_nat_def perir_sem.simps(1) perir_sem.simps(2) split_pairs)
+
+  hence b1:"xxst = (let (num,off,l) = lt!(unat pc) in 
+       if l!0 = 0xc3 then
+          let (pc', ss', caller,fp) = update_stack2 xss in 
+          let rs' = restore_x64_caller xrs caller fp in (pc', Next xpc rs' xm ss')
+      else if (l!0 = 0xe8) then 
+        let caller = save_x64_caller xrs; fp = save_x64_frame_pointer xrs; 
+            rs' = upate_x64_stack_pointer xrs (stack_pointer xss) in
+        let ss' = update_stack caller fp (pc+1) xss in
+          (case ss' of None \<Rightarrow> (pc, Stuck) | 
+          Some ra \<Rightarrow> (off, Next xpc rs' xm ra))
+      else if l!1 = (0x39::u8)  then
+        let xst_temp = Next 0 xrs xm xss; xst' = x64_sem num l xst_temp in
+          case xst' of
+          Next xpc' rs' m' ss'\<Rightarrow>
+            if rs' (CR ZF) = 1 then (off+pc, xst')
+            else (pc+1, xst') |
+          Stuck \<Rightarrow> (pc, Stuck)      
+      else
+        let xst_temp = Next 0 xrs xm xss; xst' = x64_sem num l xst_temp in
+          (pc+1, xst'))" using perir_step_def b0 a2 a3 apply(cases xst,simp_all)
+    done
+
+  thus ?thesis
+  proof(cases "?l!0 = 0xc3")
+    case True
+    have "xxst = (let (num,off,l) = lt!(unat pc) in (let (pc', ss', caller,fp) = update_stack2 xss in 
+          let rs' = restore_x64_caller xrs caller fp in (pc', Next xpc rs' xm ss')))"
+      using b1 True by (smt (z3) b0 case_prod_conv)
+    then show ?thesis sorry
+  next
+    case False
+    have b2:"?l!0 \<noteq> 0xc3" using False by simp
+    then show ?thesis   
+    proof(cases "?l!0 = 0xe8")
+      case True
+      have b3:"?l!0 = 0xe8" using True by simp
+      have "xxst = (let caller = save_x64_caller xrs; fp = save_x64_frame_pointer xrs; 
+            rs' = upate_x64_stack_pointer xrs (stack_pointer xss) in
+        let ss' = update_stack caller fp (pc+1) xss in
+          (case ss' of None \<Rightarrow> (pc, Stuck) | 
+          Some ra \<Rightarrow> (?off, Next xpc rs' xm ra)))" using True b1 b0
+        by (smt (z3) False case_prod_conv option.case_eq_if) 
+      then show ?thesis sorry
+    next
+      case False
+      have b5:"?l!0 \<noteq> 0xe8 \<and> ?l!0 \<noteq> 0xc3" using False b2 by simp
+      then show ?thesis
+      proof(cases "?l!1 = (0x39::u8)")
+        case True
+        hence "xxst = (let xst_temp = Next 0 xrs xm xss; xst' = x64_sem ?num ?l xst_temp in
+          case xst' of
+          Next xpc' rs' m' ss'\<Rightarrow>
+            if rs' (CR ZF) = 1 then (?off+pc, xst')
+            else (pc+1, xst') |
+          Stuck \<Rightarrow> (pc, Stuck) )" using True b1 b0 b5
+          by (smt (z3) case_prod_conv outcome.exhaust outcome.simps(4) outcome.simps(5))  
+        then show ?thesis sorry
+      next
+        case False
+          have b6:"?l!0 \<noteq> 0xe8 \<and> ?l!0 \<noteq> 0xc3 \<and> ?l!1 \<noteq> (0x39::u8)" using b5 False by blast
+          have d0:"xxst = (let xst_temp = Next 0 xrs xm xss; xst' = x64_sem ?num ?l xst_temp in
+          (pc+1, xst'))" using b6 by (smt (verit) b0 b1 case_prod_conv)
+          
+          have c3_0:"list_in_list ?l xpc l_bin" using c0 c1 by simp
+          have c3_1:"?l \<noteq> []" sorry
+          have c3:"l_bin!xpc = ?l!0" using c3_0 c3_1
+            by (metis list_in_list.simps(2) list_in_list_prop neq_Nil_conv) 
+           (* by (metis list.collapse list_in_list.simps(2)) *)
+          have c3_2:"l_bin!(xpc+1) \<noteq> (0x39::u8)" sorry
+          
+          have c4:"fxst = (let num = snd (l_pc!(unat pc)) in (pc+1, x64_sem num l_bin (Next xpc xrs xm xss)))"
+            using c2 c3 b6 c3_2 by auto
+          have c5_1:"l_pc \<noteq> []" sorry 
+          have c5:"fxst = (pc+1, x64_sem ?num l_bin (Next xpc xrs xm xss))"using flattern_num b0 c5_1 a1 init_second_layer_def c4
+            by (metis add_0 list.size(3)) 
+          have c6_1:"?num>0" sorry
+          have "x64_sem ?num l_bin (Next xpc xrs xm xss) = 
+              (case x64_decode xpc l_bin of
+                None \<Rightarrow> Stuck |
+                Some (sz, ins) \<Rightarrow>
+             x64_sem (?num-1) l_bin (exec_instr ins sz xpc xrs xm xss))" 
+            using c5 c6_1 by (metis Suc_diff_1 x64_sem.simps(3)) 
+          hence c6:"snd fxst = (case x64_decode xpc l_bin of
+                None \<Rightarrow> Stuck |
+                Some (sz, ins) \<Rightarrow>
+             x64_sem (?num-1) l_bin (exec_instr ins sz xpc xrs xm xss))"
+            by (simp add: c5) 
+          have d1:"snd xxst = 
+              (case x64_decode 0 ?l of
+                None \<Rightarrow> Stuck |
+                Some (sz, ins) \<Rightarrow>
+             x64_sem (?num-1) ?l (exec_instr ins sz 0 xrs xm xss))"
+            using d0 c6_1 by (metis Suc_diff_1 snd_conv x64_sem.simps(3)) 
+          have c7:"x64_decode 0 ?l = x64_decode xpc l_bin" 
+            using d1 c6 c0 c1 c3_1 list_in_list_prop2 by simp
+          have "snd fxst = snd xxst" using d1 c6 c0 c1 c7 sorry
+        then show ?thesis by (simp add: c5 d0) 
+      qed
+    qed
+  qed
+qed
+ *) 
+
+(*
+
+definition match_state::"hybrid_state \<Rightarrow> hybrid_state \<Rightarrow> nat \<Rightarrow> bool" where
+  "match_state fxst xxst num \<equiv> 
+  (case fxst of (pc,Next xst xrs xm xss) \<Rightarrow>
+    (case xxst of (pc1,Next xst1 xrs1 xm1 xss1) \<Rightarrow> 
+      pc = pc1 \<and> xrs = xrs1 \<and> xm = xm1 \<and> xss = xss1 \<and> num = xst1-xst |
+                   _ \<Rightarrow> False)|
+                 _ \<Rightarrow> False)"
+
+  a6:"match_state (pc, xxst) (pc, fxst) (xpc1-xpc)"
+lemma one_step_equiv:
+  assumes a0:"flat_bpf_sem 1 (l_bin,l_pc,l_jump) (pc, fxst) = fxst'" and
+   a1:"jitflat_bpf lt init_second_layer = (l_bin,l_pc,l_jump)" and
+   a2:"perir_sem 1 lt (pc,xxst) = xxst'" and
+   a3:"xxst = Next xpc xrs xm xss" and
+   a4:"lt \<noteq> []" and
+   a5:"fxst = Next xpc1 xrs xm xss" 
+  shows"\<exists> n. match_state fxst' xxst' n"
+proof-
+  let "?curr_ins" = "lt!(unat pc)"
+  let "?num" = "fst (lt!(unat pc))"
+  let "?off" = "fst (snd (lt!(unat pc)))"
+  let "?l" = "snd (snd (lt!(unat pc)))"
+  have b0:"(?num, ?off, ?l) = lt!(unat pc)" by simp
+ 
+  let "?xpc" = "fst (l_pc ! (unat pc))"
+  have c0:"list_in_list ?l (unat ?xpc) l_bin" 
+    using flattern_l_bin0 init_second_layer_def a1 b0 a4 by (metis add_0 list.size(3)) 
+  have c1:"unat ?xpc= xpc" sorry
+
+
+  have "fxst' = flat_bpf_one_step (l_bin,l_pc,l_jump) (pc, fxst)" using a0
+    by (metis One_nat_def flat_bpf_sem.simps(1) flat_bpf_sem.simps(2) old.prod.exhaust) 
+  hence c2:"fxst' = (
+  let num = snd (l_pc!(unat pc)) in 
+        if l_bin!(xpc1+1) = (0x39::u8) then \<comment>\<open> TODO: if the first byte is the opcode of cmp? \<close>
+          \<comment>\<open> case: BPF JMP \<close>
+          (case x64_sem 1 l_bin (Next xpc1 xrs xm xss) of
+          Stuck \<Rightarrow> (pc, Stuck) | \<comment>\<open> if one step error, stop, it should be impossible \<close>
+          Next xpc1 rs1 m1 ss1 \<Rightarrow> (
+            if rs1 (CR ZF) = 1 then \<comment>\<open> must JUMP \<close>
+              (case find_target_pc_in_l_pc l_jump pc of
+              None \<Rightarrow> (pc, Stuck) |
+              Some npc \<Rightarrow>
+                (npc, (Next (unat (fst (l_pc!(unat npc)))) rs1 m1 ss1))) \<comment>\<open> go to the target address in the jited x64 binary \<close>
+            else \<comment>\<open> donot JUMP \<close>
+              (pc+1, fxst)
+          ))
+         else
+          \<comment>\<open> case: NOT BPF JMP \<close>
+          (pc+1, x64_sem num l_bin (Next xpc1 xrs xm xss)))" 
+    apply(unfold flat_bpf_one_step_def Let_def) 
+    using a3 a5 apply(cases fxst,simp_all)
+    subgoal for x11 apply(cases "x64_sem (1::nat) l_bin (Next xpc1 xrs xm xss)",simp_all)
+      done
+    done
+
+  have "xxst' = perir_step lt (pc,xxst)" using a2 by (metis One_nat_def perir_sem.simps(1) perir_sem.simps(2) split_pairs)
+
+  hence b1:"xxst' = (let (num,off,l) = lt!(unat pc) in 
+       if l!0 = 0xc3 then
+          let (pc', ss', caller,fp) = update_stack2 xss in 
+          let rs' = restore_x64_caller xrs caller fp in (pc', Next xpc rs' xm ss')
+      else if (l!0 = 0xe8) then 
+        let caller = save_x64_caller xrs; fp = save_x64_frame_pointer xrs; 
+            rs' = upate_x64_stack_pointer xrs (stack_pointer xss) in
+        let ss' = update_stack caller fp (pc+1) xss in
+          (case ss' of None \<Rightarrow> (pc, Stuck) | 
+          Some ra \<Rightarrow> (off, Next xpc rs' xm ra))
+      else if l!1 = (0x39::u8)  then
+        let xst_temp = Next 0 xrs xm xss; xst' = x64_sem num l xst_temp in
+          case xst' of
+          Next xpc' rs' m' ss'\<Rightarrow>
+            if rs' (CR ZF) = 1 then (off+pc, xst')
+            else (pc+1, xst') |
+          Stuck \<Rightarrow> (pc, Stuck)      
+      else
+        let xst_temp = Next 0 xrs xm xss; xst' = x64_sem num l xst_temp in
+          (pc+1, xst'))" using perir_step_def b0 a2 a3 apply(cases xxst,simp_all)
+    done
+
+  thus ?thesis
+  proof(cases "?l!0 = 0xc3")
+    case True
+    have "xxst' = (let (num,off,l) = lt!(unat pc) in (let (pc', ss', caller,fp) = update_stack2 xss in 
+          let rs' = restore_x64_caller xrs caller fp in (pc', Next xpc rs' xm ss')))"
+      using b1 True by (smt (z3) b0 case_prod_conv)
+    then show ?thesis sorry
+  next
+    case False
+    have b2:"?l!0 \<noteq> 0xc3" using False by simp
+    then show ?thesis   
+    proof(cases "?l!0 = 0xe8")
+      case True
+      have b3:"?l!0 = 0xe8" using True by simp
+      have "xxst' = (let caller = save_x64_caller xrs; fp = save_x64_frame_pointer xrs; 
+            rs' = upate_x64_stack_pointer xrs (stack_pointer xss) in
+        let ss' = update_stack caller fp (pc+1) xss in
+          (case ss' of None \<Rightarrow> (pc, Stuck) | 
+          Some ra \<Rightarrow> (?off, Next xpc rs' xm ra)))" using True b1 b0
+        by (smt (z3) False case_prod_conv option.case_eq_if) 
+      then show ?thesis sorry
+    next
+      case False
+      have b5:"?l!0 \<noteq> 0xe8 \<and> ?l!0 \<noteq> 0xc3" using False b2 by simp
+      then show ?thesis
+      proof(cases "?l!1 = (0x39::u8)")
+        case True
+        hence "xxst' = (let xst_temp = Next 0 xrs xm xss; xst' = x64_sem ?num ?l xst_temp in
+          case xst' of
+          Next xpc' rs' m' ss'\<Rightarrow>
+            if rs' (CR ZF) = 1 then (?off+pc, xst')
+            else (pc+1, xst') |
+          Stuck \<Rightarrow> (pc, Stuck) )" using True b1 b0 b5
+          by (smt (z3) case_prod_conv outcome.exhaust outcome.simps(4) outcome.simps(5))  
+        then show ?thesis sorry
+      next
+        case False
+          have b6:"?l!0 \<noteq> 0xe8 \<and> ?l!0 \<noteq> 0xc3 \<and> ?l!1 \<noteq> (0x39::u8)" using b5 False by blast
+          have d0:"xxst' = (let xst_temp = Next 0 xrs xm xss; xst' = x64_sem ?num ?l xst_temp in
+          (pc+1, xst'))" using b6 by (smt (verit) b0 b1 case_prod_conv)
+          
+          have c3_0:"list_in_list ?l xpc l_bin" using c0 c1 by simp
+          have c3_1:"?l \<noteq> []" sorry
+          have c3:"l_bin!xpc = ?l!0" using c3_0 c3_1
+            by (metis list_in_list.simps(2) list_in_list_prop neq_Nil_conv) 
+           (* by (metis list.collapse list_in_list.simps(2)) *)
+          have c3_2:"l_bin!(xpc+1) \<noteq> (0x39::u8)" sorry
+          
+          have c4:"fxst' = (let num = snd (l_pc!(unat pc)) in (pc+1, x64_sem num l_bin (Next xpc1 xrs xm xss)))"
+            using c2 c3 b6 c3_2 a5  
+          have c5_1:"l_pc \<noteq> []" sorry 
+          have c5:"fxst' = (pc+1, x64_sem ?num l_bin (Next xpc xrs xm xss))"using flattern_num b0 c5_1 a1 init_second_layer_def c4
+            by (metis add_0 list.size(3)) 
+          have c6_1:"?num>0" sorry
+          have "x64_sem ?num l_bin (Next xpc xrs xm xss) = 
+              (case x64_decode xpc l_bin of
+                None \<Rightarrow> Stuck |
+                Some (sz, ins) \<Rightarrow>
+             x64_sem (?num-1) l_bin (exec_instr ins sz xpc xrs xm xss))" 
+            using c5 c6_1 by (metis Suc_diff_1 x64_sem.simps(3)) 
+          hence c6:"snd fxst' = (case x64_decode xpc l_bin of
+                None \<Rightarrow> Stuck |
+                Some (sz, ins) \<Rightarrow>
+             x64_sem (?num-1) l_bin (exec_instr ins sz xpc xrs xm xss))"
+            by (simp add: c5) 
+          have d1:"snd xxst' = 
+              (case x64_decode 0 ?l of
+                None \<Rightarrow> Stuck |
+                Some (sz, ins) \<Rightarrow>
+             x64_sem (?num-1) ?l (exec_instr ins sz 0 xrs xm xss))"
+            using d0 c6_1 by (metis Suc_diff_1 snd_conv x64_sem.simps(3)) 
+          have c7:"x64_decode 0 ?l = x64_decode xpc l_bin" 
+            using d1 c6 c0 c1 c3_1 list_in_list_prop2 by simp
+          have "match_state fxst' xxst'" using d1 c6 c0 c1 c7 sorry
+        then show ?thesis by (simp add: c5 d0) 
+      qed
+    qed
+  qed
+qed
+*)
+
 
 (*
 lemma num_corr:"jitflat_bpf l_bin0 init_second_layer = (l2,l_pc2,l_jump2) \<Longrightarrow> map snd l_pc2 = map fst l_bin0"
