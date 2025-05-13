@@ -628,7 +628,94 @@ proof-
 qed
 *)
 
+(*
+lemma flattern_l_bin0:
+  "l_bin0!(unat pc)=(num,off,l) \<Longrightarrow>
+   unat pc < length l_bin0 \<and> unat pc \<ge> 0 \<Longrightarrow>
+   jitflat_bpf l_bin0 init_second_layer = (l2,l_pc2,l_jump2) \<Longrightarrow>
+   fst (l_pc2 ! (unat pc)) = xpc \<Longrightarrow>
+   list_in_list l (unat xpc) l2"
+proof(induct l_bin0 arbitrary: pc num off l l2 l_pc2 l_jump2 xpc)
+  case Nil
+  then show ?case by simp
+next
+  case (Cons a l_bin0)
+  then show ?case
+  proof-
+  assume assm0:"(a#l_bin0)!(unat pc)=(num,off,l)" and
+   assm1:"unat pc < length (a#l_bin0) \<and> unat pc \<ge> 0" and
+   assm2:"jitflat_bpf (a#l_bin0) init_second_layer = (l2,l_pc2,l_jump2)" and
+   assm3:"fst (l_pc2 ! (unat pc)) = xpc"
+  have a0:"unat pc = 0 \<or> unat pc \<ge>1" by auto
+   show ?thesis
+   proof(cases "unat pc = 0")
+     case True
+    then show ?thesis using Cons flattern_lbin by (metis init_second_layer_def list.size(3)) 
+   next
+     case False
+     have b0:"unat pc \<ge>1" using False a0 by simp
+     let "?pc" = "unat pc -1"
+      have b1:"?pc < length l_bin0 \<and> (0::nat) \<le> ?pc" 
+        using assm2 b0 diff_le_self by (metis One_nat_def assm1 less_diff_conv2 list.size(4) zero_le) 
+      let "?x" = "tl l_bin0"
+      have b2:"l_bin0 ! ?pc = (num, off, l)" using assm0 by (simp add: False order_neq_le_trans) 
+      have "l_bin0!?pc=(num,off,l) \<Longrightarrow>
+   ?pc < ?pc \<and> ?pc \<ge> 0 \<Longrightarrow>
+   jitflat_bpf l_bin0 init_second_layer = (l2,l_pc2,l_jump2) \<Longrightarrow>
+   fst (l_pc2 ! (unat pc)) = xpc \<Longrightarrow>
+   list_in_list l (unat xpc) l2" using Cons by blast
 
+  let "?prefix" = "take (unat pc) (a#l_bin0)"
+  let "?suffix" = "drop (unat pc+1) (a#l_bin0)"
+  have "?prefix@[(num,off,l)]@?suffix= (a#l_bin0)" using append_take_drop_id assm0
+    by (metis (no_types, opaque_lifting) Cons_nth_drop_Suc append_eq_Cons_conv assm1 drop_0 drop_Suc_Cons drop_drop plus_1_eq_Suc self_append_conv2)  
+  hence "?prefix@((num,off,l)#?suffix)= (a#l_bin0)" by simp
+
+  hence "\<exists> l2' l_pc2' l_jump2'. jitflat_bpf ?prefix init_second_layer = (l2', l_pc2', l_jump2') \<and> 
+         jitflat_bpf ((num,off,l)#?suffix) (l2', l_pc2', l_jump2') = (l2, l_pc2, l_jump2)" 
+    using init_second_layer_def jitflat_bpf_induct3 by (metis assm2) 
+
+  then obtain l2' l_pc2' l_jump2' where c0:"jitflat_bpf ?prefix init_second_layer = (l2', l_pc2', l_jump2') \<and> 
+         jitflat_bpf ((num,off,l)#?suffix) (l2', l_pc2', l_jump2') = (l2, l_pc2, l_jump2)" by auto
+
+  have c1:"jitflat_bpf ((num,off,l)#?suffix) (l2', l_pc2', l_jump2') = (
+    let l_jump' = update_l_jump (num,off,l) l_pc2' l_jump2' in
+        jitflat_bpf ?suffix (
+          l2'@l,
+          l_pc2'@[(of_nat(length l2'),num)],
+          l_jump')
+  )" using assm2 init_second_layer_def of_nat_def c0 using jitflat_bpf.simps(2) by presburger   
+
+  have c2:"list_in_list l_pc2' 0 l_pc2" using not_change_prefix_l_pc c0 c1 by blast
+
+  have c2_0:"l_pc2 \<noteq> []" using c1 sorry
+
+  (*hence c2_1:"take (length l_pc2') l_pc2 = l_pc2'" using c2 list_in_list_prop4 by blast*)
+
+  (*have d0:"jitflat_bpf (?prefix@[(num,off,l)]) init_second_layer = jitflat_bpf [(num,off,l)] (l2', l_pc2', l_jump2')" sorry
+  have "\<exists> l2'' l_pc2'' l_jump2''. jitflat_bpf [(num,off,l)] (l2', l_pc2', l_jump2') = (l2'', l_pc2'', l_jump2'')" by auto
+  then obtain l2'' l_pc2'' l_jump2'' where "jitflat_bpf [(num,off,l)] (l2', l_pc2', l_jump2') = (l2'', l_pc2'', l_jump2'')" by auto
+  hence d1:"l_pc2'' = l_pc2'@[(of_nat(length l2'),num)]" using d0 by simp
+  have d2:"jitflat_bpf ?suffix  (l2'', l_pc2'', l_jump2'') = (l2, l_pc2, l_jump2)" sorry
+  hence d3:"list_in_list l_pc2'' 0 l_pc2" using  not_change_prefix_l_pc by blast
+  hence d4:"take (length l_pc2'') l_pc2 = l_pc2''" using c2_0 using list_in_list_prop4 by blast 
+  have c3:"(l_pc2 ! (unat pc)) = (of_nat(length l2'),num)" 
+    using d2 d1 l_pc_length_prop by (smt (z3) Cons_nth_drop_Suc One_nat_def d3 add.right_neutral add_Suc_right assm1 assm2 c0 diff_add_inverse diff_diff_cancel init_second_layer_def length_Cons length_drop less_or_eq_imp_le list.size(3) list_in_list.simps(2) list_in_list_concat plus_nat.add_0) *)
+
+  have c3:"(l_pc2 ! (unat pc)) = (of_nat(length l2'),num)" using c2 l_pc_length_prop
+    by (smt (z3) Cons_nth_drop_Suc Suc_eq_plus1 ab_semigroup_add_class.add_ac(1) add.commute assm1 assm2 c0 c1 diff_add_inverse diff_diff_cancel init_second_layer_def length_drop less_or_eq_imp_le list.size(3) list.size(4) list_in_list.simps(2) list_in_list_concat not_change_prefix_l_pc) 
+    
+  have c4:"fst (l_pc2 ! (unat pc)) = (of_nat(length l2'))" using c3 by auto
+  
+  have c6:"list_in_list l (length l2') l2" using c0 c1 not_change_prefix_l_bin
+    by (metis (mono_tags, lifting) list_in_list_concat plus_nat.add_0) 
+  hence c7:"list_in_list l (unat(of_nat(length l2'))) l2" sorry
+  
+  have "list_in_list l (unat(fst (l_pc2 ! (unat pc)))) l2" using c7 c4 by metis 
+     then show ?thesis using assm3 by force 
+   qed
+ qed
+qed*)
 (*
 lemma num_corr:"jitflat_bpf l_bin0 init_second_layer = (l2,l_pc2,l_jump2) \<Longrightarrow> map snd l_pc2 = map fst l_bin0"
 (* apply(induction l_bin0 arbitrary: l2 l_pc2 l_jump2)
