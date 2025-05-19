@@ -106,7 +106,100 @@ qed
 qed*)
 
 
+(*
+lemma flattern_lbin_easy:
+  assumes a0:"l_bin0!0=(num,off,l)" and
+   a1:"unat pc < length l_bin0 \<and> unat pc \<ge> 0" and
+   a2:"jitflat_bpf l_bin0 (l1,l_pc1,l_jump1) = (l2,l_pc2,l_jump2)" and
+   a3:"fst (l_pc2 ! (length l_pc1) ) = xpc" and
+   a4:"well_formed_prog l_bin0"
+ shows "list_in_list l (unat xpc) l2"
+proof-
+  let "?xs" = "tl l_bin0"
+  have b0:"jitflat_bpf ((num,off,l)#?xs) (l1,l_pc1,l_jump1) = (
+  let curr_pc = of_nat (length l1) in 
+  let l_jump' = update_l_jump (num,off,l) l_pc1 l_jump1 in  
+      jitflat_bpf ?xs (l1@l, l_pc1@[(curr_pc,num)], l_jump'))" using a1 by auto
 
+  have b1:"(num,off,l)#?xs = l_bin0" using a0 a1
+    by (metis Nitpick.size_list_simp(2) hd_conv_nth list.collapse not_less0) 
+  have c0:"jitflat_bpf ((num,off,l)#?xs) (l1,l_pc1,l_jump1) =  (jitflat_bpf ?xs (l1@l, l_pc1@[(of_nat (length l1),num)], update_l_jump (num,off,l) l_pc1 l_jump1))"
+      using b0 by auto
+  have c1_0:"jitflat_bpf ?xs (l1@l, l_pc1@[((of_nat (length l1)),num)],update_l_jump (num,off,l) l_pc1 l_jump1) = (l2,l_pc2,l_jump2)" using c0 a2 b1 by simp 
+  have c1_1:"list_in_list (l_pc1@[((of_nat (length l1)),num)]) 0 l_pc2" using c1_0 not_change_prefix_l_pc by simp
+  have c1_2:"list_in_list [((of_nat (length l1)),num)] (length l_pc1) l_pc2" using c1_1 list_in_list_concat by force
+  have c1:"l_pc2! (length(l_pc1)) = ((of_nat (length l1)),num)" using not_change_prefix_l_pc c1_2 by simp
+
+  have c2:"xpc = of_nat (length l1)" using c1 a3 by simp
+
+  have c3_1:"list_in_list (l1@l) 0 l2" using c1_0 not_change_prefix_l_bin by blast
+  have c3_2:"list_in_list l (length l1) l2" using c3_1 list_in_list_concat by (metis plus_nat.add_0)  
+  then have c3_3:"unat (of_nat (length l1)) = (length l1)" sorry   
+    then show ?thesis by simp    
+  qed
+*)
+
+(*lemma flattern_l_bin0:
+  assumes a0:"l_bin0!(unat pc)=(num,off,l)" and
+   a1:"l_bin0 \<noteq> []" and
+   a2:"jitflat_bpf l_bin0 (l1,l_pc1,l_jump1) = (l2,l_pc2,l_jump2)" and
+   a3:"fst (l_pc2 ! (length l_pc1 + (unat pc))) = xpc"
+ shows "list_in_list l (unat xpc) l2"
+  sorry*)
+
+(*lemma flattern_l_bin0:
+  "l_bin0!(unat pc)=(num,off,l) \<Longrightarrow>
+   unat pc < length l_bin0 \<and> unat pc \<ge> 0 \<Longrightarrow>
+   jitflat_bpf l_bin0 (l1,l_pc1,l_jump1) = (l2,l_pc2,l_jump2) \<Longrightarrow>
+   fst (l_pc2 ! (length l_pc1 + (unat pc))) = xpc \<Longrightarrow>
+   list_in_list l (unat xpc) l2"
+proof(induct l_bin0 arbitrary: pc num off l l1 l_pc1 l_jump1 l2 l_pc2 l_jump2 xpc)
+  case Nil
+  then show ?case by simp
+next
+  case (Cons a l_bin0)
+  assume assm0:"l_bin0!(unat pc)=(num,off,l)" and
+   assm1:"unat pc < length l_bin0 \<and> unat pc \<ge> 0" and
+   assm2:"jitflat_bpf l_bin0 (l1,l_pc1,l_jump1) = (l2,l_pc2,l_jump2)" and
+   assm3:"fst (l_pc2 ! (length l_pc1 + (unat pc))) = xpc"
+  then show ?case sorry
+qed*)
+
+(*lemma l_jump_upperbound:
+  "is_increase_list l_jump1 l_pc1 \<Longrightarrow>
+  jitflat_bpf [a] (l1, l_pc1, l_jump1) = (l_bin,l_pc,l_jump) \<Longrightarrow>
+  snd(snd a) !1 = 0x39 \<Longrightarrow>
+  \<forall> elem1 elem2. (elem1,elem2) \<in> set l_jump1 \<longrightarrow> elem1 < of_nat (length l_pc1)"
+  using l_jump_elem_increases is_increase_list_def *)
+
+
+(*
+lemma l_jump_upperbound:
+  "is_increase_list l_jump1 l_pc1 \<Longrightarrow>
+  jitflat_bpf [a] (l1, l_pc1, l_jump1) = (l_bin,l_pc,l_jump) \<Longrightarrow>
+  snd(snd a) !1 = 0x39 \<Longrightarrow>
+  \<forall> elem1 elem2. (elem1,elem2) \<in> set l_jump1 \<longrightarrow> elem1 < of_nat (length l_pc1)"
+  using l_jump_elem_increases is_increase_list_def 
+proof-
+  assume 
+  assm1:"jitflat_bpf [a] (l1, l_pc1, l_jump1) = (l_bin,l_pc,l_jump) " and
+  assm2:"snd(snd a) !1 = 0x39" and
+  assm3:"is_increase_list l_jump1"
+  have a1:"l_jump =  update_l_jump a l_pc1 l_jump1" using jitflat_bpf.elims assm1 by force
+  hence "l_jump =  (let (num,off,l_bin0) = a in 
+  if l_bin0!1 = (0x39::u8) then l_jump1@ [(of_nat (length l_pc1), of_nat (length l_pc1) + off)]
+  else l_jump1)" using update_l_jump_def by simp
+  have "[a]\<noteq> []" by simp
+  hence a2:"is_increase_list l_jump" using assm1 l_jump_elem_increases assm3 by blast
+  hence b0:"l_jump =  l_jump1@ [(of_nat (length l_pc1), of_nat (length l_pc1) + fst (snd a))]" using a1 assm2 by (simp add: case_prod_unfold update_l_jump_def) 
+  hence b1:"l_jump \<noteq> []" by blast
+  have b2:"length l_jump1 < length l_jump" using b0 by simp
+  hence b3:"\<forall> idx1. idx1 < length l_jump1 \<and> idx1\<ge>0 \<and> length l_jump1 < length l_jump \<longrightarrow> fst (l_jump!idx1) < fst (l_jump!(length l_jump1))" 
+    using a2 b0 b1 b2 is_increase_list_def by blast 
+  have b4:"fst (l_jump!(length l_jump1)) = of_nat (length l_pc1)" using b0 by fastforce 
+  then show ?thesis using b3 by (smt (z3) assm1 add.commute add.right_neutral add_Suc_right b2 fst_conv in_set_conv_decomp le_add1 le_imp_less_Suc length_Cons length_append list_in_list.simps(2) list_in_list_concat not_change_prefix_l_jump) 
+  qed
+*)
 
 (*
 lemma l_jump_elem_increases:
