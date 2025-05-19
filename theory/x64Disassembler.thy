@@ -35,7 +35,15 @@ definition x64_decode :: "nat \<Rightarrow> x64_bin \<Rightarrow> (nat * instruc
         let dst  = bitfield_insert_u8 3 1 reg2 0 in
         case ireg_of_u8 dst of None \<Rightarrow> None | Some dst \<Rightarrow> (
           Some (1, Ppopl dst))
-      else None
+     else if h = 0xe8 then   
+        \<comment> \<open> P2878 `CALL: direct`   -> `1110 1000 : displacement32` \<close>
+        let i1 = l_bin!(pc+1)  in
+        let i2 = l_bin!(pc+2)  in
+        let i3 = l_bin!(pc+3)  in
+        let i4 = l_bin!(pc+4)  in
+          case u32_of_u8_list [i1,i2,i3,i4] of None \<Rightarrow> None |
+            Some d \<Rightarrow> ( Some (5, Pcall_i (scast d))) 
+     else None
   else if h = 0x0f then \<comment> \<open> R8 escape \<close>
     let op = l_bin!(pc+1) in
     if unsigned_bitfield_extract_u8 4 4 op = 0b1000 then

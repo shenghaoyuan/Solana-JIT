@@ -107,7 +107,241 @@ qed*)
 
 
 
-  
+
+(*
+lemma l_jump_elem_increases:
+  "jitflat_bpf somelt init_second_layer = (l1, l_pc1, l_jump1) \<Longrightarrow> 
+  \<forall> idx1 idx2. idx1<idx2 \<and> idx1\<ge>0 \<and> idx2 < length l_jump1 \<longrightarrow> fst (l_jump1!idx1) < fst (l_jump1!idx2) \<Longrightarrow>
+  jitflat_bpf lt (l1, l_pc1, l_jump1) = (l, l_pc, l_jump) \<Longrightarrow> 
+  \<forall> idx1 idx2. idx1<idx2 \<and> idx1\<ge>0 \<and> idx2 < length l_jump \<longrightarrow> fst (l_jump!idx1) < fst (l_jump!idx2)"
+  proof(induct lt arbitrary: somelt l1 l_pc1 l_jump1 l l_pc l_jump)
+    case Nil
+    have "(l1, l_pc1, l_jump1) = (l, l_pc, l_jump)" using Nil by auto
+    then show ?case using Nil.prems(2) by blast 
+  next
+    case (Cons a lt)
+    assume assm0:"jitflat_bpf somelt init_second_layer = (l1, l_pc1, l_jump1)"and
+      assm1:"jitflat_bpf (a#lt) (l1, l_pc1, l_jump1) = (l, l_pc, l_jump)" 
+      (*and assm2:"(a#lt) \<noteq> []"*)
+    have "\<exists> l2' l_pc2' l_jump2'. jitflat_bpf [a] (l1,l_pc1,l_jump1) = (l2',l_pc2',l_jump2') \<and>  jitflat_bpf lt (l2',l_pc2',l_jump2') = (l,l_pc,l_jump)"
+      using jitflat_bpf_induct assm1 by blast 
+    then obtain l2' l_pc2' l_jump2' where b0:"jitflat_bpf [a] (l1,l_pc1,l_jump1) = (l2',l_pc2',l_jump2') \<and> jitflat_bpf lt (l2',l_pc2',l_jump2') = (l,l_pc,l_jump)" by auto
+    have b1:"jitflat_bpf (somelt@[a]) init_second_layer =  (l2',l_pc2',l_jump2')" 
+      using b0 assm0 by (metis (no_types, opaque_lifting) jitflat_bpf_induct3 prod_cases3) 
+    have "\<forall> idx1 idx2. idx1<idx2 \<and> idx1\<ge>0 \<and> idx2 < length l_jump \<longrightarrow> fst (l_jump!idx1) < fst (l_jump!idx2)" using b1 b0 using Cons.hyps sorry 
+    then show ?case by auto
+  qed
+
+lemma l_jump_upperbound:
+  "jitflat_bpf somelt init_second_layer = (l1, l_pc1, l_jump1) \<Longrightarrow> 
+  jitflat_bpf [a] (l1, l_pc1, l_jump1) = (l_bin,l_pc,l_jump) \<Longrightarrow>
+  snd(snd a) !1 = 0x39 \<Longrightarrow>
+  \<forall> elem1 elem2. (elem1,elem2) \<in> set l_jump1 \<longrightarrow> elem1 < of_nat (length l_pc1)"
+proof-
+  assume assm0:"jitflat_bpf somelt init_second_layer = (l1, l_pc1, l_jump1)" and
+  assm1:"jitflat_bpf [a] (l1, l_pc1, l_jump1) = (l_bin,l_pc,l_jump) " and
+  assm2:"snd(snd a) !1 = 0x39"
+  have a1:"l_jump =  update_l_jump a l_pc1 l_jump1" using jitflat_bpf.elims assm1 by force
+  hence "l_jump =  (let (num,off,l_bin0) = a in 
+  if l_bin0!1 = (0x39::u8) then l_jump1@ [(of_nat (length l_pc1), of_nat (length l_pc1) + off)]
+  else l_jump1)" using update_l_jump_def by simp
+  have "[a]\<noteq> []" by simp
+  hence a2:"\<forall> idx1 idx2. idx1<idx2 \<and> idx1\<ge>0 \<and> idx2 < length l_jump \<longrightarrow> fst (l_jump!idx1) < fst (l_jump!idx2)" using assm0 assm1 l_jump_elem_increases sorry 
+  hence b0:"l_jump =  l_jump1@ [(of_nat (length l_pc1), of_nat (length l_pc1) + fst (snd a))]" using a1 assm2 by (simp add: case_prod_unfold update_l_jump_def) 
+  hence b1:"l_jump \<noteq> []" by blast
+  have b2:"length l_jump1 < length l_jump" using b0 by simp
+  hence b3:"\<forall> idx1. idx1 < length l_jump1 \<and> idx1\<ge>0 \<and> length l_jump1 < length l_jump \<longrightarrow> fst (l_jump!idx1) < fst (l_jump!(length l_jump1))" using a2 b0 b1 b2 by blast
+  have b4:"fst (l_jump!(length l_jump1)) = of_nat (length l_pc1)" using b0 by fastforce 
+  then show ?thesis using b3 by (smt (z3) assm1 add.commute add.right_neutral add_Suc_right b2 fst_conv in_set_conv_decomp le_add1 le_imp_less_Suc length_Cons length_append list_in_list.simps(2) list_in_list_concat not_change_prefix_l_jump) 
+  qed
+*)
+
+
+
+
+
+
+(*
+lemma l_jump_is_distinct:"jitflat_bpf lt (l1, l_pc1, l_jump1) = (l_bin,l_pc,l_jump) \<Longrightarrow> distinct (map fst l_jump1) \<Longrightarrow> distinct (map fst l_jump)"
+proof(induct lt arbitrary: l1 l_pc1 l_jump1 l_bin l_pc l_jump)
+  case Nil
+  then show ?case by simp
+next
+  case (Cons a lt)
+  assume a0:"jitflat_bpf (a#lt) (l1, l_pc1, l_jump1) = (l_bin,l_pc,l_jump)" and 
+  a1:"distinct (map fst l_jump1)"
+  have "\<exists> l2' l_pc2' l_jump2'. jitflat_bpf [a] (l1, l_pc1, l_jump1) = (l2', l_pc2', l_jump2') \<and> 
+         jitflat_bpf lt (l2', l_pc2', l_jump2') = (l_bin,l_pc,l_jump)" using jitflat_bpf_induct a0 by simp
+  then obtain l2' l_pc2' l_jump2' where b0:"jitflat_bpf [a] (l1, l_pc1, l_jump1) = (l2', l_pc2', l_jump2') \<and> 
+         jitflat_bpf lt (l2', l_pc2', l_jump2') = (l_bin,l_pc,l_jump)" by auto
+  hence "l_jump2' = update_l_jump a l_pc1 l_jump1" using jitflat_bpf.elims by force 
+  hence b1:"l_jump2' = (let (num,off,l_bin0) = a in  if l_bin0!1 = (0x39::u8) then l_jump1@ [(of_nat (length l_pc1), of_nat (length l_pc1) + off)] else l_jump1)" using update_l_jump_def by simp
+  thus ?case
+  proof(cases "(snd (snd a))!1 \<noteq> (0x39::u8)")
+    case True
+    have "l_jump2' = l_jump1" using b1 True  by (smt (verit, best) case_prod_conv split_pairs)
+    hence b2:"distinct (map fst l_jump2')" using a1 by simp
+    have "distinct (map fst l_jump)" using b0 b1 b2 Cons by blast
+    then show ?thesis using a1 by simp
+  next
+    case False
+    have "l_jump2' = l_jump1@ [(of_nat (length l_pc1), of_nat (length l_pc1) + (fst (snd a)))]" using False b1 by (smt (verit, ccfv_threshold) old.prod.case prod.collapse) 
+    hence b2:"distinct (map fst l_jump2')" sorry
+    have "distinct (map fst l_jump)" using b0 b1 b2 Cons by blast
+    then show ?thesis by simp
+  qed
+qed*)
+
+   (*flat_bpf_sem n (l_bin,l_pc,l_jump) (pc,fxst) = fxst' \<Longrightarrow>*)
+(*lemma flattern_jump_index:
+  "jitflat_bpf lt init_second_layer = (l_bin,l_pc,l_jump) \<Longrightarrow>
+  lt!(unat pc) = (num,off,l) \<Longrightarrow>
+  unat pc < length lt \<and> unat pc \<ge> 0  \<Longrightarrow>
+  find_target_pc_in_l_pc l_jump pc = Some npc \<Longrightarrow>
+  npc = off + pc"
+  proof(induct lt arbitrary: l_bin l_pc l_jump pc num off l npc)
+    case Nil
+    then show ?case  by (simp add: init_second_layer_def) 
+  next
+    case (Cons a lt)
+    assume assm0:"jitflat_bpf (a#lt) init_second_layer = (l_bin,l_pc,l_jump)" and
+      assm1:"(a#lt)!(unat pc) = (num,off,l)" and
+      assm2:"find_target_pc_in_l_pc l_jump pc = Some npc"and
+      assm3:"unat pc < length (a#lt) \<and> unat pc \<ge> 0" 
+    have a0:"unat pc = 0 \<or> unat pc \<ge> 1" by auto
+      show ?case
+      proof(cases "unat pc = 0")
+        case True
+        then show ?thesis 
+          using flattern_jump_index_easy True assm0 assm1 assm2 assm3 unat_eq_zero by blast  
+      next
+        case False
+        have a1:"pc \<ge>1" using False a0 linorder_le_less_linear by force 
+        let "?pc" = "pc -1"
+        have b1:"unat ?pc < length lt \<and> (0::nat) \<le> unat ?pc" using assm3 a1 False unat_sub by fastforce 
+        let "?x" = "tl lt"
+        have b2:"lt ! (unat ?pc) = (num, off, l)" using assm1 False by (simp add: a1 unat_sub) 
+ 
+      
+        have b2_1:"jitflat_bpf (a#lt) init_second_layer = (
+          jitflat_bpf lt (
+            []@(snd(snd a)),
+            []@[(0, fst a)],
+            update_l_jump a [] []))" using init_second_layer_def 
+          by (metis jitflat_bpf.simps(2) list.size(3) prod.exhaust_sel semiring_1_class.of_nat_0) 
+        hence b2_2:"jitflat_bpf (a#lt) init_second_layer = jitflat_bpf lt ((snd(snd a)),[(0, fst a)],update_l_jump a [] [])" by auto
+      
+        have "\<exists> l2' l_pc2' l_jump2'. jitflat_bpf lt init_second_layer = (l2',l_pc2',l_jump2') " by (metis surj_pair)
+        then obtain l2' l_pc2' l_jump2' where b3_1:"jitflat_bpf lt init_second_layer = (l2',l_pc2',l_jump2')" by auto
+        have "jitflat_bpf lt init_second_layer = (l_bin, l_pc, l_jump) \<Longrightarrow> lt ! unat pc = (num, off, l) \<Longrightarrow> 
+        unat pc < length lt \<and> (0::nat) \<le> unat pc \<Longrightarrow> find_target_pc_in_l_pc l_jump pc = Some npc \<Longrightarrow> npc = off + pc" using Cons by blast
+        have "find_target_pc_in_l_pc l_jump2' ?pc = Some npc" using assm2
+        hence "npc = off + ?pc" using Cons b1 b2 b3_1 by blast
+        then show ?thesis 
+      qed
+    qed
+*)
+
+(*lemma flattern_jump_index:
+  "jitflat_bpf lt init_second_layer = (l_bin,l_pc,l_jump) \<Longrightarrow>
+  lt!(unat pc) = (num,off,l) \<Longrightarrow>
+  unat pc < length lt \<and> unat pc \<ge> 0  \<Longrightarrow>
+  find_target_pc_in_l_pc l_jump pc = Some npc \<longrightarrow> npc = off + pc"
+  proof(induct lt arbitrary: l_bin l_pc l_jump pc num off l npc)
+    case Nil
+    then show ?case  by (simp add: init_second_layer_def) 
+  next
+    case (Cons a lt)
+    assume assm0:"jitflat_bpf (a#lt) init_second_layer = (l_bin,l_pc,l_jump)" and
+      assm1:"(a#lt)!(unat pc) = (num,off,l)" and
+      assm3:"unat pc < length (a#lt) \<and> unat pc \<ge> 0" 
+    have a0:"unat pc = 0 \<or> unat pc \<ge> 1" by auto
+      show ?case
+      proof(cases "unat pc = 0")
+        case True
+        then show ?thesis 
+          using flattern_jump_index_easy True assm0 assm1 assm3 unat_eq_zero by blast  
+      next
+        case False
+        have a1:"pc \<ge>1" using False a0 linorder_le_less_linear by force 
+        let "?pc" = "pc -1"
+        have b1:"unat ?pc < length lt \<and> (0::nat) \<le> unat ?pc" using assm3 a1 False unat_sub by fastforce 
+        let "?x" = "tl lt"
+        have b2:"lt ! (unat ?pc) = (num, off, l)" using assm1 False by (simp add: a1 unat_sub)      
+        have b2_1:"jitflat_bpf (a#lt) init_second_layer = (
+          jitflat_bpf lt (
+            []@(snd(snd a)),
+            []@[(0, fst a)],
+            update_l_jump a [] []))" using init_second_layer_def 
+          by (metis jitflat_bpf.simps(2) list.size(3) prod.exhaust_sel semiring_1_class.of_nat_0) 
+        hence b2_2:"jitflat_bpf (a#lt) init_second_layer = jitflat_bpf lt ((snd(snd a)),[(0, fst a)],update_l_jump a [] [])" by auto
+      
+        have "\<exists> l2' l_pc2' l_jump2'. jitflat_bpf lt init_second_layer = (l2',l_pc2',l_jump2') " by (metis surj_pair)
+        then obtain l2' l_pc2' l_jump2' where b3_1:"jitflat_bpf lt init_second_layer = (l2',l_pc2',l_jump2')" by auto
+        have "jitflat_bpf lt init_second_layer = (l_bin, l_pc, l_jump) \<Longrightarrow> lt ! unat pc = (num, off, l) \<Longrightarrow> 
+        unat pc < length lt \<and> (0::nat) \<le> unat pc \<Longrightarrow> find_target_pc_in_l_pc l_jump pc = Some npc \<Longrightarrow> npc = off + pc" using Cons by blast
+        hence "find_target_pc_in_l_pc l_jump2' ?pc = Some npc \<longrightarrow> npc = off + ?pc" using Cons b1 b2 b3_1 by blast
+        hence "find_target_pc_in_l_pc l_jump pc = Some npc \<longrightarrow> npc = off + pc" sorry
+        then show ?thesis by force 
+      qed
+    qed*)
+
+(*
+lemma flattern_jump_index_easy:
+  "jitflat_bpf lt init_second_layer = (l_bin,l_pc,l_jump) \<Longrightarrow>
+  lt!(unat pc) = (num,off,l) \<Longrightarrow>
+  find_target_pc_in_l_pc l_jump pc = Some npc \<Longrightarrow>
+  lt \<noteq> [] \<Longrightarrow>
+  pc = 0 \<Longrightarrow>
+  npc = off + pc"
+proof-
+  assume a0:"jitflat_bpf lt init_second_layer = (l_bin,l_pc,l_jump)" and
+  a1:"lt!(unat pc) = (num,off,l)" and
+  a2:"find_target_pc_in_l_pc l_jump pc = Some npc" and
+  a3:"lt \<noteq> []" and
+  a4:"pc = 0"
+  let "?xs" = "tl lt"
+  have a5:"(num,off,l)#?xs = lt" using a1 a3 a4
+    by (metis list.collapse nth_Cons_0 unat_0) 
+  have b0:"jitflat_bpf ((num,off,l)#?xs) init_second_layer = (
+  let curr_pc = 0 in 
+  let l_jump' = update_l_jump (num,off,l) [] [] in
+      jitflat_bpf ?xs (
+        []@l,
+        []@[(curr_pc,num)],
+        l_jump'))" using a0 init_second_layer_def a4
+    by (metis jitflat_bpf.simps(2) list.size(3) semiring_1_class.of_nat_0) 
+  have b1_1:"l_jump \<noteq> []" using a2 by force 
+  have b1:"distinct (map fst l_jump)" using l_jump_is_distinct init_second_layer_def
+    by (metis a0 distinct.simps(1) map_fst_zip zip_Nil) 
+  hence b2:"(0,npc) \<in> set l_jump" using a2 a4 search_l_jump by blast
+  have b3:"update_l_jump (num,off,l) l_pc l_jump = (
+  if l!1 = (0x39::u8) then l_jump@ [(of_nat (length l_pc), of_nat (length l_pc) + off)]
+  else l_jump)" 
+    apply(unfold update_l_jump_def Let_def,simp_all) done
+  have b4:"l_jump \<noteq> []" using a2 by auto
+
+  have "l!1 = (0x39::u8) \<or> l!1 \<noteq> (0x39::u8)" by auto
+  thus ?thesis
+  proof(cases "l!1 = (0x39::u8)")
+    case True
+    have "update_l_jump (num,off,l) [] [] = [(0, off)]" using True b0 by (simp add: update_l_jump_def) 
+    hence"jitflat_bpf ((num,off,l)#?xs) init_second_layer = (
+        jitflat_bpf ?xs (l,[(0,num)],[(0,off)]))" using b0 init_second_layer_def by fastforce 
+    hence "(0,off) \<in> set l_jump" using a0 a5 not_change_prefix_l_jump b1_1
+      by (metis (no_types, lifting)  find_target_pc_in_l_pc.elims list.set_intros(1) list_in_list.simps(2) nth_Cons_0) 
+    hence "npc = off + pc" using a4 a2 b1 b2 eq_key_imp_eq_value by fastforce   
+    then show ?thesis by simp
+  next
+    case False
+    have "update_l_jump (num,off,l) [] [] = []" using False b0 by (simp add: update_l_jump_def)
+    hence "jitflat_bpf ((num,off,l)#?xs) init_second_layer = (jitflat_bpf ?xs (l,[(0,num)],[]))" using b0 init_second_layer_def by fastforce
+    hence "\<not>(\<exists> x. x \<in> set l_jump \<and> fst x = pc)" using b4 a3 a0 sorry
+    hence "find_target_pc_in_l_pc l_jump pc = None" using a4 b2 by auto 
+    then show ?thesis using a2 by fastforce 
+  qed
+qed
+*)
 lemma not_change_prefix2:
   "jitflat_bpf l_bin0 (l1,l_pc1,l_jump1) = (l2,l_pc2,l_jump2) \<Longrightarrow> list_in_list l_pc1 0 l_pc2"
   proof(induction l_bin0 arbitrary: l1 l_pc1 l_jump1 l2 l_pc2 l_jump2)
@@ -241,7 +475,7 @@ fun find_target_pc_in_l_pc :: "((u64\<times>u64) list) \<Rightarrow> u64 \<Right
 definition init_second_layer::"x64_bin \<times> (u64 \<times> nat) list \<times> ((u64\<times>u64) list)" where
 "init_second_layer \<equiv> ([],[],[])"
 
-(*
+
 definition flat_bpf_one_step :: "nat \<Rightarrow> nat \<Rightarrow> flat_bpf_prog \<Rightarrow> hybrid_state \<Rightarrow> hybrid_state" where
 "flat_bpf_one_step xpc num lp st = (
   let (l_bin,l_pc,l_jump) = lp in
@@ -276,7 +510,7 @@ fun flat_bpf_sem :: "nat \<Rightarrow> flat_bpf_prog \<Rightarrow> hybrid_state 
   let (xpc, num) = l_pc!(unat pc) ;
    pair = flat_bpf_one_step (unat xpc) num (l_bin,l_pc,l_jump) (pc, xst) in
   flat_bpf_sem n (l_bin,l_pc,l_jump) pair
-)"*)
+)"
 
 definition flat_bpf_one_step :: "flat_bpf_prog \<Rightarrow> hybrid_state \<Rightarrow> hybrid_state" where
 "flat_bpf_one_step lp st = (
