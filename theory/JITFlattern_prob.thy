@@ -2,8 +2,18 @@ theory JITFlattern_prob
   imports JITFlattern_def JITFlattern_aux
 begin
 
+(** see Solana-x64-Semantics nth_error branch `x64DecodeProp.thy`
+  The current version could not be proven becasue of `!`
+ *)
+lemma list_in_list_implies_set_relation:
+  "list_in_list [x] pos l_jump \<Longrightarrow> x \<in> set l_jump"
+  sorry
+lemma list_in_list_x64_decode:
+  "list_in_list l_bin pc l \<Longrightarrow> x64_decode n l_bin = Some v \<Longrightarrow> x64_decode (pc+n) l = Some v"
+  sorry
+
 fun x64_bin_is_sequential :: "nat \<Rightarrow> x64_bin \<Rightarrow> nat \<Rightarrow> bool" where
-"x64_bin_is_sequential 0 _ _ = True" |
+"x64_bin_is_sequential 0 _ _ = False" |
 "x64_bin_is_sequential (Suc n) l pc = (
   case x64_decode pc l of
   None \<Rightarrow> False |
@@ -11,8 +21,40 @@ fun x64_bin_is_sequential :: "nat \<Rightarrow> x64_bin \<Rightarrow> nat \<Righ
     case ins of
     Pjcc _ _ \<Rightarrow> False |
     Pcall_i _ \<Rightarrow> False |
+    Pret \<Rightarrow> False |
     _ \<Rightarrow> x64_bin_is_sequential n l (pc + sz)
 ))"
+
+lemma x64_bin_is_sequential_x64_decode: "
+  x64_bin_is_sequential n l x \<Longrightarrow>
+  x64_decode x l = Some (sz, ins) \<Longrightarrow>
+    x64_bin_is_sequential n l (x + sz)"
+  apply (induction n arbitrary: l x sz ins)
+  subgoal for l x sz ins
+    by simp
+  subgoal for n1 l x sz ins
+    apply simp
+    apply (subgoal_tac "x64_bin_is_sequential n1 l (x + sz)")
+    subgoal
+      apply (cases "x64_decode (x + sz) l"; simp)
+      subgoal
+        apply (cases n1; simp)
+        done
+      subgoal for ins1
+        apply (cases ins1; simp)
+        subgoal for sz1 ins2
+          apply (simp only: add.assoc [of x sz sz1])
+          apply (cases ins2; simp; cases n1; simp)
+          done
+        done
+      done
+
+    apply (cases ins; simp)
+    done
+  done
+
+lemma x64_sem_stuck: "x64_sem n l Stuck = Stuck"
+  by (cases n; simp)
 
  (*l!x \<noteq> 0xe8 \<and> l!x \<noteq> 0xc3 \<and> l!(x+1) \<noteq> (0x39::u8) \<Longrightarrow>*)
 lemma list_in_list_prop3: "
@@ -20,6 +62,7 @@ lemma list_in_list_prop3: "
   x64_sem num l (Next x xrs xm xss) = xxst \<Longrightarrow>
   x64_bin_is_sequential (length l) l x \<Longrightarrow>
   list_in_list l xpc l_bin \<Longrightarrow>
+  fxst \<noteq> Stuck \<Longrightarrow>
   xxst \<noteq> Stuck \<Longrightarrow>
     match_state1 xxst fxst"
   apply (induction num arbitrary: l_bin xpc x xrs xm xss fxst l xxst)
@@ -33,19 +76,108 @@ lemma list_in_list_prop3: "
       apply (cases xxst; simp)
       subgoal for xpc2 xrs2 xm2 xstk2
 
-        apply (cases "x64_decode (xpc + x) l_bin"; simp)
-        subgoal for xins
-          apply (cases xins; simp)
-          subgoal for xsz xins1
-            apply (cases "x64_decode x l"; simp)
-            subgoal for ins
-              apply (cases ins; simp)
-              subgoal for sz2 ins1
-                apply (subgoal_tac "xsz = sz2")
-                 prefer 2
-                subgoal
-                apply (subgoal_tac "xins1 = ins1")
-                apply (simp add: match_state1_def exec_instr_def)
+        apply (cases "x64_decode x l"; simp)
+        subgoal for ins
+          apply (cases ins; simp)
+          subgoal for sz2 ins1
+            apply (subgoal_tac "x64_decode (xpc + x) l_bin = Some (sz2, ins1)")
+             prefer 2
+            subgoal            
+              apply (rule list_in_list_x64_decode [of l xpc l_bin x "(sz2, ins1)"]; simp)
+              done
+            apply simp
+            apply (subgoal_tac "x64_bin_is_sequential (length l) l (x+sz2)")
+            prefer 2
+            subgoal using x64_bin_is_sequential_x64_decode
+              by simp
+            
+            apply (cases ins1; simp add: exec_instr_def)
+            subgoal for x1 x2
+              apply (simp only: add.assoc [of xpc x sz2])
+              by blast
+            subgoal for x1 x2
+              apply (simp only: add.assoc [of xpc x sz2])
+              by blast
+            subgoal for x1 x2
+              apply (simp only: add.assoc [of xpc x sz2])
+              by blast
+            subgoal for x1 x2
+              apply (simp only: add.assoc [of xpc x sz2])
+              by blast
+            subgoal for x1 x2
+              apply (simp only: add.assoc [of xpc x sz2])
+              by blast
+            subgoal
+              by (cases "length l"; simp)
+            subgoal for x1
+              apply (simp add: exec_push_def Let_def)
+              apply (cases "storev M64 xm (Vptr sp_block (xrs (IR SP) -
+  u64_of_memory_chunk M64)) (Vlong (xrs (IR x1)))"; simp add: x64_sem_stuck)
+              subgoal for xm2
+              apply (simp only: add.assoc [of xpc x sz2])
+                by blast
+              done
+            subgoal for x1
+              apply (simp add: exec_pop_def Let_def)
+              apply (cases "loadv M64 xm (Vptr sp_block (xrs (IR SP)))"; simp add: x64_sem_stuck)
+              subgoal for v
+                apply (cases v; simp add: x64_sem_stuck)
+                subgoal for i
+                  apply (simp only: add.assoc [of xpc x sz2])
+                  by blast
+                done
+              done
+            subgoal for x1 x2
+              apply (simp only: add.assoc [of xpc x sz2])
+              by blast
+            subgoal for x1 x2
+              apply (simp only: add.assoc [of xpc x sz2])
+              by blast
+            subgoal for x1 x2
+              apply (simp only: add.assoc [of xpc x sz2])
+              by blast
+            subgoal for x1
+              apply (simp only: add.assoc [of xpc x sz2])
+              by blast
+            subgoal for x1 x2
+              by (cases "length l"; simp)
+            subgoal for x1 x2
+              apply (simp only: add.assoc [of xpc x sz2])
+              by blast
+            subgoal for x1 x2 x3
+              apply (simp add: exec_store_def Let_def)
+              apply (cases "storev x3 xm (Vlong (eval_addrmode64 x1 xrs)) (Vlong (xrs (IR x2)))"; simp add: x64_sem_stuck)
+              subgoal for xm2
+              apply (simp only: add.assoc [of xpc x sz2])
+                by blast
+              done
+            subgoal for x1 x2
+              apply (simp only: add.assoc [of xpc x sz2])
+              by blast
+            subgoal for x1
+              apply (simp only: add.assoc [of xpc x sz2])
+              by blast
+            subgoal for x1
+              apply (simp only: add.assoc [of xpc x sz2])
+              by blast
+            subgoal for x1
+              apply (simp only: add.assoc [of xpc x sz2])
+              by blast
+            subgoal for x1 x2 x3
+              apply (simp add: exec_load_def Let_def)
+              apply (cases "loadv x3 xm (Vlong (eval_addrmode64 x2 xrs))"; simp add: x64_sem_stuck)
+              subgoal for v
+                apply (cases v; simp add: x64_sem_stuck add.assoc [of xpc x sz2])
+                done
+              done
+            subgoal for x1
+              by (cases "length l"; simp)
+            done
+          done
+        done
+      done
+    done
+  done
 
 (*
 proof(induction num arbitrary:l_bin xpc x xrs xm xss fxst l xrs xm xss xxst)
@@ -247,14 +379,5 @@ apply(cases "ireg_of_u8 (bitfield_insert_u8 (3::nat) (Suc (0::nat)) (and (7::8 w
   sorry
 
 *)
-
-(** see Solana-x64-Semantics nth_error branch `x64DecodeProp.thy`
-  The current version could not be proven becasue of `!`
- *)
-axiomatization list_in_list_implies_set_relation 
-  x::'a and 
-  pos::nat and
-  l_jump ::"'a list" where
-  list_in_list_implies_set_relation: "list_in_list [x] pos l_jump \<Longrightarrow> x \<in> set l_jump"
 
 end
