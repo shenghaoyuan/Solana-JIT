@@ -1,12 +1,53 @@
 theory JITFlattern_prob
   imports JITFlattern_def JITFlattern_aux
-begin 
+begin
+
+fun x64_bin_is_sequential :: "nat \<Rightarrow> x64_bin \<Rightarrow> nat \<Rightarrow> bool" where
+"x64_bin_is_sequential 0 _ _ = True" |
+"x64_bin_is_sequential (Suc n) l pc = (
+  case x64_decode pc l of
+  None \<Rightarrow> False |
+  Some (sz, ins) \<Rightarrow> (
+    case ins of
+    Pjcc _ _ \<Rightarrow> False |
+    Pcall_i _ \<Rightarrow> False |
+    _ \<Rightarrow> x64_bin_is_sequential n l (pc + sz)
+))"
+
  (*l!x \<noteq> 0xe8 \<and> l!x \<noteq> 0xc3 \<and> l!(x+1) \<noteq> (0x39::u8) \<Longrightarrow>*)
-lemma list_in_list_prop3:"x64_sem num l_bin (Next (xpc+x) xrs xm xss) = fxst \<Longrightarrow>
-   x64_sem num l (Next x xrs xm xss) = xxst \<Longrightarrow>
-   list_in_list l xpc l_bin \<Longrightarrow>
-   xxst \<noteq> Stuck \<Longrightarrow>
-   match_state1 xxst fxst"
+lemma list_in_list_prop3: "
+  x64_sem num l_bin (Next (xpc+x) xrs xm xss) = fxst \<Longrightarrow>
+  x64_sem num l (Next x xrs xm xss) = xxst \<Longrightarrow>
+  x64_bin_is_sequential (length l) l x \<Longrightarrow>
+  list_in_list l xpc l_bin \<Longrightarrow>
+  xxst \<noteq> Stuck \<Longrightarrow>
+    match_state1 xxst fxst"
+  apply (induction num arbitrary: l_bin xpc x xrs xm xss fxst l xxst)
+  subgoal for l_bin xpc x xrs xm xss fxst l xxst
+    apply simp using match_state1_def by auto
+
+  subgoal for n l_bin xpc x xrs xm xss fxst l xxst
+    apply simp
+    apply (cases fxst; simp)
+    subgoal for xpc1 xrs1 xm1 xstk1
+      apply (cases xxst; simp)
+      subgoal for xpc2 xrs2 xm2 xstk2
+
+        apply (cases "x64_decode (xpc + x) l_bin"; simp)
+        subgoal for xins
+          apply (cases xins; simp)
+          subgoal for xsz xins1
+            apply (cases "x64_decode x l"; simp)
+            subgoal for ins
+              apply (cases ins; simp)
+              subgoal for sz2 ins1
+                apply (subgoal_tac "xsz = sz2")
+                 prefer 2
+                subgoal
+                apply (subgoal_tac "xins1 = ins1")
+                apply (simp add: match_state1_def exec_instr_def)
+
+(*
 proof(induction num arbitrary:l_bin xpc x xrs xm xss fxst l xrs xm xss xxst)
   case 0
   then show ?case using match_state1_def by auto
@@ -155,7 +196,7 @@ next
           done
     then show ?thesis using d2 by simp 
   qed
-qed
+qed *)
 
 lemma not_ret_insn:"l\<noteq>[] \<Longrightarrow> l!pc \<noteq> 0xc3 \<Longrightarrow> x64_decode pc l \<noteq> None \<Longrightarrow> x64_decode pc l \<noteq> Some(1,Pret)"
   sorry
@@ -207,6 +248,13 @@ apply(cases "ireg_of_u8 (bitfield_insert_u8 (3::nat) (Suc (0::nat)) (and (7::8 w
 
 *)
 
-lemma list_in_list_implies_set_relation:"list_in_list [x] pos l_jump \<Longrightarrow>  x \<in> set l_jump" 
-  sorry
+(** see Solana-x64-Semantics nth_error branch `x64DecodeProp.thy`
+  The current version could not be proven becasue of `!`
+ *)
+axiomatization list_in_list_implies_set_relation 
+  x::'a and 
+  pos::nat and
+  l_jump ::"'a list" where
+  list_in_list_implies_set_relation: "list_in_list [x] pos l_jump \<Longrightarrow> x \<in> set l_jump"
+
 end
