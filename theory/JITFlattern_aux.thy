@@ -261,7 +261,8 @@ lemma nat_of_nat_trans:"x < u64_MAX \<Longrightarrow> of_nat(unat x) = (x::u64)"
   using u64_MAX_def of_nat_def by simp
 
 lemma "x\<ge>0 \<and> y\<ge>0  \<Longrightarrow> ((of_nat x) ::int) = ((of_nat y) ::int)  \<Longrightarrow> x = y" by presburger
- 
+
+
 (*
 
 
@@ -315,7 +316,7 @@ lemma flattern_l_bin0:
    jitflat_bpf l_bin0 init_second_layer = (l2,l_pc2,l_jump2) \<Longrightarrow>
    fst (l_pc2 ! (unat pc)) = xpc \<Longrightarrow>
     well_formed_prog l_bin0 \<Longrightarrow>
-   list_in_list l (unat xpc) l2"
+   list_in_list l (nat xpc) l2"
 proof-
   assume assm0:"l_bin0!(unat pc)=(num,off,l)" and
    assm1:"unat pc < length l_bin0 \<and> unat pc \<ge> 0" and
@@ -360,11 +361,10 @@ proof-
     using well_formed_prog_def assm2 assm4 by simp
 
   have "length l2' \<le>1000000" using assm4 hhh assm2 well_formed_prog_def init_second_layer_def sorry
-  hence "(unat(of_nat(length l2')))= length l2'" using c6 nat_of_nat_trans sorry  
-  hence c7:"list_in_list l (unat(of_nat(length l2'))) l2" using c6 by metis     
-
+  (*hence "(unat(of_nat(length l2')))= length l2'" using c6 nat_of_nat_trans sorry  
+  hence c7:"list_in_list l (unat(of_nat(length l2'))) l2" using c6 by metis *)   
     
-  have "list_in_list l (unat(fst (l_pc2 ! (unat pc)))) l2" using c7 c4 by metis 
+  have "list_in_list l (nat(fst (l_pc2 ! (unat pc)))) l2" using c6 c4 by auto
      then show ?thesis using assm3 by force 
    qed
 

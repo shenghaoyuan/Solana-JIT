@@ -26,7 +26,7 @@ next
 
   have c1:"distinct (map fst l_jump)" using c0 by auto
   
-  have c2:"distinct (map fst l_jump) \<Longrightarrow> find_target_pc_in_l_pc l_jump pc = Some npc \<Longrightarrow> (pc::64 word, npc) \<in> set l_jump" using Cons by blast
+  have c2:"distinct (map fst l_jump) \<Longrightarrow> find_target_pc_in_l_pc l_jump pc = Some npc \<Longrightarrow> (pc, npc) \<in> set l_jump" using Cons by blast
 
   have a1:"fst a = pc \<or> fst a \<noteq> pc"
     using word_coorder.extremum word_le_sub1 by blast 
@@ -34,7 +34,7 @@ next
   proof(cases "fst a = pc")
     case True
     have "snd a = npc"  by (metis True a0 find_target_pc_in_l_pc.simps(2) fst_conv option.inject snd_conv surj_pair) 
-    then show ?thesis using True by fastforce 
+    then show ?thesis using True by (metis list.set_intros(1) prod.collapse)  
   next
     case False
     have "fst a \<noteq> pc" using False a1 by simp
@@ -43,14 +43,14 @@ next
     then obtain x where b0:"x \<in> set l_jump \<and> fst x = pc" by auto
     hence "snd x = npc" using a0 c1 c0 c2
       by (metis False eq_key_imp_eq_value find_target_pc_in_l_pc.simps(2) fstI sndI surj_pair) 
-    then show ?thesis using c1 b0 by fastforce
+    then show ?thesis using c1 b0 by (metis list.set_intros(2) prod.collapse) 
   qed
 qed
 
 (* \<and> fst (lt!idx2)< length l_pc*)
-definition is_increase_list::" ((u64\<times>u64) list) \<Rightarrow> (u64 \<times> nat) list \<Rightarrow> bool" where 
+definition is_increase_list::" ((int\<times>u64) list) \<Rightarrow> (int \<times> nat) list \<Rightarrow> bool" where 
   "is_increase_list lt lt2 \<equiv> (\<forall> idx1 idx2. idx1<idx2 \<and> idx1\<ge>0 \<and> idx2 < length lt \<longrightarrow> fst (lt!idx1) < fst (lt!idx2)) \<and> 
-    (\<forall> idx. idx \<ge>0 \<and> idx < length lt \<longrightarrow> unat (fst (lt!idx)) <  (length lt2))"
+    (\<forall> idx. idx \<ge>0 \<and> idx < length lt \<longrightarrow> nat (fst (lt!idx)) <  (length lt2))"
 
 lemma is_increase_list_empty:                              
   "is_increase_list [] []"
@@ -89,15 +89,22 @@ proof(induct lt arbitrary: l1 l_pc1 l_jump1 l l_pc l_jump)
         using False b1 by (smt (verit, ccfv_threshold) old.prod.case prod.collapse) 
       hence b3:"\<forall> idx1 idx2. idx1<idx2 \<and> idx1\<ge>0 \<and> idx2 < length l_jump1 \<longrightarrow> fst (l_jump2'!idx1) < fst (l_jump2'!idx2)" using b2_0 assm0
         by (simp add: is_increase_list_def nth_append)  
-      have b4:"unat (fst (l_jump2'!(length l_jump1))) = (length l_pc1)" using b2_0 sorry
-      have b5:"(\<forall> idx. idx \<ge>0 \<and> idx < length l_jump1 \<longrightarrow> unat (fst (l_jump1!idx)) < (length l_pc1))"
+      have b4:"nat (fst (l_jump2'!(length l_jump1))) = (length l_pc1)" using b2_0 by simp
+      have b5:"(\<forall> idx. idx \<ge>0 \<and> idx < length l_jump1 \<longrightarrow> nat (fst (l_jump1!idx)) < (length l_pc1))"
         using assm0 is_increase_list_def by blast 
-      hence "(\<forall> idx. idx \<ge>0 \<and> idx < length l_jump1 \<longrightarrow> unat (fst (l_jump1!idx)) < (length l_pc2'))"
-        by (metis b0 l_pc_length_prop trans_less_add2) 
-      hence "(\<forall> idx. idx \<ge>0 \<and> idx < length l_jump2' \<longrightarrow> unat (fst (l_jump2'!idx)) < (length l_pc2'))"
+      hence "(\<forall> idx. idx \<ge>0 \<and> idx < length l_jump1 \<longrightarrow> (fst (l_jump1!idx)) < (fst (l_jump2'!(length l_jump1))))"
+        using b4 b5 by (metis zless_nat_conj) 
+      hence b7_1:"(\<forall> idx. idx \<ge>0 \<and> idx < length l_jump1 \<longrightarrow> (fst (l_jump2'!idx)) < (fst (l_jump2'!(length l_jump1))))" by (simp add: b2_0 nth_append) 
+      hence b7:"(\<forall> idx1 idx2. idx1<idx2 \<and> idx1\<ge>0 \<and> idx2 < length l_jump2' \<longrightarrow> fst (l_jump2'!idx1) < fst (l_jump2'!idx2))" 
+        using b7_1 by (metis (no_types, lifting) One_nat_def Suc_eq_plus1 b2_0 b3 length_append less_SucE list.size(3) list.size(4)) 
+
+      have "(\<forall> idx. idx \<ge>0 \<and> idx < length l_jump1 \<longrightarrow> nat (fst (l_jump1!idx)) < (length l_pc2'))"
+        using b5 by (metis b0 l_pc_length_prop trans_less_add2) 
+      hence b6:"(\<forall> idx. idx \<ge>0 \<and> idx < length l_jump2' \<longrightarrow> nat (fst (l_jump2'!idx)) < (length l_pc2'))"
         by (smt (verit, ccfv_SIG) One_nat_def add.commute b0 b2_0 b4 l_pc_length_prop length_append less_Suc_eq list.size(3) list.size(4) nth_append plus_1_eq_Suc) 
+          
       hence "is_increase_list l_jump2' l_pc2'"
-        by (smt (verit, best) One_nat_def b5 add.commute b2_0 b3 b4 is_increase_list_def length_append less_Suc_eq list.size(3) list.size(4) nth_append plus_1_eq_Suc word_less_nat_alt) 
+        using b6 b7 is_increase_list_def by simp
       then show ?thesis using b0 Cons by blast
     qed
   qed
@@ -139,9 +146,9 @@ next
     case False
     have b2_0:"l_jump2' = l_jump1@ [(of_nat (length l_pc1), of_nat (length l_pc1) + (fst (snd a)))]" 
       using False b1 by (smt (verit, ccfv_threshold) old.prod.case prod.collapse) 
-    hence " (\<forall> idx. idx \<ge>0 \<and> idx < length l_jump1 \<longrightarrow> unat (fst (l_jump1!idx)) <  (length l_pc1))" using a2 b0 False a3 l_jump_elem_increases a3 b0 is_increase_list_def by blast
-    hence b2_1:" (\<forall> idx. idx \<ge>0 \<and> idx < length l_jump1 \<longrightarrow> unat (fst (l_jump1!idx)) \<noteq>  (length l_pc1))" by fastforce
-    have b2_2:"unat(of_nat (length l_pc1)) = (length l_pc1)" sorry
+    hence " (\<forall> idx. idx \<ge>0 \<and> idx < length l_jump1 \<longrightarrow> nat (fst (l_jump1!idx)) <  (length l_pc1))" using a2 b0 False a3 l_jump_elem_increases a3 b0 is_increase_list_def by blast
+    hence b2_1:" (\<forall> idx. idx \<ge>0 \<and> idx < length l_jump1 \<longrightarrow> nat (fst (l_jump1!idx)) \<noteq>  (length l_pc1))" by fastforce
+    have b2_2:"nat(of_nat (length l_pc1)) = (length l_pc1)" by auto
     hence "\<forall> elem1 elem2. (elem1,elem2) \<in> set l_jump1 \<longrightarrow> elem1 \<noteq> of_nat (length l_pc1)" using b2_1 b2_2
       by (metis eq_fst_iff in_set_conv_nth le0) 
     hence "\<forall> elem1. elem1 \<in> set (map fst l_jump1) \<longrightarrow> elem1 \<noteq> of_nat (length l_pc1)" by auto
@@ -164,7 +171,7 @@ lemma l_jump_elem_increases:
 lemma flattern_jump_index_easy:
   "jitflat_bpf lt (l1,l_pc1,l_jump1) = (l_bin,l_pc,l_jump) \<Longrightarrow>
   lt!(unat pc) = (num,off,l) \<Longrightarrow>
-  find_target_pc_in_l_pc l_jump (of_nat(length(l_pc1))+pc) = Some npc \<Longrightarrow>
+  find_target_pc_in_l_pc l_jump (of_nat(length(l_pc1))+uint pc) = Some npc \<Longrightarrow>
   lt \<noteq> [] \<Longrightarrow>
   pc = 0 \<Longrightarrow>
   distinct (map fst l_jump1) \<Longrightarrow>
@@ -174,14 +181,14 @@ lemma flattern_jump_index_easy:
 proof-
   assume a0:"jitflat_bpf lt (l1,l_pc1,l_jump1) = (l_bin,l_pc,l_jump)" and
   a1:"lt!(unat pc) = (num,off,l)" and
-  a2:"find_target_pc_in_l_pc l_jump (of_nat(length(l_pc1))+pc) = Some npc" and
+  a2:"find_target_pc_in_l_pc l_jump (int(length(l_pc1))+uint pc) = Some npc" and
   a3:"lt \<noteq> []" and
   a4:"pc = 0" and
   a5:"distinct (map fst l_jump1)" and
   a6:"jitflat_bpf somelt init_second_layer = (l1, l_pc1, l_jump1)" and
   a6_1:"is_increase_list l_jump1 l_pc1"
   let "?xs" = "tl lt"
-  let "?len" = "of_nat(length(l_pc1))"
+  let "?len" = "(length(l_pc1))"
   have a7:"(num,off,l)#?xs = lt" using a1 a3 a4
     by (metis list.collapse nth_Cons_0 unat_0) 
   have b0:"jitflat_bpf ((num,off,l)#?xs) (l1,l_pc1,l_jump1) = (
@@ -193,7 +200,9 @@ proof-
         l_jump'))" using a0 a4 by auto 
   have b1_1:"l_jump \<noteq> []" using a2 by force 
   have b1:"distinct (map fst l_jump)" using l_jump_is_distinct a0 a5 a6 a6_1 by blast
-  hence b2:"(?len,npc) \<in> set l_jump" using a2 a4 search_l_jump by simp
+  have "int ?len = (int(length(l_pc1))+uint pc)" using a4 by simp
+  hence b2:"(int ?len,npc) \<in> set l_jump" using a2 a4 b1 search_l_jump by auto 
+   (* by (metis bot_nat_0.extremum_strict in_set_conv_nth list.size(3) list_in_list.simps(1) list_in_list.simps(2) list_in_list_implies_set_relation) *)
   have b3:"update_l_jump (num,off,l) l_pc l_jump = (
   if l!1 = (0x39::u8) then l_jump@ [(of_nat (length l_pc), of_nat (length l_pc) + off)]
   else l_jump)" 
@@ -204,25 +213,25 @@ proof-
   thus ?thesis
   proof(cases "l!1 = (0x39::u8)")
     case True
-    have c0_0:"update_l_jump (num,off,l) l_pc1 l_jump1 = l_jump1@[(?len, ?len+off)]" using True b0 update_l_jump_def by simp 
+    have c0_0:"update_l_jump (num,off,l) l_pc1 l_jump1 = l_jump1@[(int ?len, of_nat ?len+off)]" using True b0 update_l_jump_def by simp 
     hence c0_1:"jitflat_bpf ((num,off,l)#?xs) (l1,l_pc1,l_jump1) = (
-        jitflat_bpf ?xs (l1@l,l_pc1@[(of_nat (length l1),num)],l_jump1@[(?len, ?len+off)]))" 
+        jitflat_bpf ?xs (l1@l,l_pc1@[(of_nat (length l1),num)],l_jump1@[(int ?len, of_nat ?len+off)]))" 
       using b0 by presburger  
     have "\<exists> l1' l_pc1' l_jump1'. jitflat_bpf [(num,off,l)] (l1,l_pc1,l_jump1) = (l1',l_pc1',l_jump1') \<and> jitflat_bpf ?xs (l1',l_pc1',l_jump1') = (l_bin,l_pc,l_jump)" 
       using jitflat_bpf_induct a0 a7 by presburger 
     then obtain l1' l_pc1' l_jump1' where c0:"jitflat_bpf [(num,off,l)] (l1,l_pc1,l_jump1) = (l1',l_pc1',l_jump1') \<and> jitflat_bpf ?xs (l1',l_pc1',l_jump1') = (l_bin,l_pc,l_jump)" by auto
-    hence c1:"l_jump1' = l_jump1@[(?len, ?len+off)]" using c0 c0_1 c0_0 by simp
-    hence "list_in_list (l_jump1@[(?len, ?len+off)]) 0 l_jump" using a0 a7 not_change_prefix_l_jump b1_1 c1 c0 by blast
-    hence "list_in_list [(?len, ?len+off)] (length l_jump1) l_jump" by (simp add: list_in_list_concat) 
-    hence "(?len,?len+off) \<in> set l_jump" using list_in_list_implies_set_relation by metis 
-    hence "npc = off + ?len+pc" using a4 a2 b1 b2 eq_key_imp_eq_value by (metis add.commute add.right_neutral) 
+    hence c1:"l_jump1' = l_jump1@[(int ?len, of_nat ?len+off)]" using c0 c0_1 c0_0 by simp
+    hence "list_in_list (l_jump1@[(int ?len, of_nat ?len+off)]) 0 l_jump" using a0 a7 not_change_prefix_l_jump b1_1 c1 c0 by blast
+    hence "list_in_list [(int ?len, of_nat ?len+off)] (length l_jump1) l_jump" by (simp add: list_in_list_concat) 
+    hence "(int ?len, of_nat ?len+off) \<in> set l_jump" sorry (*using list_in_list_implies_set_relation by metis*)
+    hence "npc = off + of_nat ?len+pc" using a4 a2 b1 b2 eq_key_imp_eq_value by (metis add.commute add.right_neutral) 
     then show ?thesis by simp
   next
     case False
     have "update_l_jump (num,off,l) l_pc1 l_jump1 = l_jump1" using False b0 update_l_jump_def by simp
     hence "jitflat_bpf ((num,off,l)#?xs) (l1,l_pc1,l_jump1) = jitflat_bpf ?xs (l1@l,l_pc1@[(of_nat (length l1),num)],l_jump1)"  using b0 init_second_layer_def by fastforce
-    hence "\<not>(\<exists> x. x \<in> set l_jump \<and> fst x = (?len+pc))" using b4 a3 a0 l_jump_elem_increases a3 a6 is_increase_list_def a6_1 sorry
-    hence "find_target_pc_in_l_pc l_jump (?len+pc) = None" using a4 b2 by auto
+    hence "\<not>(\<exists> x. x \<in> set l_jump \<and> fst x = (int ?len+uint pc))" using b4 a3 a0 l_jump_elem_increases a3 a6 is_increase_list_def a6_1 sorry
+    hence "find_target_pc_in_l_pc l_jump (int ?len+uint pc) = None" using a4 b2 by auto
 
     then show ?thesis using a2 by fastforce 
   qed
@@ -235,7 +244,7 @@ lemma flattern_jump_index:
   jitflat_bpf somelt init_second_layer = (l1, l_pc1, l_jump1) \<Longrightarrow>
   unat pc < length lt \<and> unat pc \<ge> 0  \<Longrightarrow>
   is_increase_list l_jump1 l_pc1 \<Longrightarrow>
-  find_target_pc_in_l_pc l_jump (of_nat (length l_pc1) + pc) = Some npc \<longrightarrow> npc = off + (of_nat (length l_pc1) + pc)"
+  find_target_pc_in_l_pc l_jump (of_nat (length l_pc1) + uint pc) = Some npc \<longrightarrow> npc = off + (of_nat (length l_pc1) + pc)"
   proof(induct lt arbitrary: l1 l_pc1 l_jump1 l_bin l_pc l_jump pc num off l somelt npc)
     case Nil
     then show ?case by simp
@@ -267,16 +276,16 @@ lemma flattern_jump_index:
         then obtain l2' l_pc2' l_jump2' where b3_1:"jitflat_bpf [a] (l1,l_pc1,l_jump1) = (l2',l_pc2',l_jump2') \<and> jitflat_bpf lt (l2',l_pc2',l_jump2') = (l_bin,l_pc,l_jump)" by auto
         
         have "jitflat_bpf lt (l1,l_pc1,l_jump1) = (l_bin, l_pc, l_jump) \<Longrightarrow> lt ! unat pc = (num, off, l) \<Longrightarrow> distinct (map fst l_jump1) \<Longrightarrow>
-        unat pc < length lt \<and> (0::nat) \<le> unat pc \<Longrightarrow> find_target_pc_in_l_pc l_jump (of_nat (length l_pc1)+ pc) = Some npc \<Longrightarrow> npc = off + (of_nat (length l_pc1) + pc)" using Cons by blast
+        unat pc < length lt \<and> (0::nat) \<le> unat pc \<Longrightarrow> find_target_pc_in_l_pc l_jump (of_nat (length l_pc1)+ uint pc) = Some npc \<Longrightarrow> npc = off + (of_nat (length l_pc1) + pc)" using Cons by blast
 
         have b4_0:"jitflat_bpf (somelt@[a]) init_second_layer = (l2',l_pc2',l_jump2')" 
           using assm4 b3_1 by (metis (no_types, opaque_lifting) jitflat_bpf_induct3 prod_cases3) 
         have "distinct (map fst l_jump2')" using l_jump_is_distinct b3_1 assm0 assm2 assm4 assm5 by blast
-        hence b4:"find_target_pc_in_l_pc l_jump ((of_nat (length l_pc2'))+?pc) = Some npc \<longrightarrow> npc = off + ((of_nat (length l_pc2'))+?pc)" using Cons b1 b2 b3_1 b4_0 l_jump_elem_increases by blast 
+        hence b4:"find_target_pc_in_l_pc l_jump ((of_nat (length l_pc2'))+uint ?pc) = Some npc \<longrightarrow> npc = off + ((of_nat (length l_pc2'))+?pc)" using Cons b1 b2 b3_1 b4_0 l_jump_elem_increases by blast 
         have b5:"length l_pc2' = length l_pc1 + 1" using b3_1 l_pc_length_prop by force
         
-        have "find_target_pc_in_l_pc l_jump ((of_nat (length l_pc1))+pc) = Some npc \<longrightarrow> npc = off +  ((of_nat (length l_pc1))+pc)" 
-          using b4 b5 by auto
+        have "find_target_pc_in_l_pc l_jump ((of_nat (length l_pc1))+uint pc) = Some npc \<longrightarrow> npc = off +  ((of_nat (length l_pc1))+pc)" 
+          using b4 b5 by (smt (verit, best) a1 add.commute diff_add_cancel group_cancel.add2 of_nat_1 of_nat_add uint_sub_lem unsigned_1 word_less_eq_iff_unsigned) 
         then show ?thesis by force 
       qed
     qed
@@ -309,7 +318,7 @@ proof-
   have b0:"(?num, ?off, ?l) = lt!(unat pc)" by simp
  
   let "?xpc" = "fst (l_pc ! (unat pc))"
-  have c0:"list_in_list ?l (unat ?xpc) l_bin" 
+  have c0:"list_in_list ?l (nat ?xpc) l_bin" 
     using flattern_l_bin0 init_second_layer_def a1 b0 a4 a7 a8 by metis
   let "?prefix" = "take (unat pc) lt"
   let "?suffix" = "drop (unat pc+1) lt"
@@ -323,7 +332,7 @@ proof-
   hence c2:"fxst' = (
   if unat pc \<ge> length l_pc \<or> unat pc < 0 then (pc,Stuck) else 
   let num = snd (l_pc!(unat pc)) in 
-  let old_xpc = unat (fst (l_pc!(unat pc))) in 
+  let old_xpc = nat (fst (l_pc!(unat pc))) in 
         if xpc1 \<noteq> old_xpc then (pc, Stuck) else 
         if l_bin!(xpc1+1) = (0x39::u8) then \<comment>\<open> TODO: if the first byte is the opcode of cmp? \<close>
           \<comment>\<open> case: BPF JMP \<close>
@@ -331,10 +340,10 @@ proof-
           Stuck \<Rightarrow> (pc, Stuck) | \<comment>\<open> if one step error, stop, it should be impossible \<close>
           Next xpc1 rs1 m1 ss1 \<Rightarrow> (
             if rs1 (CR ZF) = 1 then \<comment>\<open> must JUMP \<close>
-              (case find_target_pc_in_l_pc l_jump pc of
+              (case find_target_pc_in_l_pc l_jump (uint pc) of
               None \<Rightarrow> (pc, Stuck) |
               Some npc \<Rightarrow>
-                (npc, (Next (unat (fst (l_pc!(unat npc)))) rs1 m1 ss1))) \<comment>\<open> go to the target address in the jited x64 binary \<close>
+                (npc, (Next (nat (fst (l_pc!(unat npc)))) rs1 m1 ss1))) \<comment>\<open> go to the target address in the jited x64 binary \<close>
             else \<comment>\<open> donot JUMP \<close>
               (pc+1, Next xpc1 rs1 m1 ss1)
           ))
@@ -365,7 +374,7 @@ proof-
 
   have e3:"fst (l_pc ! (unat pc)) = of_nat(length l2')" using e2 l_pc_length_prop a1 a7 b0 e0 e1 a4 init_second_layer_def not_change_prefix_l_pc sorry*)
 
-  have c1:"unat ?xpc= xpc1" using a8 c2 a9 by (smt (verit, ccfv_SIG) snd_conv) 
+  have c1:"nat ?xpc= xpc1" using a8 c2 a9 by (smt (verit, ccfv_SIG) snd_conv) 
 
   have "xxst' = perir_step lt (pc,xxst)" using a2 by (metis One_nat_def perir_sem.simps(1) perir_sem.simps(2) split_pairs)
 
@@ -437,10 +446,10 @@ proof-
           Stuck \<Rightarrow> (pc, Stuck) | \<comment>\<open> if one step error, stop, it should be impossible \<close>
           Next xpc1 rs1 m1 ss1 \<Rightarrow> (
             if rs1 (CR ZF) = 1 then \<comment>\<open> must JUMP \<close>
-              (case find_target_pc_in_l_pc l_jump pc of
+              (case find_target_pc_in_l_pc l_jump (uint pc) of
               None \<Rightarrow> (pc, Stuck) |
               Some npc \<Rightarrow>
-                (npc, (Next (unat (fst (l_pc!(unat npc)))) rs1 m1 ss1))) \<comment>\<open> go to the target address in the jited x64 binary \<close>
+                (npc, (Next (nat (fst (l_pc!(unat npc)))) rs1 m1 ss1))) \<comment>\<open> go to the target address in the jited x64 binary \<close>
             else \<comment>\<open> donot JUMP \<close>
               (pc+1, Next xpc1 rs1 m1 ss1)
           )) " using True a0 c2 a7 c1 a9 by auto    
@@ -463,13 +472,14 @@ proof-
             case True
             have d5_0: "xrs1 (CR ZF) = 1" using True by auto
             thus ?thesis
-            proof(cases "find_target_pc_in_l_pc l_jump pc \<noteq> None")
+            proof(cases "find_target_pc_in_l_pc l_jump (uint pc) \<noteq> None")
               case True
-                have "\<exists> npc. find_target_pc_in_l_pc l_jump pc = Some npc" using True by simp
-                then obtain npc where d5_1:"find_target_pc_in_l_pc l_jump pc = Some npc" by auto
+                have "\<exists> npc. find_target_pc_in_l_pc l_jump (uint pc) = Some npc" using True by simp
+                then obtain npc where d5_1:"find_target_pc_in_l_pc l_jump (uint pc) = Some npc" by auto
                 hence d5:"npc = ?off+pc" using a1 a4 b0 a7 flattern_jump_index init_second_layer_def l_jump_upperbound_aux is_increase_list_empty
-                  by (metis (mono_tags, lifting) Abs_fnat_hom_0 add_0 distinct.simps(1) length_0_conv map_is_Nil_conv) 
-                have d6_0:"fxst' =  (npc, (Next (unat (fst (l_pc!(unat npc)))) xrs1 xm1 xss1))" 
+                  by (metis (mono_tags, lifting) add_cancel_left_left distinct.simps(1) list.size(3) map_is_Nil_conv of_nat_unat unsigned_0)                  
+                  
+                have d6_0:"fxst' =  (npc, (Next (nat (fst (l_pc!(unat npc)))) xrs1 xm1 xss1))" 
                   using d5_0 d5_1 True d4_0 d1 d2_0 d4 by (smt (verit, best) option.simps(5) outcome.simps(4))
                 have d6_1:"xxst' = (?off+pc, xxst1)"
                   by (smt (verit, ccfv_threshold) d0 d2_1 d4_1 d5_0 outcome.simps(4)) 
@@ -479,7 +489,7 @@ proof-
                 then show ?thesis using match_state_def d6_0 d6_1 match_state1_def \<open>\<And>thesis::bool. (\<And>xpc''::nat. Next xpc'' (xrs1::preg \<Rightarrow> 64 word) (xm1::nat \<Rightarrow> int \<Rightarrow> 8 word option) (xss1::stack_state) = (xxst1::outcome) \<Longrightarrow> thesis) \<Longrightarrow> thesis\<close> by fastforce 
                next
                  case False
-                 have "find_target_pc_in_l_pc l_jump pc = None" using False by simp
+                 have "find_target_pc_in_l_pc l_jump (uint pc) = None" using False by simp
                  hence "fxst' = (pc,Stuck)" using a9
                    by (smt (verit, ccfv_SIG) d1 d2_0 d4 d4_0 d5_0 option.case_eq_if outcome.simps(4)) 
                 then show ?thesis using a9 by auto
@@ -491,7 +501,6 @@ proof-
               have d5_2:"fxst' = (pc+1, fxst1)" 
                 using d5_0 by (smt (verit, ccfv_threshold) d1 d2_0 d4 d4_0 outcome.simps(4)) 
             then show ?thesis using d5_1 d5_2 match_state_def d2 d3 d4_1 by force 
-
         qed
 
         (*hence bn_0:"x64_decode 0 ?l \<noteq> None" using a6 apply(cases "x64_decode 0 ?l",simp_all) using bn_2

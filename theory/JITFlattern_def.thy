@@ -1,11 +1,11 @@
 theory JITFlattern_def
   imports JITPer
 begin
-type_synonym flat_bpf_prog = "x64_bin \<times> (u64 \<times> nat) list \<times> ((u64\<times>u64) list)"
+type_synonym flat_bpf_prog = "x64_bin \<times> (int \<times> nat) list \<times> ((int\<times>u64) list)"
 
-definition update_l_jump::"(nat \<times> u64 \<times> x64_bin) \<Rightarrow> (u64 \<times> nat) list \<Rightarrow> (u64\<times>u64) list \<Rightarrow> (u64\<times>u64) list" where
+definition update_l_jump::"(nat \<times> u64 \<times> x64_bin) \<Rightarrow> (int \<times> nat) list \<Rightarrow> (int\<times>u64) list \<Rightarrow> (int\<times>u64) list" where
 "update_l_jump x l_pc l_jump \<equiv> let (num,off,l_bin0) = x in 
-  if l_bin0!1 = (0x39::u8) then l_jump@ [(of_nat (length l_pc), of_nat (length l_pc) + off)]
+  if l_bin0!1 = (0x39::u8) then l_jump@ [(of_nat (length l_pc), of_nat (length l_pc) +  off)]
   else l_jump"
 
 fun jitflat_bpf :: "(nat \<times> u64 \<times> x64_bin) list \<Rightarrow> flat_bpf_prog \<Rightarrow> flat_bpf_prog" where
@@ -19,7 +19,7 @@ fun jitflat_bpf :: "(nat \<times> u64 \<times> x64_bin) list \<Rightarrow> flat_
         l_jump')
 )"
 
-definition init_second_layer::"x64_bin \<times> (u64 \<times> nat) list \<times> ((u64\<times>u64) list)" where
+definition init_second_layer::"x64_bin \<times> (int \<times> nat) list \<times> ((int\<times>u64) list)" where
 "init_second_layer \<equiv> ([],[],[])"
 
 (*fun well_formed_prog_aux::"(nat \<times> u64 \<times> x64_bin) list \<Rightarrow> bool" where
@@ -35,17 +35,22 @@ definition well_formed_prog::"(nat \<times> u64 \<times> x64_bin) list \<Rightar
 
 value "well_formed_prog [(1,0,[3])]"*)
 
+value "int (1::nat)"
+value "nat (1::int)"
+
 definition well_formed_prog::"(nat \<times> u64 \<times> x64_bin) list \<Rightarrow> bool" where
 "well_formed_prog lt \<equiv> (length lt \<le> 100000 \<and> lt \<noteq> [] \<and> 
   (\<forall> id. id < length lt \<and> id \<ge>0 \<longrightarrow> snd(snd (lt!id)) \<noteq> [] \<and> fst(lt!id) >0) \<and>
   (\<forall> idx. idx \<ge> 0 \<and> idx < length (map snd (map snd lt)) \<longrightarrow> length ((map snd (map snd lt))!idx) \<le> 10))"
 
-fun find_target_pc_in_l_pc :: "((u64\<times>u64) list) \<Rightarrow> u64 \<Rightarrow> u64 option" where
+fun find_target_pc_in_l_pc :: "((int\<times>u64) list) \<Rightarrow> int \<Rightarrow> u64 option" where
 "find_target_pc_in_l_pc [] _ = None" |
 "find_target_pc_in_l_pc ((x, y)#xs) pc = (
   if x = pc then Some y
   else find_target_pc_in_l_pc xs pc
 )"
+
+(*value "((of_int (1::int))::nat)"*)
 
 (*if unat pc \<ge> length lp \<or> unat pc < 0 then (pc,Stuck) else *)
 definition flat_bpf_one_step :: "flat_bpf_prog \<Rightarrow> hybrid_state \<Rightarrow> hybrid_state" where
@@ -57,7 +62,7 @@ definition flat_bpf_one_step :: "flat_bpf_prog \<Rightarrow> hybrid_state \<Righ
     Next xpc rs m ss \<Rightarrow> (
     if unat pc \<ge> length l_pc \<or> unat pc < 0 then (pc,Stuck) else 
     let num = snd (l_pc!(unat pc)) in 
-    let old_xpc = unat (fst (l_pc!(unat pc))) in 
+    let old_xpc = nat (fst (l_pc!(unat pc))) in 
       if xpc \<noteq> old_xpc then (pc, Stuck) else 
         if l_bin!(xpc+1) = (0x39::u8) then \<comment>\<open> TODO: if the first byte is the opcode of cmp? \<close>
           \<comment>\<open> case: BPF JMP \<close>
@@ -65,10 +70,10 @@ definition flat_bpf_one_step :: "flat_bpf_prog \<Rightarrow> hybrid_state \<Righ
           Stuck \<Rightarrow> (pc, Stuck) | \<comment>\<open> if one step error, stop, it should be impossible \<close>
           Next xpc1 rs1 m1 ss1 \<Rightarrow> (
             if rs1 (CR ZF) = 1 then \<comment>\<open> must JUMP \<close>
-              (case find_target_pc_in_l_pc l_jump pc of
+              (case find_target_pc_in_l_pc l_jump (uint pc) of
               None \<Rightarrow> (pc, Stuck) |
               Some npc \<Rightarrow>
-                (npc, (Next (unat (fst (l_pc!(unat npc)))) rs1 m1 ss1))) \<comment>\<open> go to the target address in the jited x64 binary \<close>
+                (npc, (Next (nat (fst (l_pc!(unat npc)))) rs1 m1 ss1))) \<comment>\<open> go to the target address in the jited x64 binary \<close>
             else \<comment>\<open> donot JUMP \<close>
               (pc+1, (Next xpc1 rs1 m1 ss1))
           ))
