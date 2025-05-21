@@ -36,6 +36,23 @@ lemma match_state1_prop:
             by(cases "storev M64 xm (Vptr sp_block (xrs (IR SP) - u64_of_memory_chunk M64)) (Vlong (ucast x21a))",simp_all)
           done
 
+(*lemma x64_bin_is_sequential_x64_decode2:
+  "per_jit_ins ins = Some (num,off,l) \<Longrightarrow> 
+  x64_decode 0 l \<noteq> None \<Longrightarrow> 
+  x64_decode 0 l \<noteq> Some (1,Pret) \<Longrightarrow> 
+  (\<not>(\<exists> src dst. x64_decode 0 l = Some(3, Pcmpq_rr src dst))) \<Longrightarrow> 
+  (\<not>(\<exists> d. x64_decode 0 l = Some(5, Pcall_i d))) \<Longrightarrow>
+  \<exists> n. x64_bin_is_sequential n l 0"
+  using x64_encode_decode_consistency 
+  apply(unfold per_jit_ins_def,simp_all)
+apply(unfold per_jit_load_reg64_def per_jit_add_reg64_1_def per_jit_add_imm64_1_def  per_jit_sub_reg64_1_def per_jit_mov_reg64_1_def 
+per_jit_or_reg64_1_def per_jit_and_reg64_1_def per_jit_xor_reg64_1_def per_jit_mul_reg64_def per_jit_jcc_def per_jit_shift_lsh_reg64_def per_jit_shift_rsh_reg64_def
+per_jit_shift_arsh_reg64_def per_jit_load_reg64_def  per_jit_store_reg64_def per_jit_call_reg_def per_jit_exit_def Let_def)
+  apply(cases ins,simp_all)
+  sorry
+  subgoal for x21 x22 x23 x24 apply(cases "x64_decode 0 l",simp_all)
+    subgoal for a *)
+
 
 lemma one_step_equiv_layer1:
   assumes a0:"flat_bpf_sem 1 (l_bin,l_pc,l_jump) (pc, fxst) = fxst'" and
@@ -47,14 +64,15 @@ lemma one_step_equiv_layer1:
    a6:"snd xxst' \<noteq> Stuck" and
    a7:"unat pc < length lt \<and> unat pc \<ge> 0" and 
    a8:"well_formed_prog lt" and
-   a9:"snd fxst' \<noteq> Stuck"
+   a9:"snd fxst' \<noteq> Stuck" and
+   a10:"jitper insns = Some lt "
   shows"JITFlattern_def.match_state xxst' fxst'"
 proof-
   have "\<exists> xpc1. fxst = Next xpc1 xrs xm xss" using a3 a5 
     apply(unfold JITFlattern_def.match_state_def match_state1_def) 
     apply(cases fxst,simp_all)
     done
-  then obtain xpc1 where a10:"fxst = Next xpc1 xrs xm xss" by auto
+  then obtain xpc1 where a11:"fxst = Next xpc1 xrs xm xss" by auto
 
   let "?curr_ins" = "lt!(unat pc)"
   let "?num" = "fst (lt!(unat pc))"
@@ -74,7 +92,7 @@ proof-
   hence "?prefix@((?num,?off,?l)#?suffix)= lt" by simp
 
 
-  have "fxst' = flat_bpf_one_step (l_bin,l_pc,l_jump) (pc, Next xpc1 xrs xm xss)" using a0 a10
+  have "fxst' = flat_bpf_one_step (l_bin,l_pc,l_jump) (pc, Next xpc1 xrs xm xss)" using a0 a11
     by (metis One_nat_def flat_bpf_sem.simps(1) flat_bpf_sem.simps(2) old.prod.exhaust) 
   hence c2:"fxst' = (
   if unat pc \<ge> length l_pc \<or> unat pc < 0 then (pc,Stuck) else 
@@ -98,28 +116,9 @@ proof-
           \<comment>\<open> case: NOT BPF JMP \<close>
           (pc+1, x64_sem num l_bin (Next xpc1 xrs xm xss)))" 
     apply(unfold flat_bpf_one_step_def Let_def) 
-    using a3 a10 apply(cases "Next xpc1 xrs xm xss",simp_all)
+    using a3 a11 apply(cases "Next xpc1 xrs xm xss",simp_all)
     (*subgoal for x11 by meson *)
     done
-
- (* hence "\<exists> l2' l_pc2' l_jump2'. jitflat_bpf ?prefix init_second_layer = (l2', l_pc2', l_jump2') \<and> 
-         jitflat_bpf ((?num,?off,?l)#?suffix) (l2', l_pc2', l_jump2') = (l_bin,l_pc,l_jump)" 
-    using init_second_layer_def jitflat_bpf_induct3 by (metis a1) 
-
-  then obtain l2' l_pc2' l_jump2' where e0:"jitflat_bpf ?prefix init_second_layer = (l2', l_pc2', l_jump2') \<and> 
-         jitflat_bpf ((?num,?off,?l)#?suffix) (l2', l_pc2', l_jump2') = (l_bin,l_pc,l_jump)" by auto
-
-  have e1:"jitflat_bpf ((?num,?off,?l)#?suffix) (l2', l_pc2', l_jump2') = (
-    let l_jump' = update_l_jump (?num,?off,?l) l_pc2' l_jump2' in
-        jitflat_bpf ?suffix (
-          l2'@?l,
-          l_pc2'@[(of_nat(length l2'),?num)],
-          l_jump')
-  )" using a1 init_second_layer_def of_nat_def using jitflat_bpf.simps(2) by presburger   
-
-  have e2:"list_in_list l_pc2' 0 l_pc" using not_change_prefix_l_pc e0 e1 by blast
-
-  have e3:"fst (l_pc ! (unat pc)) = of_nat(length l2')" using e2 l_pc_length_prop a1 a7 b0 e0 e1 a4 init_second_layer_def not_change_prefix_l_pc sorry*)
 
   have c1:"nat ?xpc= xpc1" using a8 c2 a9 by (smt (verit, ccfv_SIG) snd_conv) 
 
@@ -226,7 +225,7 @@ proof-
           by (metis (no_types, lifting) Suc_diff_1 bn_2 option.simps(4) x64_sem.simps(3)) 
 
         have b7_0:"\<exists> src dst. x64_decode 0 ?l = Some(3, Pcmpq_rr src dst)" using is_cmp_insn True bn_1 d2_5 by simp
-        have b7:"?num = 1" using jit_prog_prop2 sorry
+        have b7:"?num = 1" using a10 b7_0 by (metis a7 b0 jit_prog_prop4)  
         hence d2_2:"fxst1 = (case x64_decode xpc1 l_bin of
           None \<Rightarrow> Stuck |
           Some (sz, ins) \<Rightarrow>
@@ -292,14 +291,6 @@ proof-
             then show ?thesis using d5_1 d5_2 JITFlattern_def.match_state_def d2 d3 d4_1 by force 
         qed
 
-        (*hence bn_0:"x64_decode 0 ?l \<noteq> None" using a6 apply(cases "x64_decode 0 ?l",simp_all) using bn_2
-          by (metis (no_types, lifting) Suc_diff_1 option.simps(4) outcome.simps(5) prod.collapse prod.inject x64_sem.simps(3)) 
-        have bn_3:"x64_decode 0 ?l \<noteq> Some(1,Pret)" using is_ret_insn bn_0 bn_1 
-          by (metis Pair_inject True add_0 is_cmp_insn numeral_eq_one_iff option.sel semiring_norm(86))
-
-        have bn_4:"\<forall> d. x64_decode 0 ?l \<noteq> Some(5, Pcall_i d)"  using is_call_insn bn_0 bn_1 b5 
-          using True is_cmp_insn by fastforce *)
-       
       next
         case False
         have b6:"x64_decode 0 ?l \<noteq> Some(1,Pret) \<and> (\<not>(\<exists> d. x64_decode 0 ?l = Some(5, Pcall_i d))) \<and> (\<not> (\<exists> src dst. x64_decode 0 ?l = Some(3, Pcmpq_rr src dst)))" 
@@ -312,10 +303,6 @@ proof-
           hence "x64_decode 0 ?l \<noteq> Some(1,Pret) \<and> (\<forall> d. x64_decode 0 ?l \<noteq> Some(5, Pcall_i d)) \<and> (\<forall> src dst. x64_decode 0 ?l \<noteq> Some(3, Pcmpq_rr src dst))"
             using not_ret_insn not_call_insn not_cmp_insn bn_1 b6 by simp
 
-          (*have bn_3:"x64_decode 0 ?l \<noteq> Some(1,Pret)" using is_ret_insn bn_0 bn_1 b6          
-
-          have bn_4:"\<forall> d. x64_decode 0 ?l \<noteq> Some(5, Pcall_i d)"  using is_call_insn bn_0 bn_1 b5
-          using True is_cmp_insn by fastforce *)
           have "\<not> (\<exists> src dst. x64_decode xpc1 l_bin = Some(3, Pcmpq_rr src dst))" using b6 list_in_list_prop2 bn_0 c3_0 by fastforce
           hence c4:"fxst' = (let num = snd (l_pc!(unat pc)) in (pc+1, x64_sem num l_bin (Next xpc1 xrs xm xss)))"
             using c2 b6  a1 a7 add.right_neutral c1 init_second_layer_def l_pc_length_prop a9
@@ -324,9 +311,10 @@ proof-
 
           have c5:"fxst' = (pc+1, x64_sem ?num l_bin (Next xpc1 xrs xm xss))"using b0 c5_1 a1 init_second_layer_def c4 a6 a7
             by (metis (mono_tags, lifting) flattern_num)
-            
-          have cn:"match_state1 (snd xxst') (snd fxst')" using c5 d0 c3_0 list_in_list_prop3 sorry
-            (*by (metis add.right_neutral assms(7) snd_conv)*)
+
+          have c6:"x64_bin_is_sequential (length ?l) ?l 0" using a10 x64_bin_is_sequential_x64_decode2 b6 a7 b0 bn_0 by metis
+
+          have cn:"match_state1 (snd xxst') (snd fxst')" using c5 d0 c3_0 list_in_list_prop3 c6 a6 a9 by (metis add.right_neutral snd_conv) 
             
           have "fst fxst' = pc+1" using c5 by auto
           moreover have d2:"fst xxst' = pc+1" using d0 by auto
@@ -385,8 +373,9 @@ lemma n_steps_equiv_layer1:
   lt \<noteq> [] \<Longrightarrow> 
   well_formed_prog lt \<Longrightarrow>
   snd fxst' = Next xpc'' xrs'' xm'' xss'' \<Longrightarrow>
+  jitper insns = Some lt \<Longrightarrow>
   JITFlattern_def.match_state xxst' fxst'"
-proof(induct n arbitrary: prog pc fxst fxst' lt xxst xxst' xpc xrs xm xss xxst' xpc' xrs' xm' xss' xpc'' xrs'' xm'' xss'')
+proof(induct n arbitrary: prog pc fxst fxst' lt xxst xxst' xpc xrs xm xss xxst' xpc' xrs' xm' xss' xpc'' xrs'' xm'' xss'' insns)
   case 0
   then show ?case apply(unfold JITFlattern_def.match_state_def,simp_all) 
     done
@@ -402,7 +391,8 @@ next
   assm6:"JITFlattern_def.match_state (pc,xxst) (pc,fxst)" and
 (*  assm7:"unat pc < length lt \<and> unat pc \<ge> 0" and*)
   assm7:"well_formed_prog lt" and
-  assm8:"snd fxst' = Next xpc'' xrs'' xm'' xss''"
+  assm8:"snd fxst' = Next xpc'' xrs'' xm'' xss''" and
+  assm9:"jitper insns = Some lt"
  
   have "\<exists> next_s. next_s = perir_sem 1 lt (pc,xxst)" by simp
   then obtain next_s pc' where b0:"next_s = perir_sem 1 lt (pc,xxst)" by auto
@@ -430,7 +420,7 @@ next
   hence c0:"(unat pc < length lt \<and> unat pc \<ge> 0)" using l_pc_length_prop  init_second_layer_def assm1
     by (metis add.right_neutral list.size(3) prod.collapse) 
   have bn:"JITFlattern_def.match_state next_s next_f"
-    using one_step_equiv_layer1 b1 assm1 b0 assm3 assm5 assm6 a1 c0 assm8 c0_1 assm7
+    using one_step_equiv_layer1 b1 assm1 b0 assm3 assm5 assm6 a1 c0 assm8 c0_1 assm7 assm9
     by (metis outcome.distinct(1) prod.collapse snd_conv) 
 
   have a2:"(pc', snd next_f) = next_f" using bn JITFlattern_def.match_state_def a1 b0 b1
@@ -446,5 +436,12 @@ next
     using a0 a1 a2 Suc bn c1 assm5 assm4 by metis
   then show ?case by simp
 qed
+
+
+
+
+
+
+
 
 end

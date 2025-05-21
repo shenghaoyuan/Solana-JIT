@@ -624,7 +624,9 @@ lemma jit_prog_prop4:
 
 lemma "jitper insns = Some lt \<Longrightarrow> lt \<noteq> [] \<Longrightarrow> well_formed_prog1 lt"
   using jit_prog_prop3 well_formed_prog1_def sorry
-             
+
+
+
 (*
 lemma jit_prog_prop1:"x64_encode ins \<noteq> undefined \<Longrightarrow>  x64_encode ins \<noteq> []"
   apply(unfold x64_encode_def)

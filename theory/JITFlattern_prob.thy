@@ -436,4 +436,14 @@ lemma not_cmp_insn:"l\<noteq>[] \<Longrightarrow> l!(pc+1) \<noteq> 0x39 \<Longr
   apply (cases "ireg_of_u8 (bitfield_insert_u8 (3::nat) (Suc 0) (and (7::8 word) (l ! Suc (Suc pc))) (and 1 (l ! pc)))"; simp)
   by auto
 
+lemma x64_bin_is_sequential_x64_decode2:
+  "jitper insns = Some lt \<Longrightarrow> 
+  lt!(unat pc) = (num,off,l_bin0) \<Longrightarrow>
+  unat pc < length lt \<and> unat pc \<ge> 0 \<Longrightarrow>
+  x64_decode 0 l \<noteq> None \<Longrightarrow> 
+  x64_decode 0 l \<noteq> Some (1,Pret) \<Longrightarrow> 
+  (\<not>(\<exists> src dst. x64_decode 0 l = Some(3, Pcmpq_rr src dst))) \<Longrightarrow> 
+  (\<not>(\<exists> d. x64_decode 0 l = Some(5, Pcall_i d))) \<Longrightarrow>
+  x64_bin_is_sequential (length l) l 0"
+  sorry
 end
