@@ -175,32 +175,22 @@ proof-
     then have c3:"x64_prog!(unat pc) = the (per_jit_jcc cond dst src (scast x))" using a8 per_jit_ins_def by simp
     have c3_0:"per_jit_jcc cond dst src (scast x) = Some (num,off,l)" using c_aux c3 per_jit_jcc_def n0
       by(cases cond,simp_all)     
-    then have c3_1:"num = 1" using per_jit_jcc_def c_aux n0 by(cases cond,simp_all) 
+    then have c3_1:"num = 1" using per_jit_jcc_def c_aux n0 by(cases cond,simp_all)    
+    
+    (*have e3_0:"\<exists> dst src. x64_decode 0 l = Some(Pcmpq_rr dst src" using c_aux c3 n0*)
+    have "l = x64_encode (Pcmpq_rr (bpf_to_x64_reg dst) (bpf_to_x64_reg src))@x64_encode((Pjcc ?tcond 0))" using c3_0 per_jit_jcc_def n0 by simp
+    moreover have "length (x64_encode (Pcmpq_rr (bpf_to_x64_reg dst) (bpf_to_x64_reg src))) = 3" by(unfold x64_encode_def,simp_all)
+    hence e3_1:"x64_decode 0 l = Some(3, (Pcmpq_rr (bpf_to_x64_reg dst) (bpf_to_x64_reg src)))" using x64_encode_decode_consistency list_in_list_prop
+      by (metis calculation eq_Nil_appendI list.size(3) list_in_list_prop_aux2) 
 
-    have e3_0:"l!1 = 0x39" using c_aux c3 n0
-      apply(unfold per_jit_jcc_def Let_def) 
-      apply(cases cond,simp_all)
-      apply(unfold x64_encode_def,simp_all) by auto
-
-    have e3_1:"l!0 \<notin> {0xc3,0xe8}" using c_aux c3 n0
-      apply(unfold per_jit_jcc_def Let_def) 
-      apply(unfold x64_encode_def,simp_all)
-      apply(unfold construct_rex_to_u8_def bitfield_insert_u8_def Let_def u8_of_bool_def,simp_all)
-      apply(cases "and (u8_of_ireg (bpf_to_x64_reg dst)) (8::8 word) \<noteq> (0::8 word)",simp_all)
-       apply(cases "and (u8_of_ireg (bpf_to_x64_reg src)) (8::8 word) \<noteq> (0::8 word)",simp_all)
-        apply auto[1]
-       apply auto[1]
-      apply(cases " and (u8_of_ireg (bpf_to_x64_reg src)) (8::8 word) \<noteq> (0::8 word)",simp_all)
-       apply auto[1]
-      by auto
-    have e3_2:"l!0 \<noteq> 0xc3 \<and> l!0 \<noteq> 0xe8 \<and> l!1 = 0x39" using e3_0 e3_1 by simp
-    have "?st = snd (let xst_temp = Next 0 xrs xm xss; xst' = x64_sem num l xst_temp in
+    have e3_0:"?st = snd (let xst_temp = Next 0 xrs xm xss; xst' = x64_sem num l xst_temp in
         case xst' of Next xpc' rs' m' xss' \<Rightarrow>
             if rs' (CR ZF) = 1 then (off+pc, xst')
           else (pc+1, xst') |
-         Stuck \<Rightarrow> (pc, Stuck))" using c2_1 a3 perir_step_def c_aux e3_0 e3_1 by simp
-    hence e3_1:"?st = x64_sem num ?l_bin (Next 0 xrs xm xss)" using c2_1 c_aux perir_step_def a3
+         Stuck \<Rightarrow> (pc, Stuck))" using c2_1 a3 perir_step_def c_aux e3_1 e3_1 by simp
+    hence e3_2:"?st = x64_sem num ?l_bin (Next 0 xrs xm xss)" using c2_1 c_aux perir_step_def a3
       by (smt (verit, ccfv_threshold) c2 outcome.exhaust outcome.simps(4) outcome.simps(5) snd_conv) 
+    have e3_3:"x64_decode 0 l \<noteq> Some(1,Pret) \<and> (\<exists> d. x64_decode 0 l \<noteq> Some(5, Pcall_i d))" using e3_1 by simp
 
     let "?l_bin1" = "x64_encode (Pcmpq_rr (bpf_to_x64_reg dst) (bpf_to_x64_reg src))"
     let "?l_bin2" = "x64_encode (Pjcc ?tcond 0)"
@@ -213,7 +203,7 @@ proof-
       by (metis d0 list_in_list_concat x64_encode_decode_consistency)
     then obtain xins1 sz1 where d1:"x64_decode 0 ?l_bin = Some (sz1, xins1)" by auto
     have d2:"(sz1,xins1) = (3, Pcmpq_rr (bpf_to_x64_reg dst) (bpf_to_x64_reg src))"  using d0_1 x64_encode_decode_consistency d1 x64_encode_def by fastforce
-    have c4:"?st = exec_instr xins1 (of_nat sz1) 0 xrs xm xss" using c3_1 d2 c1_0 c2 a3 d1 e3_1 by auto 
+    have c4:"?st = exec_instr xins1 (of_nat sz1) 0 xrs xm xss" using c3_1 d2 c1_0 c2 a3 d1 e3_2 by auto 
     have c6:"\<exists> xrs' xpc' xm' xss'. ?st = Next xpc' xrs' xm' xss'" using exec_instr_def spec c4 d2 by simp
     obtain xrs' xpc' xm' xss' where c7:"?st = Next xpc' xrs' xm' xss'" using c6 by auto
   
@@ -234,10 +224,11 @@ proof-
 
     have cn_1:"match_state s (pc,(Next 0 xrs xm xss))" using a4 match_state_eqiv a3 by blast  
     have cn:"x64_sem num l (Next 0 xrs xm xss) = ?st \<and> match_state s' (pc',?st)"
-      using jcc_subgoal_rr_generic a0 a1 a2 c7 per_jit_jcc_def a8 c1_0 d1 c2 e3_1 c3_0 c3 c_aux e0_1 c4 cn_1 a6 by metis
-      
-    have "perir_sem 1 x64_prog (pc,xst) = (pc', Next xpc' xrs' xm' xss')"    
-      using a8 e1 e2 cn a0 a1 a2 a3 a4 a5 a6 c_aux match_state_eqiv c7 x64_sem1_pc_aux2 e3_2 by simp
+      using jcc_subgoal_rr_generic a0 a1 a2 c7 per_jit_jcc_def a8 c1_0 d1 c2 e3_1 c3_0 c3 c_aux e0_1 c4 cn_1 a6 e3_2 by metis
+
+    have "perir_sem 1 x64_prog (pc,xst) = (pc', ?st)"
+      using a0 a1 a2 a3 a4 a5 a6 a8 c7 c_aux cn e1 e2 e3_1 x64_sem1_pc_aux2 by auto    
+    hence "perir_sem 1 x64_prog (pc,xst) = (pc', Next xpc' xrs' xm' xss')" using c7 by auto 
     then show ?thesis using a8 c2 match_state_eqiv c7 cn by fastforce
   qed   
 

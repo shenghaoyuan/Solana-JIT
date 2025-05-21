@@ -9,9 +9,9 @@ lemma x64_decode_length_none: "
   x64_decode (length l) l = None"
   sorry
 
-lemma list_in_list_implies_set_relation:
+(*lemma list_in_list_implies_set_relation:
   "list_in_list [x] pos l_jump \<Longrightarrow> x \<in> set l_jump"
-  sorry
+  sorry*)
 lemma list_in_list_x64_decode:
   "list_in_list l_bin pc l \<Longrightarrow> x64_decode n l_bin = Some v \<Longrightarrow> x64_decode (pc+n) l = Some v"
   sorry

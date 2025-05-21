@@ -251,15 +251,7 @@ shows "\<exists> xst'. perir_sem 1 x64_prog (pc,xst) = (pc',xst') \<and>
     x64_encode (Pmov_rm (bpf_to_x64_reg dst) (Addrmode (Some R11) None 0) chk))")
        prefer 2
       subgoal by (simp add: per_jit_load_reg64_def Let_def)
-      apply (subgoal_tac "(x64_encode(Pmovl_ri R11 (scast off))@x64_encode (Paddq_rr R11 (bpf_to_x64_reg src))@
-    x64_encode (Pmov_rm (bpf_to_x64_reg dst) (Addrmode (Some R11) None 0) chk))!1 \<noteq> 0x39 \<and> (x64_encode(Pmovl_ri R11 (scast off))@x64_encode (Paddq_rr R11 (bpf_to_x64_reg src))@
-    x64_encode (Pmov_rm (bpf_to_x64_reg dst) (Addrmode (Some R11) None 0) chk))!0 \<noteq> 0xc3 \<and>  (x64_encode(Pmovl_ri R11 (scast off))@x64_encode (Paddq_rr R11 (bpf_to_x64_reg src))@
-    x64_encode (Pmov_rm (bpf_to_x64_reg dst) (Addrmode (Some R11) None 0) chk))!0 \<noteq> 0xe8")
-       prefer 2
-      subgoal apply(unfold x64_encode_def) 
-        apply(cases "Pmovl_ri REG_SCRATCH (scast off)",simp_all)
-        using x64_encode_def construct_rex_to_u8_def bitfield_insert_u8_def Let_def u8_list_of_u32_def
-        by simp
+
       subgoal
         unfolding a3
         apply simp

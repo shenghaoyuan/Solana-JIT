@@ -1,6 +1,7 @@
 theory JITFlattern
 
-imports JITFlattern_def JITFlattern_aux JITFlattern_prob JITFlattern_aux_l_jump JITFlattern_aux_well_formed JITPer 
+imports JITFlattern_def JITFlattern_aux JITFlattern_aux_l_jump JITFlattern_aux_well_formed 
+  JITFlattern_prob JITPer
 begin
 
 lemma match_state1_prop:
@@ -34,6 +35,7 @@ lemma match_state1_prop:
             apply(unfold exec_call_def Let_def,simp_all)
             by(cases "storev M64 xm (Vptr sp_block (xrs (IR SP) - u64_of_memory_chunk M64)) (Vlong (ucast x21a))",simp_all)
           done
+
 
 lemma one_step_equiv_layer1:
   assumes a0:"flat_bpf_sem 1 (l_bin,l_pc,l_jump) (pc, fxst) = fxst'" and
@@ -79,7 +81,7 @@ proof-
   let num = snd (l_pc!(unat pc)) in 
   let old_xpc = nat (fst (l_pc!(unat pc))) in 
         if xpc1 \<noteq> old_xpc then (pc, Stuck) else 
-        if l_bin!(xpc1+1) = (0x39::u8) then \<comment>\<open> TODO: if the first byte is the opcode of cmp? \<close>
+        if (\<exists> src dst. x64_decode xpc1 l_bin = Some(3, Pcmpq_rr src dst)) then \<comment>\<open> TODO: if the first byte is the opcode of cmp? \<close>
           \<comment>\<open> case: BPF JMP \<close>
           (case x64_sem num l_bin (Next xpc1 xrs xm xss) of
           Stuck \<Rightarrow> (pc, Stuck) | \<comment>\<open> if one step error, stop, it should be impossible \<close>
@@ -124,16 +126,16 @@ proof-
   have "xxst' = perir_step lt (pc,xxst)" using a2 by (metis One_nat_def perir_sem.simps(1) perir_sem.simps(2) split_pairs)
 
   hence b1:"xxst' = (let (num,off,l) = lt!(unat pc) in 
-       if l!0 = 0xc3 then
+       if x64_decode 0 l = Some(1,Pret) then
           let (pc', ss', caller,fp) = update_stack2 xss in 
           let rs' = restore_x64_caller xrs caller fp in (pc', Next xpc rs' xm ss')
-      else if (l!0 = 0xe8) then 
+      else if (\<exists> d. x64_decode 0 l = Some(5, Pcall_i d)) then 
         let caller = save_x64_caller xrs; fp = save_x64_frame_pointer xrs; 
             rs' = upate_x64_stack_pointer xrs (stack_pointer xss) in
         let ss' = update_stack caller fp (pc+1) xss in
           (case ss' of None \<Rightarrow> (pc, Stuck) | 
           Some ra \<Rightarrow> (off, Next xpc rs' xm ra))
-      else if l!1 = (0x39::u8)  then
+      else if (\<exists> src dst. x64_decode 0 l = Some(3, Pcmpq_rr src dst)) then
         let xst_temp = Next 0 xrs xm xss; xst' = x64_sem num l xst_temp in
           case xst' of
           Next xpc' rs' m' ss'\<Rightarrow>
@@ -146,28 +148,33 @@ proof-
     done
 
   thus ?thesis
-  proof(cases "?l!0 = 0xc3")
+  proof(cases "x64_decode 0 ?l = Some(1,Pret)")
     case True
-    have "xxst' = (let (num,off,l) = lt!(unat pc) in (let (pc', ss', caller,fp) = update_stack2 xss in 
+    have b3:"xxst' = (let (num,off,l) = lt!(unat pc) in (let (pc', ss', caller,fp) = update_stack2 xss in 
           let rs' = restore_x64_caller xrs caller fp in (pc', Next xpc rs' xm ss')))"
-      using b1 True by (smt (z3) b0 case_prod_conv)
+      using b1 True by (smt (verit) b0 case_prod_conv) 
+   have b2_1:"?l \<noteq> []"  using a8 apply(unfold well_formed_prog_def) using b0 a4 a7 by blast
+   have "?num >0 " using a8 apply(unfold well_formed_prog_def) using b0 a4 a7 by blast 
+   hence b2_2:"x64_decode 0 ?l \<noteq> None"  apply(cases "x64_decode 0 ?l",simp_all) using True by force 
+          
     then show ?thesis sorry
   next
     case False
-    have b2:"?l!0 \<noteq> 0xc3" using False by simp
+    have b2:"x64_decode 0 ?l \<noteq> Some(1,Pret)" using False by simp
     then show ?thesis   
-    proof(cases "?l!0 = 0xe8")
+    proof(cases "(\<exists> d. x64_decode 0 ?l = Some(5, Pcall_i d))")
       case True
-      have b3:"?l!0 = 0xe8" using True by simp
+      have b3:"(\<exists> d. x64_decode 0 ?l = Some(5, Pcall_i d))" using True by simp
       have "xxst' = (let caller = save_x64_caller xrs; fp = save_x64_frame_pointer xrs; 
             rs' = upate_x64_stack_pointer xrs (stack_pointer xss) in
         let ss' = update_stack caller fp (pc+1) xss in
           (case ss' of None \<Rightarrow> (pc, Stuck) | 
           Some ra \<Rightarrow> (?off, Next xpc rs' xm ra)))" using True b1 b0
-        by (smt (z3) False case_prod_conv option.case_eq_if) 
+        by (smt (verit) b2 case_prod_conv option.case_eq_if) 
+        
       have b2_1:"?l \<noteq> []"  using a8 apply(unfold well_formed_prog_def) using b0 a4 a7 by blast
-      hence b2_2:"x64_decode 0 ?l \<noteq> None"  apply(cases "x64_decode 0 ?l",simp_all) sorry
-          (*by (metis (no_types, lifting) Suc_diff_1 option.simps(4) x64_sem.simps(3)) *)
+      have "?num >0 " using a8 apply(unfold well_formed_prog_def) using b0 a4 a7 by blast 
+      hence b2_2:"x64_decode 0 ?l \<noteq> None" apply(cases "x64_decode 0 ?l",simp_all) using b3 by force 
 
       have "\<exists> d. x64_decode 0 ?l = Some(5, Pcall_i d)" using b2 b2_1 b2_2 is_call_insn b3 by blast 
       then obtain d where " x64_decode 0 ?l = Some(5, Pcall_i d)" by auto
@@ -175,25 +182,27 @@ proof-
       then show ?thesis sorry
     next
       case False
-      have b5:"?l!0 \<noteq> 0xe8 \<and> ?l!0 \<noteq> 0xc3" using False b2 by simp
+      have b5:"x64_decode 0 ?l \<noteq> Some(1,Pret) \<and> (\<not>(\<exists> d. x64_decode 0 ?l = Some(5, Pcall_i d)))" using False b2 by simp
       hence bn_1:"?l \<noteq> []" using a8 apply(unfold well_formed_prog_def) using b0 a4 a7 by blast
       have bn_2:"?num >0 " using a8 apply(unfold well_formed_prog_def) using b0 a4 a7 by blast 
 
       have c3_0:"list_in_list ?l xpc1 l_bin" using c0 c1 by simp         
       have c3:"l_bin!xpc1 = ?l!0" using c3_0 bn_1 by (metis list.collapse list_in_list.simps(2) nth_Cons_0)
       then show ?thesis      
-      proof(cases "?l!1 = (0x39::u8)")
+      proof(cases "(\<exists> src dst. x64_decode 0 ?l = Some(3, Pcmpq_rr src dst))")
         
         case True
+        
         hence d0:"xxst' = (let xst_temp = Next 0 xrs xm xss; xst' = x64_sem ?num ?l xst_temp in
           case xst' of
           Next xpc' rs' m' ss'\<Rightarrow>
             if rs' (CR ZF) = 1 then (?off+pc, xst')
             else (pc+1, xst') |
           Stuck \<Rightarrow> (pc, Stuck) )" using True b1 b0 b5
-          by (smt (z3) case_prod_conv outcome.exhaust outcome.simps(4) outcome.simps(5))  
-
-        have "l_bin!(xpc1+1) = ?l!1" using c3 c3_0 sorry
+          by (smt (verit) case_prod_conv outcome.exhaust outcome.simps(4) outcome.simps(5)) 
+        
+        have d1_1:"\<exists> src dst. x64_decode xpc1 l_bin = Some(3, Pcmpq_rr src dst)" 
+          using list_in_list_x64_decode c3_0 True by fastforce 
         hence d1:"fxst' = (case x64_sem (snd (l_pc!(unat pc))) l_bin (Next xpc1 xrs xm xss) of
           Stuck \<Rightarrow> (pc, Stuck) | \<comment>\<open> if one step error, stop, it should be impossible \<close>
           Next xpc1 rs1 m1 ss1 \<Rightarrow> (
@@ -204,7 +213,7 @@ proof-
                 (npc, (Next (nat (fst (l_pc!(unat npc)))) rs1 m1 ss1))) \<comment>\<open> go to the target address in the jited x64 binary \<close>
             else \<comment>\<open> donot JUMP \<close>
               (pc+1, Next xpc1 rs1 m1 ss1)
-          )) " using True a0 c2 a7 c1 a9 by auto    
+          )) " using True a0 c2 a7 a9 c1 by auto 
         
         have d4:"(snd (l_pc!(unat pc))) = ?num"
             by (metis (mono_tags, lifting) a1 a7 b0 flattern_num)         
@@ -293,7 +302,8 @@ proof-
        
       next
         case False
-          have b6:"?l!0 \<noteq> 0xe8 \<and> ?l!0 \<noteq> 0xc3 \<and> ?l!1 \<noteq> (0x39::u8)" using b5 False by blast
+        have b6:"x64_decode 0 ?l \<noteq> Some(1,Pret) \<and> (\<not>(\<exists> d. x64_decode 0 ?l = Some(5, Pcall_i d))) \<and> (\<not> (\<exists> src dst. x64_decode 0 ?l = Some(3, Pcmpq_rr src dst)))" 
+          using b5 False by blast
           have d0:"xxst' = (let xst_temp = Next 0 xrs xm xss; xst' = x64_sem ?num ?l xst_temp in
           (pc+1, xst'))" using b6 by (smt (verit) b0 b1 case_prod_conv)
           
@@ -306,18 +316,15 @@ proof-
 
           have bn_4:"\<forall> d. x64_decode 0 ?l \<noteq> Some(5, Pcall_i d)"  using is_call_insn bn_0 bn_1 b5
           using True is_cmp_insn by fastforce *)
-                   
-        
-          have c3_2:"l_bin!(xpc1+1) \<noteq> (0x39::u8)" using c3 c3_0 sorry
-          
-          have c4:"fxst' = (let num = snd (l_pc!(unat pc)) in (pc+1, x64_sem num l_bin (Next xpc1 xrs xm xss)))"
-            using c2 b6 c3_2 a1 a7 add.right_neutral c1 init_second_layer_def l_pc_length_prop a9 by force 
+          have "\<not> (\<exists> src dst. x64_decode xpc1 l_bin = Some(3, Pcmpq_rr src dst))" using b6 list_in_list_prop2 bn_0 c3_0 by fastforce
+          hence c4:"fxst' = (let num = snd (l_pc!(unat pc)) in (pc+1, x64_sem num l_bin (Next xpc1 xrs xm xss)))"
+            using c2 b6  a1 a7 add.right_neutral c1 init_second_layer_def l_pc_length_prop a9
+            by (smt (verit, del_insts)  a9 c2 snd_conv) 
           have c5_1:"l_pc \<noteq> []"  using a1 a4 apply(unfold init_second_layer_def) using num_corr by fastforce 
 
           have c5:"fxst' = (pc+1, x64_sem ?num l_bin (Next xpc1 xrs xm xss))"using b0 c5_1 a1 init_second_layer_def c4 a6 a7
             by (metis (mono_tags, lifting) flattern_num)
             
-
           have cn:"match_state1 (snd xxst') (snd fxst')" using c5 d0 c3_0 list_in_list_prop3 sorry
             (*by (metis add.right_neutral assms(7) snd_conv)*)
             
@@ -415,9 +422,10 @@ next
   have c0_1:"snd next_f \<noteq> Stuck" using assm8 intermediate_step_is_ok3 b1
     by (metis assm0 bot_nat_0.extremum flat_bpf_sem_induct_aux2 outcome.distinct(1) prod.exhaust_sel) 
 
-  hence"(unat pc < length (fst(snd prog)) \<and> unat pc \<ge> 0)" using b1 assm8
-    by (smt (z3) One_nat_def case_prod_conv flat_bpf_one_step_def flat_bpf_sem.simps(1) flat_bpf_sem.simps(2) 
-        intermediate_step_is_ok3 linorder_not_less outcome.simps(4) prod.collapse split_pairs zero_order(1)) 
+  hence"(unat pc < length (fst(snd prog)) \<and> unat pc \<ge> 0)" using b1 assm8 
+    using One_nat_def case_prod_conv flat_bpf_one_step_def flat_bpf_sem.simps(1) flat_bpf_sem.simps(2) 
+        intermediate_step_is_ok3 linorder_not_less outcome.simps(4) prod.collapse split_pairs zero_order(1)
+    by (smt (verit)) 
 
   hence c0:"(unat pc < length lt \<and> unat pc \<ge> 0)" using l_pc_length_prop  init_second_layer_def assm1
     by (metis add.right_neutral list.size(3) prod.collapse) 

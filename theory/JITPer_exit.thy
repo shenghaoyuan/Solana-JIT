@@ -185,14 +185,17 @@ proof-
   hence c3:"x64_prog!(unat pc) = the (per_jit_exit)" using a0 per_jit_ins_def by simp
   have c3_0:"per_jit_exit = Some (num,off,l)" using c_aux c3 by (simp add: per_jit_exit_def) 
 
-  have c4: "l!0 = 0xc3 " using c_aux c3 c3_0 apply(unfold per_jit_exit_def x64_encode_def)
-    apply(cases Pret,simp_all) by auto
+  have c4: "l = x64_encode Pret" using c_aux c3 c3_0 apply(unfold per_jit_exit_def x64_encode_def)
+    by (cases Pret,simp_all)
 
-  have c4_1:"\<not>(l!0 = 0xff \<or> (l!0 = 0x40 \<and> l!1 = 0xff))" using c4 by simp
+  have c4_1:"length l = 1" using c4 by(unfold x64_encode_def,simp_all)
 
-  have c5:"?one_step = (let (pc', ss', caller,fp) = update_stack2 xss in 
-          let rs' = restore_x64_caller xrs caller fp in (pc', Next xpc rs' xm ss'))" using c4 c4_1 perir_step_def a5 c_aux c2_1 
-    by (smt (z3) One_nat_def case_prod_conv fst_conv outcome.simps(4) snd_conv update_stack2_def perir_sem.simps(1) perir_sem.simps(2))
+  hence "x64_decode 0 l = Some (1,Pret)" using c4 c4_1 list_in_list_prop x64_encode_decode_consistency by blast
+
+  hence c5:"?one_step = (let (pc', ss', caller,fp) = update_stack2 xss in 
+          let rs' = restore_x64_caller xrs caller fp in (pc', Next xpc rs' xm ss'))" using c4 c4_1 perir_step_def a5 c_aux c2_1
+    by (smt (verit) One_nat_def case_prod_conv fst_conv outcome.simps(4) perir_sem.simps(1) perir_sem.simps(2) snd_conv update_stack2_def) 
+    
 
   have "\<exists> xpc1 xrs1 xm1 xss1. Next xpc1 xrs1 xm1 xss1 = ?st" using a5 c5 restore_x64_caller_def update_stack2_def c2_1 
     by (metis (mono_tags, lifting) case_prod_conv snd_conv)

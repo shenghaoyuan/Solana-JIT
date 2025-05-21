@@ -62,9 +62,9 @@ proof(induct lt arbitrary: l1 l_pc1 l_jump1 l l_pc l_jump)
     then obtain l2' l_pc2' l_jump2' where b0:"jitflat_bpf [a] (l1,l_pc1,l_jump1) = (l2',l_pc2',l_jump2') \<and> jitflat_bpf lt (l2',l_pc2',l_jump2') = (l,l_pc,l_jump)" by auto
 
     hence "l_jump2' = update_l_jump a l_pc1 l_jump1" using jitflat_bpf.elims by force 
-    hence b1:"l_jump2' = (let (num,off,l_bin0) = a in  if l_bin0!1 = (0x39::u8) then l_jump1@ [(of_nat (length l_pc1), of_nat (length l_pc1) + off)] else l_jump1)" using update_l_jump_def by simp
+    hence b1:"l_jump2' = (let (num,off,l_bin0) = a in  if (\<exists> src dst. x64_decode 0 l_bin0 = Some(3, Pcmpq_rr src dst)) then l_jump1@ [(of_nat (length l_pc1), of_nat (length l_pc1) + off)] else l_jump1)" using update_l_jump_def by simp
     thus ?case
-    proof(cases "(snd (snd a))!1 \<noteq> (0x39::u8)")
+    proof(cases "\<not>(\<exists> src dst. x64_decode 0 (snd (snd a)) = Some(3, Pcmpq_rr src dst))")
       case True
       have b2_1:"l_jump2' = l_jump1" using b1 True  by (smt (verit, best) case_prod_conv split_pairs)
       have b2_2:"length l_pc2' = length l_pc1 + 1" using b0 l_pc_length_prop by force 
@@ -112,9 +112,9 @@ next
   then obtain l2' l_pc2' l_jump2' where b0:"jitflat_bpf [a] (l1, l_pc1, l_jump1) = (l2', l_pc2', l_jump2') \<and> 
          jitflat_bpf lt (l2', l_pc2', l_jump2') = (l_bin,l_pc,l_jump)" by auto
   hence "l_jump2' = update_l_jump a l_pc1 l_jump1" using jitflat_bpf.elims by force 
-  hence b1:"l_jump2' = (let (num,off,l_bin0) = a in  if l_bin0!1 = (0x39::u8) then l_jump1@ [(of_nat (length l_pc1), of_nat (length l_pc1) + off)] else l_jump1)" using update_l_jump_def by simp
+  hence b1:"l_jump2' = (let (num,off,l_bin0) = a in  if (\<exists> src dst. x64_decode 0 l_bin0 = Some(3, Pcmpq_rr src dst)) then l_jump1@ [(of_nat (length l_pc1), of_nat (length l_pc1) + off)] else l_jump1)" using update_l_jump_def by simp
   thus ?case
-  proof(cases "(snd (snd a))!1 \<noteq> (0x39::u8)")
+  proof(cases "\<not>(\<exists> src dst. x64_decode 0 (snd (snd a)) = Some(3, Pcmpq_rr src dst))")
     case True
     have b2_1:"l_jump2' = l_jump1" using b1 True  by (smt (verit, best) case_prod_conv split_pairs)
     hence b2:"distinct (map fst l_jump2')" using a1 by simp
@@ -173,14 +173,12 @@ proof-
   hence b2:"(int ?len,npc) \<in> set l_jump" using a2 a4 b1 search_l_jump by auto 
    (* by (metis bot_nat_0.extremum_strict in_set_conv_nth list.size(3) list_in_list.simps(1) list_in_list.simps(2) list_in_list_implies_set_relation) *)
   have b3:"update_l_jump (num,off,l) l_pc l_jump = (
-  if l!1 = (0x39::u8) then l_jump@ [(of_nat (length l_pc), of_nat (length l_pc) + off)]
+  if (\<exists> src dst. x64_decode 0 l = Some(3, Pcmpq_rr src dst)) then l_jump@ [(of_nat (length l_pc), of_nat (length l_pc) + off)]
   else l_jump)" 
     apply(unfold update_l_jump_def Let_def,simp_all) done
   have b4:"l_jump \<noteq> []" using a2 by auto
-
-  have "l!1 = (0x39::u8) \<or> l!1 \<noteq> (0x39::u8)" by auto
   thus ?thesis
-  proof(cases "l!1 = (0x39::u8)")
+  proof(cases "(\<exists> src dst. x64_decode 0 l = Some(3, Pcmpq_rr src dst)) ")
     case True
     have c0_0:"update_l_jump (num,off,l) l_pc1 l_jump1 = l_jump1@[(int ?len, of_nat ?len+off)]" using True b0 update_l_jump_def by simp 
     hence c0_1:"jitflat_bpf ((num,off,l)#?xs) (l1,l_pc1,l_jump1) = (

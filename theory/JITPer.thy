@@ -22,7 +22,8 @@ imports
   JITPer_load JITPer_shift
   JITPer_store JITPer_call JITPer_exit
   JITPer_sub JITPer_and JITPer_xor JITPer_or JITPer_mov_rr
-  JITPer_shift JITPer_shift_rcx JITPer_load_32         
+  JITPer_shift JITPer_shift_rcx JITPer_load_32   
+  JITPer_add_imm
 begin
 
 
@@ -53,7 +54,9 @@ proof-
   (\<exists> dst src chk off. prog!(unat pc) = BPF_ST chk dst (SOReg src) off) \<or>
   (\<exists> x cond dst src. prog!(unat pc) = BPF_JUMP cond dst (SOReg src) x) \<or>
   (\<exists> src imm. prog!(unat pc) = BPF_CALL_IMM src imm) \<or>
-  prog!(unat pc) = BPF_EXIT" using a0 a1 a2 a6 aux1 by fast
+  (\<exists> dst imm. prog!(unat pc) = BPF_ALU64 BPF_ADD dst (SOImm imm)) \<or>
+  prog!(unat pc) = BPF_EXIT"
+     using a0 a1 a2 a6 aux1 by (metis length_0_conv)  
   obtain src dst x cond chk off imm where 
     b2:"?bpf_ins = BPF_ALU64 BPF_ADD dst (SOReg src) \<or>  
         ?bpf_ins  = BPF_ALU64 BPF_SUB dst (SOReg src) \<or>
@@ -69,7 +72,8 @@ proof-
         ?bpf_ins = BPF_ST chk dst (SOReg src) off \<or> 
         ?bpf_ins = BPF_JUMP cond dst (SOReg src) x \<or>
         ?bpf_ins = BPF_CALL_IMM src imm \<or>
-        ?bpf_ins = BPF_EXIT" using b1 by auto
+        ?bpf_ins = BPF_ALU64 BPF_ADD dst (SOImm imm) \<or>
+        ?bpf_ins = BPF_EXIT" using b1 by blast
   show ?thesis
   proof (cases "?bpf_ins = BPF_ALU64 BPF_MUL dst (SOReg src) ")
     case True
@@ -107,7 +111,8 @@ proof-
         ?bpf_ins = BPF_ALU64 BPF_XOR dst (SOReg src) \<or>
         ?bpf_ins = BPF_ALU64 BPF_OR dst (SOReg src) \<or>
         ?bpf_ins = BPF_ALU64 BPF_AND dst (SOReg src) \<or>
-        ?bpf_ins = BPF_ALU64 BPF_MOV dst (SOReg src) " using False b2 by blast
+        ?bpf_ins = BPF_ALU64 BPF_MOV dst (SOReg src) \<or>
+        ?bpf_ins = BPF_ALU64 BPF_ADD dst (SOImm imm)" using False b2 by blast
       thus ?thesis 
       proof(cases "(?bpf_ins = BPF_JUMP cond dst (SOReg src) x)")
         case True
@@ -126,7 +131,8 @@ proof-
         ?bpf_ins = BPF_ALU64 BPF_XOR dst (SOReg src) \<or>
         ?bpf_ins = BPF_ALU64 BPF_OR dst (SOReg src) \<or>
         ?bpf_ins = BPF_ALU64 BPF_AND dst (SOReg src) \<or>
-        ?bpf_ins = BPF_ALU64 BPF_MOV dst (SOReg src)" using False c4 by simp
+        ?bpf_ins = BPF_ALU64 BPF_MOV dst (SOReg src)\<or>
+        ?bpf_ins = BPF_ALU64 BPF_ADD dst (SOImm imm)" using False c4 by simp
         thus ?thesis
         proof(cases "?bpf_ins = BPF_ALU64 BPF_ADD dst (SOReg src)")
           case True
@@ -144,7 +150,8 @@ proof-
           ?bpf_ins = BPF_ALU64 BPF_XOR dst (SOReg src) \<or>
           ?bpf_ins = BPF_ALU64 BPF_OR dst (SOReg src) \<or>
           ?bpf_ins = BPF_ALU64 BPF_AND dst (SOReg src) \<or>
-          ?bpf_ins = BPF_ALU64 BPF_MOV dst (SOReg src)" using False c5 by presburger 
+          ?bpf_ins = BPF_ALU64 BPF_MOV dst (SOReg src)\<or>
+          ?bpf_ins = BPF_ALU64 BPF_ADD dst (SOImm imm)" using False c5 by presburger 
           thus ?thesis
           proof(cases "?bpf_ins = BPF_ALU64 BPF_LSH dst (SOReg src)")
             case True
@@ -179,7 +186,8 @@ proof-
             ?bpf_ins = BPF_ALU64 BPF_XOR dst (SOReg src) \<or>
             ?bpf_ins = BPF_ALU64 BPF_OR dst (SOReg src) \<or>
             ?bpf_ins = BPF_ALU64 BPF_AND dst (SOReg src)\<or>
-            ?bpf_ins = BPF_ALU64 BPF_MOV dst (SOReg src)" using c6 False by simp
+            ?bpf_ins = BPF_ALU64 BPF_MOV dst (SOReg src)\<or>
+            ?bpf_ins = BPF_ALU64 BPF_ADD dst (SOImm imm)" using c6 False by simp
             then show ?thesis 
             proof(cases "?bpf_ins = BPF_ALU64 BPF_RSH dst (SOReg src)")
               case True
@@ -212,7 +220,8 @@ proof-
               ?bpf_ins = BPF_ALU64 BPF_XOR dst (SOReg src) \<or>
               ?bpf_ins = BPF_ALU64 BPF_OR dst (SOReg src) \<or>
               ?bpf_ins = BPF_ALU64 BPF_AND dst (SOReg src)\<or>
-              ?bpf_ins = BPF_ALU64 BPF_MOV dst (SOReg src)" using c7 False by simp
+              ?bpf_ins = BPF_ALU64 BPF_MOV dst (SOReg src)\<or>
+              ?bpf_ins = BPF_ALU64 BPF_ADD dst (SOImm imm)" using c7 False by simp
               then show ?thesis 
               proof(cases "?bpf_ins = BPF_ALU64 BPF_ARSH dst (SOReg src)")
                 case True
@@ -244,7 +253,8 @@ proof-
                 ?bpf_ins = BPF_ALU64 BPF_XOR dst (SOReg src) \<or>
                 ?bpf_ins = BPF_ALU64 BPF_OR dst (SOReg src) \<or>
                 ?bpf_ins = BPF_ALU64 BPF_AND dst (SOReg src)\<or>
-                ?bpf_ins = BPF_ALU64 BPF_MOV dst (SOReg src)" using c7 False by simp
+                ?bpf_ins = BPF_ALU64 BPF_MOV dst (SOReg src)\<or>
+                ?bpf_ins = BPF_ALU64 BPF_ADD dst (SOImm imm)" using c7 False by simp
                 then show ?thesis
                 proof(cases "?bpf_ins = BPF_LDX chk dst src off")
                   case True
@@ -274,7 +284,8 @@ proof-
                   ?bpf_ins = BPF_ALU64 BPF_XOR dst (SOReg src) \<or>
                   ?bpf_ins = BPF_ALU64 BPF_OR dst (SOReg src) \<or>
                   ?bpf_ins = BPF_ALU64 BPF_AND dst (SOReg src)\<or>
-                  ?bpf_ins = BPF_ALU64 BPF_MOV dst (SOReg src)" using False c8 by simp
+                  ?bpf_ins = BPF_ALU64 BPF_MOV dst (SOReg src)\<or>
+                  ?bpf_ins = BPF_ALU64 BPF_ADD dst (SOImm imm)" using False c8 by simp
                   then show ?thesis
                    proof(cases "?bpf_ins = BPF_ST chk dst (SOReg src) off")
                      case True
@@ -302,7 +313,8 @@ proof-
                      ?bpf_ins = BPF_ALU64 BPF_XOR dst (SOReg src) \<or>
                      ?bpf_ins = BPF_ALU64 BPF_OR dst (SOReg src) \<or>
                      ?bpf_ins = BPF_ALU64 BPF_AND dst (SOReg src)\<or>
-                     ?bpf_ins = BPF_ALU64 BPF_MOV dst (SOReg src)" using False c9 by simp
+                     ?bpf_ins = BPF_ALU64 BPF_MOV dst (SOReg src)\<or>
+                     ?bpf_ins = BPF_ALU64 BPF_ADD dst (SOImm imm)" using False c9 by simp
                      then show ?thesis
                       proof(cases "?bpf_ins = BPF_CALL_IMM src imm")
                         case True
@@ -314,7 +326,8 @@ proof-
                               ?bpf_ins = BPF_ALU64 BPF_XOR dst (SOReg src) \<or>
                               ?bpf_ins = BPF_ALU64 BPF_OR dst (SOReg src) \<or>
                               ?bpf_ins = BPF_ALU64 BPF_AND dst (SOReg src)\<or>
-                              ?bpf_ins = BPF_ALU64 BPF_MOV dst (SOReg src)" using c10 False by simp
+                              ?bpf_ins = BPF_ALU64 BPF_MOV dst (SOReg src)\<or>
+                              ?bpf_ins = BPF_ALU64 BPF_ADD dst (SOImm imm)" using c10 False by simp
 
                         then show ?thesis 
                         proof(cases "?bpf_ins = BPF_EXIT")
@@ -326,7 +339,8 @@ proof-
                               ?bpf_ins = BPF_ALU64 BPF_XOR dst (SOReg src) \<or>
                               ?bpf_ins = BPF_ALU64 BPF_OR dst (SOReg src) \<or>
                               ?bpf_ins = BPF_ALU64 BPF_AND dst (SOReg src)\<or>
-                              ?bpf_ins = BPF_ALU64 BPF_MOV dst (SOReg src)" using c11 False by simp
+                              ?bpf_ins = BPF_ALU64 BPF_MOV dst (SOReg src)\<or>
+                              ?bpf_ins = BPF_ALU64 BPF_ADD dst (SOImm imm)" using c11 False by simp
                           then show ?thesis 
                           proof(cases "?bpf_ins  = BPF_ALU64 BPF_SUB dst (SOReg src)")
                             case True
@@ -336,7 +350,8 @@ proof-
                               have c13:"?bpf_ins = BPF_ALU64 BPF_XOR dst (SOReg src) \<or>
                               ?bpf_ins = BPF_ALU64 BPF_OR dst (SOReg src) \<or>
                               ?bpf_ins = BPF_ALU64 BPF_AND dst (SOReg src)\<or>
-                              ?bpf_ins = BPF_ALU64 BPF_MOV dst (SOReg src)" using c12 False by simp
+                              ?bpf_ins = BPF_ALU64 BPF_MOV dst (SOReg src)\<or>
+                              ?bpf_ins = BPF_ALU64 BPF_ADD dst (SOImm imm)" using c12 False by simp
                             then show ?thesis 
                             proof(cases "?bpf_ins = BPF_ALU64 BPF_XOR dst (SOReg src)")
                               case True
@@ -345,7 +360,8 @@ proof-
                               case False
                               have c14:"?bpf_ins = BPF_ALU64 BPF_OR dst (SOReg src) \<or>
                               ?bpf_ins = BPF_ALU64 BPF_AND dst (SOReg src)\<or>
-                              ?bpf_ins = BPF_ALU64 BPF_MOV dst (SOReg src)" using c13 False by simp
+                              ?bpf_ins = BPF_ALU64 BPF_MOV dst (SOReg src)\<or>
+                              ?bpf_ins = BPF_ALU64 BPF_ADD dst (SOImm imm)" using c13 False by simp
                               then show ?thesis 
                               proof(cases "?bpf_ins = BPF_ALU64 BPF_OR dst (SOReg src)")
                                 case True
@@ -353,7 +369,8 @@ proof-
                               next
                                 case False
                                 have c15:"?bpf_ins = BPF_ALU64 BPF_AND dst (SOReg src)\<or>
-                                      ?bpf_ins = BPF_ALU64 BPF_MOV dst (SOReg src)" using c14 False by simp
+                                      ?bpf_ins = BPF_ALU64 BPF_MOV dst (SOReg src)\<or>
+                                      ?bpf_ins = BPF_ALU64 BPF_ADD dst (SOImm imm)" using c14 False by simp
 
                                 then show ?thesis 
                                 proof(cases "?bpf_ins = BPF_ALU64 BPF_AND dst (SOReg src)")
@@ -361,8 +378,17 @@ proof-
                                   then show ?thesis using andq_one_step a0 a1 a2 a3 a4 a5 a6  by blast
                                 next
                                   case False
-                                  have "?bpf_ins = BPF_ALU64 BPF_MOV dst (SOReg src)" using False c15 by simp
-                                  then show ?thesis using movq_one_step a0 a1 a2 a3 a4 a5 a6 by blast
+                                  have c16:"?bpf_ins = BPF_ALU64 BPF_MOV dst (SOReg src)\<or>
+                                        ?bpf_ins = BPF_ALU64 BPF_ADD dst (SOImm imm)" using False c15 by simp
+                                  thus ?thesis
+                                  proof(cases "?bpf_ins = BPF_ALU64 BPF_MOV dst (SOReg src)")
+                                    case True
+                                    then show ?thesis using movq_one_step a0 a1 a2 a3 a4 a5 a6 by blast
+                                  next
+                                    case False
+                                    hence "?bpf_ins = BPF_ALU64 BPF_ADD dst (SOImm imm)" using c16 by auto
+                                    then show ?thesis using addq_imm_one_step a0 a1 a2 a3 a4 a5 a6 by blast  
+                                  qed
                                   qed
                                 qed
                               qed

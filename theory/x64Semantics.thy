@@ -229,16 +229,16 @@ definition perir_step:: " (nat \<times> u64 \<times> x64_bin) list \<Rightarrow>
   let (num,off,l) = lt!(unat pc) in
     case xst of
     Next xpc rs m ss \<Rightarrow> (   
-       if l!0 = 0xc3 then
+       if x64_decode 0 l = Some(1,Pret) then
           let (pc', ss', caller,fp) = update_stack2 ss in 
           let rs' = restore_x64_caller rs caller fp in (pc', Next xpc rs' m ss')
-      else if (l!0 = 0xe8) then 
+      else if (\<exists> d. x64_decode 0 l = Some(5, Pcall_i d)) then 
         let caller = save_x64_caller rs; fp = save_x64_frame_pointer rs; 
             rs' = upate_x64_stack_pointer rs (stack_pointer ss) in
         let ss' = update_stack caller fp (pc+1) ss in
           (case ss' of None \<Rightarrow> (pc, Stuck) | 
           Some ra \<Rightarrow> (off, Next xpc rs' m ra))
-      else if l!1 = (0x39::u8)  then
+      else if (\<exists> src dst. x64_decode 0 l = Some(3, Pcmpq_rr src dst)) then
         let xst_temp = Next 0 rs m ss; xst' = x64_sem num l xst_temp in
           case xst' of
           Next xpc' rs' m' ss'\<Rightarrow>

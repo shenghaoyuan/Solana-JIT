@@ -5,7 +5,7 @@ type_synonym flat_bpf_prog = "x64_bin \<times> (int \<times> nat) list \<times> 
 
 definition update_l_jump::"(nat \<times> u64 \<times> x64_bin) \<Rightarrow> (int \<times> nat) list \<Rightarrow> (int\<times>u64) list \<Rightarrow> (int\<times>u64) list" where
 "update_l_jump x l_pc l_jump \<equiv> let (num,off,l_bin0) = x in 
-  if l_bin0!1 = (0x39::u8) then l_jump@ [(of_nat (length l_pc), of_nat (length l_pc) +  off)]
+  if (\<exists> src dst. x64_decode 0 l_bin0 = Some(3, Pcmpq_rr src dst)) then l_jump@ [(of_nat (length l_pc), of_nat (length l_pc) +  off)]
   else l_jump"
 
 fun jitflat_bpf :: "(nat \<times> u64 \<times> x64_bin) list \<Rightarrow> flat_bpf_prog \<Rightarrow> flat_bpf_prog" where
@@ -66,7 +66,7 @@ definition flat_bpf_one_step :: "flat_bpf_prog \<Rightarrow> hybrid_state \<Righ
     let num = snd (l_pc!(unat pc)) in 
     let old_xpc = nat (fst (l_pc!(unat pc))) in 
       if xpc \<noteq> old_xpc then (pc, Stuck) else 
-        if l_bin!(xpc+1) = (0x39::u8) then \<comment>\<open> TODO: if the first byte is the opcode of cmp? \<close>
+        if (\<exists> src dst. x64_decode xpc l_bin = Some(3, Pcmpq_rr src dst)) then \<comment>\<open> TODO: if the first byte is the opcode of cmp? \<close>
           \<comment>\<open> case: BPF JMP \<close>
           (case x64_sem num l_bin (Next xpc rs m ss) of
           Stuck \<Rightarrow> (pc, Stuck) | \<comment>\<open> if one step error, stop, it should be impossible \<close>

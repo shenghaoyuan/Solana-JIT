@@ -567,7 +567,7 @@ lemma x64_sem1_pc_aux1:
   a5:"xst = (Next xpc xrs xm xss)" and
   a6:"x64_prog!(unat pc) = (num,off,l)" and
   a7:"x64_sem num l (Next 0 xrs xm xss) = xst1 " and
-  a8:"l!1 \<noteq> 0x39 \<and> l!0 \<noteq> 0xe8 \<and> l!0 \<noteq> 0xc3" and
+  a8:"(\<not>(x64_decode 0 l = Some(1,Pret))) \<and> (\<not>(\<exists> d. x64_decode 0 l = Some(5, Pcall_i d))) \<and> (\<not>(\<exists> src dst. x64_decode 0 l = Some(3, Pcmpq_rr src dst)))" and
   a10:"xst1 = Next xpc1 xrs1 xm1 xss1" and
   a11:"prog!(unat pc) \<in> {BPF_ALU64 BPF_ADD dst (SOReg src), BPF_ALU64 BPF_ADD dst (SOImm imm), BPF_ALU64 BPF_MUL dst (SOReg src),  BPF_ALU64 BPF_SUB dst (SOReg src), 
   BPF_ALU64 BPF_MOV dst (SOReg src), BPF_ALU64 BPF_OR dst (SOReg src), BPF_ALU64 BPF_AND dst (SOReg src), BPF_ALU64 BPF_XOR dst (SOReg src),
@@ -596,7 +596,7 @@ lemma x64_sem1_pc_aux2:
   a5:"xst = (Next xpc xrs xm xss)" and
   a6:"x64_prog!(unat pc) = (num,off,l)" and
   a7:"x64_sem num l (Next 0 xrs xm xss) = xst1 " and
-  a8:"l!0 \<noteq> 0xc3 \<and> l!0 \<noteq> 0xe8 \<and> l!1 = 0x39" and
+  a8:"(\<not>(x64_decode 0 l = Some(1,Pret))) \<and> (\<not>(\<exists> d. x64_decode 0 l = Some(5, Pcall_i d))) \<and> ((\<exists> src dst. x64_decode 0 l = Some(3, Pcmpq_rr src dst))) " and
   a10:"xst1 = Next xpc1 xrs1 xm1 xss1" and
   a11:"prog!(unat pc) = BPF_JUMP cond dst (SOReg src) d" and
   a12:"match_state s (pc,xst)" and

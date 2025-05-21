@@ -132,18 +132,7 @@ shows "\<exists> xst'. perir_sem 1 x64_prog (pc,xst) = (pc',xst') \<and>
       apply (subgoal_tac "the (per_jit_add_reg64_1 dst src) = (1, 0, x64_encode (Paddq_rr (bpf_to_x64_reg dst) (bpf_to_x64_reg src)))")
        prefer 2
       subgoal by (simp add: per_jit_add_reg64_1_def)
-      apply (subgoal_tac "(x64_encode (Paddq_rr (bpf_to_x64_reg dst) (bpf_to_x64_reg src))) !1 \<noteq> 0x39 \<and> 
-        (x64_encode (Paddq_rr (bpf_to_x64_reg dst) (bpf_to_x64_reg src))) !0 \<noteq> 0xc3 \<and> 
-        (x64_encode (Paddq_rr (bpf_to_x64_reg dst) (bpf_to_x64_reg src))) !0 \<noteq> 0xe8")
-       prefer 2
-      subgoal apply(unfold x64_encode_def) 
-        apply(cases "Paddq_rr (bpf_to_x64_reg dst) (bpf_to_x64_reg src)",simp_all) 
-        subgoal for x11 apply(unfold per_jit_add_reg64_1_def construct_rex_to_u8_def bitfield_insert_u8_def Let_def u8_of_bool_def,simp_all)
-          apply(cases " and (u8_of_ireg (bpf_to_x64_reg src)) (8::8 word) \<noteq> (0::8 word) ",simp_all)
-           apply(cases "and (u8_of_ireg x11) (8::8 word) \<noteq> (0::8 word)",simp_all)
-          apply(cases "and (u8_of_ireg x11) (8::8 word) \<noteq> (0::8 word)",simp_all)
-          done
-        done
+      
       subgoal
         unfolding a3
         apply simp

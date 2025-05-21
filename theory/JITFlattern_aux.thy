@@ -229,13 +229,13 @@ next
         l1@?l_bin0,
         l_pc1@[(curr_pc,?num)],
         l_jump'))"  using jitflat_bpf.simps(2) by blast
-  have a4:"l_jump2' = (let (num,off,l_bin0) = a in  if l_bin0!1 = (0x39::u8) then l_jump1@ [(of_nat (length l_pc1), of_nat (length l_pc1) + off)]
+  have a4:"l_jump2' = (let (num,off,l_bin0) = a in if (\<exists> src dst. x64_decode 0 l_bin0 = Some(3, Pcmpq_rr src dst)) then l_jump1@ [(of_nat (length l_pc1), of_nat (length l_pc1) + off)]
   else l_jump1)" using a3 a0 update_l_jump_def by auto
-  hence a4:"l_jump2' = (if ?l_bin0!1 = (0x39::u8) then l_jump1@ [(of_nat (length l_pc1), of_nat (length l_pc1) + ?off)]
+  hence a4:"l_jump2' = (if (\<exists> src dst. x64_decode 0 ?l_bin0 = Some(3, Pcmpq_rr src dst)) then l_jump1@ [(of_nat (length l_pc1), of_nat (length l_pc1) + ?off)]
   else l_jump1)" by (smt (verit) case_prod_conv prod.collapse) 
       (*lemma list_in_list_concat: "list_in_list (l1 @ l2) pc l = (list_in_list l1 pc l \<and> list_in_list l2 (pc + length l1) l)"*)
   thus ?case
-  proof(cases " ?l_bin0!1 = (0x39::u8)")
+  proof(cases "(\<exists> src dst. x64_decode 0 ?l_bin0 = Some(3, Pcmpq_rr src dst))")
     case True
     have "l_jump2' = l_jump1@[(of_nat (length l_pc1), of_nat (length l_pc1) + ?off)]" using True a4 by simp
     hence a5:"list_in_list l_jump1 0 l_jump2'" using list_in_list_concat list_in_list_prop by blast 
