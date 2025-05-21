@@ -1,5 +1,5 @@
 theory JITFlattern_aux
-  imports JITFlattern_def
+  imports JITFlattern_def Proof1 
 begin
 lemma jitflat_bpf_induct:
   "jitflat_bpf (a # l_bin0) (l1, l_pc1, l_jump1) = (l2, l_pc2, l_jump2) \<Longrightarrow> 
@@ -263,53 +263,6 @@ lemma nat_of_nat_trans:"x < u64_MAX \<Longrightarrow> of_nat(unat x) = (x::u64)"
 lemma "x\<ge>0 \<and> y\<ge>0  \<Longrightarrow> ((of_nat x) ::int) = ((of_nat y) ::int)  \<Longrightarrow> x = y" by presburger
 
 
-(*
-
-
-  value "unat((of_nat 100)::u64)"
-  value "of_nat 0::u64"
- value "of_nat 2::u64"
-lemma of_nat_nat_trans:"x = 100 \<Longrightarrow> unat((of_nat x)::u64) = (x::nat)"
-
-proof-
-  assume assm0:"x = 100"
-  have "\<exists> x1. x1 = ((of_nat x)::u64)" by simp
-  then obtain x1 where a0:"x1 = ((of_nat x)::u64)" by auto
-  have a1:"of_nat(unat x1) = x1" using assm0 by simp
-  have a2:"\<exists> x2. x2 = (unat ((of_nat x)::u64))" by simp
-  then obtain x2 where a3:"x2 = (unat ((of_nat x)::u64))" by auto
-  have "of_nat (unat ((of_nat x)::u64)) = ((of_nat x)::u64)" by (simp add: a0 a3)  
-  hence "(unat ((of_nat x)::u64)) = x" using of_nat_def 
-  let "?x" = "(of_nat x)::u64"
-  have "of_nat(unat ?x) = ?x" sorry
-  let "?y" = "(unat ((of_nat x)::u64))"
-  have "of_nat(?y) = ?x" by simp 
-  hence "(unat ((of_nat x)::u64)) = x" apply (simp add: of_nat_def)
-  thus ?thesis *)
-(*
-lemma hh:"jitflat_bpf lt init_second_layer = prog \<Longrightarrow> fst prog = concat(map snd (map snd lt))"
-  sorry
-
-(*length (snd(snd(lt!idx))) \<le> 10*)
-lemma hhh:
-  "jitflat_bpf lt init_second_layer = prog \<Longrightarrow> 
-  \<forall> idx. idx \<ge> 0 \<and> idx < length (map snd (map snd lt)) \<longrightarrow> length ((map snd (map snd lt))!idx) \<le> 10 \<Longrightarrow> 
-  0 < length lt \<and> length lt \<le> 100000 \<Longrightarrow>  
-  length (fst prog)\<le>1000000"
-  using hh sorry
-*)
-
-lemma hh:"jitflat_bpf lt (l1,l_pc1,l_jump1) = prog \<Longrightarrow> fst prog = l1@ concat(map snd (map snd lt))"
-  sorry
-
-(*length (snd(snd(lt!idx))) \<le> 10*)
-lemma hhh:
-  "jitflat_bpf lt (l1,l_pc1,l_jump1) = prog \<Longrightarrow> 
-  \<forall> idx. idx \<ge> 0 \<and> idx < length (map snd (map snd lt)) \<longrightarrow> length ((map snd (map snd lt))!idx) \<le> 10 \<Longrightarrow> 
-  0 < length lt \<and> length lt \<le> 100000 \<Longrightarrow>  
-  length (fst prog) - length l1 \<le>1000000"
-  using hh sorry
-
 lemma flattern_l_bin0:
   "l_bin0!(unat pc)=(num,off,l) \<Longrightarrow>
    unat pc < length l_bin0 \<and> unat pc \<ge> 0 \<Longrightarrow>
@@ -354,16 +307,7 @@ proof-
   have c4:"fst (l_pc2 ! (unat pc)) = (of_nat(length l2'))" using c3 by auto
   
   have c6:"list_in_list l (length l2') l2" using c0 c1 not_change_prefix_l_bin
-    by (metis (mono_tags, lifting) list_in_list_concat plus_nat.add_0) 
-
-  have c6_0:"0 < length l_bin0 \<and> length l_bin0 \<le> 100000" using well_formed_prog_def assm2 assm4 by simp
-  have c6_1:"(\<forall> idx. idx \<ge> 0 \<and> idx < length (map snd (map snd l_bin0)) \<longrightarrow> length ((map snd (map snd l_bin0))!idx) \<le> 10)" 
-    using well_formed_prog_def assm2 assm4 by simp
-
-  have "length l2' \<le>1000000" using assm4 hhh assm2 well_formed_prog_def init_second_layer_def sorry
-  (*hence "(unat(of_nat(length l2')))= length l2'" using c6 nat_of_nat_trans sorry  
-  hence c7:"list_in_list l (unat(of_nat(length l2'))) l2" using c6 by metis *)   
-    
+    by (metis (mono_tags, lifting) list_in_list_concat plus_nat.add_0)     
   have "list_in_list l (nat(fst (l_pc2 ! (unat pc)))) l2" using c6 c4 by auto
      then show ?thesis using assm3 by force 
    qed
@@ -446,16 +390,6 @@ next
   qed
 qed
 
-(*
-lemma flattern_num:
-  assumes a0:"l_bin0!(unat pc)=(num,off,l)" and
-   a1:"l_pc2 \<noteq> []" and
-   a2:"jitflat_bpf l_bin0 (l1,l_pc1,l_jump1) = (l2,l_pc2,l_jump2)" and
-   a3:"unat pc < length l_bin0 \<and> unat pc \<ge> 0"
- shows "snd (l_pc2!(length l_pc1 + unat pc)) = num"
-  sorry*)
-
-
 
 lemma err_is_still_err2:"x64_sem n l Stuck = xst' \<Longrightarrow> xst' = Stuck "
   apply(induct n, simp)
@@ -477,8 +411,7 @@ lemma intermediate_step_is_ok3:
   "flat_bpf_sem n lp (pc,s) = s' \<Longrightarrow> n \<ge> 0 \<Longrightarrow> snd s' \<noteq> Stuck \<Longrightarrow> 
   \<exists> xpc xrs xm xss. s = (Next xpc xrs xm xss)"
   apply(induct n arbitrary: lp pc s s')
-    apply simp 
-  using err_is_still_err
+  apply simp 
   apply (meson outcome.exhaust)
   by (metis err_is_still_err3 outcome.exhaust prod.collapse) 
 
@@ -494,9 +427,8 @@ lemma is_call_insn:"l\<noteq>[] \<Longrightarrow> l!pc = 0xe8 \<Longrightarrow> 
   done
 
 lemma is_cmp_insn:"l\<noteq>[] \<Longrightarrow> l!(pc+1) = 0x39 \<Longrightarrow> x64_decode pc l \<noteq> None \<Longrightarrow> \<exists> src dst. x64_decode pc l = Some(3, Pcmpq_rr src dst)"
-  apply(unfold x64_decode_def Let_def)
-  apply(split if_splits,simp_all)
-  apply(split if_splits,simp_all)
+   apply(simp add: x64_decode_def Let_def)
+  apply (cases "l ! pc = (195::8 word)"; simp)
   sorry
 
 

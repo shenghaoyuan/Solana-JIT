@@ -1,5 +1,5 @@
 theory JITFlattern_def
-  imports JITPer
+  imports x64Semantics
 begin
 type_synonym flat_bpf_prog = "x64_bin \<times> (int \<times> nat) list \<times> ((int\<times>u64) list)"
 
@@ -38,10 +38,12 @@ value "well_formed_prog [(1,0,[3])]"*)
 value "int (1::nat)"
 value "nat (1::int)"
 
+definition well_formed_prog1::"(nat \<times> u64 \<times> x64_bin) list \<Rightarrow> bool" where
+"well_formed_prog1 lt \<equiv> (\<forall> id. id < length lt \<and> id \<ge>0 \<longrightarrow> fst(lt!id) > 0)"
+
 definition well_formed_prog::"(nat \<times> u64 \<times> x64_bin) list \<Rightarrow> bool" where
-"well_formed_prog lt \<equiv> (length lt \<le> 100000 \<and> lt \<noteq> [] \<and> 
-  (\<forall> id. id < length lt \<and> id \<ge>0 \<longrightarrow> snd(snd (lt!id)) \<noteq> [] \<and> fst(lt!id) >0) \<and>
-  (\<forall> idx. idx \<ge> 0 \<and> idx < length (map snd (map snd lt)) \<longrightarrow> length ((map snd (map snd lt))!idx) \<le> 10))"
+"well_formed_prog lt \<equiv> ( lt \<noteq> [] \<and> 
+  (\<forall> id. id < length lt \<and> id \<ge>0 \<longrightarrow> snd(snd (lt!id)) \<noteq> [] \<and> fst(lt!id) >0))"
 
 fun find_target_pc_in_l_pc :: "((int\<times>u64) list) \<Rightarrow> int \<Rightarrow> u64 option" where
 "find_target_pc_in_l_pc [] _ = None" |
