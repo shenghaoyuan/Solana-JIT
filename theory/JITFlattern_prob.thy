@@ -5,6 +5,10 @@ begin
 (** see Solana-x64-Semantics nth_error branch `x64DecodeProp.thy`
   The current version could not be proven becasue of `!`
  *)
+lemma x64_decode_length_none: "
+  x64_decode (length l) l = None"
+  sorry
+
 lemma list_in_list_implies_set_relation:
   "list_in_list [x] pos l_jump \<Longrightarrow> x \<in> set l_jump"
   sorry
@@ -13,17 +17,20 @@ lemma list_in_list_x64_decode:
   sorry
 
 fun x64_bin_is_sequential :: "nat \<Rightarrow> x64_bin \<Rightarrow> nat \<Rightarrow> bool" where
-"x64_bin_is_sequential 0 _ _ = False" |
+"x64_bin_is_sequential 0 l pc = False" |
 "x64_bin_is_sequential (Suc n) l pc = (
-  case x64_decode pc l of
-  None \<Rightarrow> False |
-  Some (sz, ins) \<Rightarrow> (
-    case ins of
-    Pjcc _ _ \<Rightarrow> False |
-    Pcall_i _ \<Rightarrow> False |
-    Pret \<Rightarrow> False |
-    _ \<Rightarrow> x64_bin_is_sequential n l (pc + sz)
-))"
+  if pc = length l then
+    True
+  else (
+    case x64_decode pc l of
+    None \<Rightarrow> False |
+    Some (sz, ins) \<Rightarrow> (
+      case ins of
+      Pjcc _ _ \<Rightarrow> False |
+      Pcall_i _ \<Rightarrow> False |
+      Pret \<Rightarrow> False |
+      _ \<Rightarrow> x64_bin_is_sequential n l (pc + sz)
+)))"
 
 lemma x64_bin_is_sequential_x64_decode: "
   x64_bin_is_sequential n l x \<Longrightarrow>
@@ -34,17 +41,32 @@ lemma x64_bin_is_sequential_x64_decode: "
     by simp
   subgoal for n1 l x sz ins
     apply simp
+    apply (cases "x = length l"; simp)
+    subgoal using x64_decode_length_none by simp
+
     apply (subgoal_tac "x64_bin_is_sequential n1 l (x + sz)")
     subgoal
       apply (cases "x64_decode (x + sz) l"; simp)
       subgoal
         apply (cases n1; simp)
+        subgoal for n2
+          apply (cases "x + sz = length l"; simp)
+          done
         done
+
       subgoal for ins1
         apply (cases ins1; simp)
         subgoal for sz1 ins2
-          apply (simp only: add.assoc [of x sz sz1])
           apply (cases ins2; simp; cases n1; simp)
+          subgoal for n2
+            apply (cases "x + sz = length l"; simp)
+            done
+          subgoal for x1 x2 x3
+            apply (cases "x + sz = length l"; simp)
+            done
+          subgoal for x1 x2
+            apply (cases "x + sz = length l"; simp)
+            done
           done
         done
       done
@@ -55,6 +77,42 @@ lemma x64_bin_is_sequential_x64_decode: "
 
 lemma x64_sem_stuck: "x64_sem n l Stuck = Stuck"
   by (cases n; simp)
+
+lemma x64_bin_is_sequential_x64_decode_pret_false: "
+  x64_bin_is_sequential n l x \<Longrightarrow>
+    x64_decode x l = Some (sz2, Pret) \<Longrightarrow> False"
+  apply (cases n; simp)
+  subgoal for n1
+    apply (cases "x64_decode x l"; simp)
+    subgoal for ins1
+      apply (cases "x = length l"; simp)
+      using x64_decode_length_none by auto
+    done
+  done
+
+lemma x64_bin_is_sequential_x64_decode_pjcc_false: "
+  x64_bin_is_sequential n l x \<Longrightarrow>
+    x64_decode x l = Some (sz2, Pjcc x1 x2) \<Longrightarrow> False"
+  apply (cases n; simp)
+  subgoal for n1
+    apply (cases "x64_decode x l"; simp)
+    subgoal for ins1
+      apply (cases "x = length l"; simp)
+      using x64_decode_length_none by auto
+    done
+  done
+
+lemma x64_bin_is_sequential_x64_decode_pcall_false: "
+  x64_bin_is_sequential n l x \<Longrightarrow>
+    x64_decode x l = Some (sz2, Pcall_i x1) \<Longrightarrow> False"
+  apply (cases n; simp)
+  subgoal for n1
+    apply (cases "x64_decode x l"; simp)
+    subgoal for ins1
+      apply (cases "x = length l"; simp)
+      using x64_decode_length_none by auto
+    done
+  done
 
  (*l!x \<noteq> 0xe8 \<and> l!x \<noteq> 0xc3 \<and> l!(x+1) \<noteq> (0x39::u8) \<Longrightarrow>*)
 lemma list_in_list_prop3: "
@@ -108,7 +166,8 @@ lemma list_in_list_prop3: "
               apply (simp only: add.assoc [of xpc x sz2])
               by blast
             subgoal
-              by (cases "length l"; simp)
+              using x64_bin_is_sequential_x64_decode_pret_false
+              by blast
             subgoal for x1
               apply (simp add: exec_push_def Let_def)
               apply (cases "storev M64 xm (Vptr sp_block (xrs (IR SP) -
@@ -140,7 +199,7 @@ lemma list_in_list_prop3: "
               apply (simp only: add.assoc [of xpc x sz2])
               by blast
             subgoal for x1 x2
-              by (cases "length l"; simp)
+              using x64_bin_is_sequential_x64_decode_pjcc_false by blast
             subgoal for x1 x2
               apply (simp only: add.assoc [of xpc x sz2])
               by blast
@@ -171,7 +230,8 @@ lemma list_in_list_prop3: "
                 done
               done
             subgoal for x1
-              by (cases "length l"; simp)
+              using x64_bin_is_sequential_x64_decode_pcall_false
+              by blast
             done
           done
         done
