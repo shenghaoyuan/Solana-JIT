@@ -60,14 +60,6 @@ value "list_in_list [] 0 [1::nat,2]"
 
 (*value "x64_decode 0 []"*)
 
-(*lemma list_in_list_prop2:"l_bin \<noteq> [] \<Longrightarrow>list_in_list l xpc l_bin \<Longrightarrow> x64_decode x l = x64_decode (xpc+x) l_bin"
-  sorry*)
-
-
-lemma list_in_list_prop2:"list_in_list l xpc l_bin \<Longrightarrow> x64_decode x l = Some v \<Longrightarrow> x64_decode (xpc+x) l_bin = Some v"
-  sorry
-
-
 lemma not_change_prefix_l_bin:
   "jitflat_bpf l_bin0 (l1,l_pc1,l_jump1) = (l2,l_pc2,l_jump2) \<Longrightarrow> list_in_list l1 0 l2"
 proof(induction l_bin0 arbitrary: l1 l_pc1 l_jump1 l2 l_pc2 l_jump2)
@@ -229,32 +221,49 @@ next
         l1@?l_bin0,
         l_pc1@[(curr_pc,?num)],
         l_jump'))"  using jitflat_bpf.simps(2) by blast
-  have a4:"l_jump2' = (let (num,off,l_bin0) = a in if (\<exists> src dst. x64_decode 0 l_bin0 = Some(3, Pcmpq_rr src dst)) then l_jump1@ [(of_nat (length l_pc1), of_nat (length l_pc1) + off)]
+  have a4:"l_jump2' = (let (num,off,l_bin0) = a in if (\<exists> d. x64_decode 0 l_bin0 = Some(5, Pcall_i d)) then l_jump1@ [(of_nat (length l_pc1), off)] 
+  else if (\<exists> src dst. x64_decode 0 l_bin0 = Some(3, Pcmpq_rr src dst)) then l_jump1@ [(of_nat (length l_pc1), of_nat (length l_pc1) + off)]
   else l_jump1)" using a3 a0 update_l_jump_def by auto
-  hence a4:"l_jump2' = (if (\<exists> src dst. x64_decode 0 ?l_bin0 = Some(3, Pcmpq_rr src dst)) then l_jump1@ [(of_nat (length l_pc1), of_nat (length l_pc1) + ?off)]
+  hence a4:"l_jump2' = (if (\<exists> d. x64_decode 0 ?l_bin0 = Some(5, Pcall_i d)) then l_jump1@ [(of_nat (length l_pc1), ?off)] 
+  else if (\<exists> src dst. x64_decode 0 ?l_bin0 = Some(3, Pcmpq_rr src dst)) then l_jump1@ [(of_nat (length l_pc1), of_nat (length l_pc1) + ?off)]
   else l_jump1)" by (smt (verit) case_prod_conv prod.collapse) 
       (*lemma list_in_list_concat: "list_in_list (l1 @ l2) pc l = (list_in_list l1 pc l \<and> list_in_list l2 (pc + length l1) l)"*)
   thus ?case
-  proof(cases "(\<exists> src dst. x64_decode 0 ?l_bin0 = Some(3, Pcmpq_rr src dst))")
+  proof(cases "(\<exists> d. x64_decode 0 ?l_bin0 = Some(5, Pcall_i d))")
     case True
-    have "l_jump2' = l_jump1@[(of_nat (length l_pc1), of_nat (length l_pc1) + ?off)]" using True a4 by simp
+    have "l_jump2' = l_jump1@[(of_nat (length l_pc1), ?off)]" using True a4 by simp
     hence a5:"list_in_list l_jump1 0 l_jump2'" using list_in_list_concat list_in_list_prop by blast 
     have a6:"jitflat_bpf l_bin0 (l2', l_pc2', l_jump2') = (l2, l_pc2, l_jump2)" using a0 assm1 jitflat_bpf_induct by metis
-  
+    
     have a7:"list_in_list l_jump2' 0 l_jump2" using a6 a5 by (simp add: Cons.IH)  
     have "list_in_list l_jump1 (0::nat) l_jump2" using a7 a4 list_in_list_concat by metis
     then show ?thesis by simp
   next
     case False
-    have "l_jump2' = l_jump1" using False a4 by simp
-    hence a5:"list_in_list l_jump1 0 l_jump2'" using  list_in_list_prop by blast
-    have a6:"jitflat_bpf l_bin0 (l2', l_pc2', l_jump2') = (l2, l_pc2, l_jump2)" using a0 assm1 jitflat_bpf_induct by metis
-  
-    have a7:"list_in_list l_jump2' 0 l_jump2" using a6 a5 by (simp add: Cons.IH)  
-    have "list_in_list l_jump1 (0::nat) l_jump2" using a7 a4 list_in_list_concat by metis
-    then show ?thesis by simp
+    have b0:"\<not> (\<exists> d. x64_decode 0 ?l_bin0 = Some(5, Pcall_i d))" using False by simp
+    then show ?thesis
+    proof(cases "(\<exists> src dst. x64_decode 0 ?l_bin0 = Some(3, Pcmpq_rr src dst))")
+      case True
+      have "l_jump2' = l_jump1@[(of_nat (length l_pc1), of_nat (length l_pc1) + ?off)]" using True a4 b0 by simp
+      hence a5:"list_in_list l_jump1 0 l_jump2'" using list_in_list_concat list_in_list_prop by blast 
+      have a6:"jitflat_bpf l_bin0 (l2', l_pc2', l_jump2') = (l2, l_pc2, l_jump2)" using a0 assm1 jitflat_bpf_induct by metis
+    
+      have a7:"list_in_list l_jump2' 0 l_jump2" using a6 a5 by (simp add: Cons.IH)  
+      have "list_in_list l_jump1 (0::nat) l_jump2" using a7 a4 list_in_list_concat by metis
+      then show ?thesis by simp
+    next
+      case False
+      have "l_jump2' = l_jump1" using False a4 b0 by simp
+      hence a5:"list_in_list l_jump1 0 l_jump2'" using  list_in_list_prop by blast
+      have a6:"jitflat_bpf l_bin0 (l2', l_pc2', l_jump2') = (l2, l_pc2, l_jump2)" using a0 assm1 jitflat_bpf_induct by metis
+    
+      have a7:"list_in_list l_jump2' 0 l_jump2" using a6 a5 by (simp add: Cons.IH)  
+      have "list_in_list l_jump1 (0::nat) l_jump2" using a7 a4 list_in_list_concat by metis
+      then show ?thesis by simp
+    qed
   qed
 qed
+ 
 
 
 lemma nat_of_nat_trans:"x < u64_MAX \<Longrightarrow> of_nat(unat x) = (x::u64)"
@@ -415,7 +424,7 @@ lemma intermediate_step_is_ok3:
   apply (meson outcome.exhaust)
   by (metis err_is_still_err3 outcome.exhaust prod.collapse) 
 
-lemma is_ret_insn:"l\<noteq>[] \<Longrightarrow> l!pc = 0xc3 \<Longrightarrow> x64_decode pc l \<noteq> None \<Longrightarrow> x64_decode pc l = Some(1,Pret)"
+(*lemma is_ret_insn:"l\<noteq>[] \<Longrightarrow> l!pc = 0xc3 \<Longrightarrow> x64_decode pc l \<noteq> None \<Longrightarrow> x64_decode pc l = Some(1,Pret)"
   apply(unfold x64_decode_def Let_def)
   apply(split if_splits,simp_all)
   done  
@@ -430,7 +439,7 @@ lemma is_cmp_insn:"l\<noteq>[] \<Longrightarrow> l!(pc+1) = 0x39 \<Longrightarro
    apply(simp add: x64_decode_def Let_def)
   apply (cases "l ! pc = (195::8 word)"; simp)
   sorry
-
+*)
 
 
 end

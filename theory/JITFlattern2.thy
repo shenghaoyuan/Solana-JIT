@@ -74,7 +74,7 @@ next
   have a6:"jitflat_bpf l_bin0 (l2', l_pc2', l_jump2') = (l2, l_pc2, l_jump2)" using a0 assm1 jitflat_bpf_induct by metis
 
   have a7:"list_in_list l2' 0 l2" using a6 by (simp add: Cons.IH) 
-  have a6:"list_in_list l1 (0::nat) l2" using a5 list_in_list_prop2 a7 by blast
+  have a6:"list_in_list l1 (0::nat) l2" using a5 list_in_list_x64_decode a7 by blast
   then show ?case by simp
 qed
 

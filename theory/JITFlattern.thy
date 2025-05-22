@@ -99,7 +99,16 @@ proof-
   let num = snd (l_pc!(unat pc)) in 
   let old_xpc = nat (fst (l_pc!(unat pc))) in 
         if xpc1 \<noteq> old_xpc then (pc, Stuck) else 
-        if (\<exists> src dst. x64_decode xpc1 l_bin = Some(3, Pcmpq_rr src dst)) then \<comment>\<open> TODO: if the first byte is the opcode of cmp? \<close>
+        if (\<exists> d. x64_decode xpc1 l_bin = Some(5,Pcall_i d)) then 
+         (case find_target_pc_in_l_pc l_jump (uint pc) of 
+              None \<Rightarrow> (pc, Stuck) |
+              Some npc \<Rightarrow> 
+                (let caller = save_x64_caller xrs; fp = save_x64_frame_pointer xrs; 
+                    rs' = upate_x64_stack_pointer xrs (stack_pointer xss) in
+                let ss' = update_stack caller fp (pc+1) xss in
+                  (case ss' of None \<Rightarrow> (pc, Stuck) | 
+                  Some ra \<Rightarrow> (npc, (Next (nat (fst (l_pc!(unat npc)))) rs' xm ra)))))
+        else if (\<exists> src dst. x64_decode xpc1 l_bin = Some(3, Pcmpq_rr src dst)) then \<comment>\<open> TODO: if the first byte is the opcode of cmp? \<close>
           \<comment>\<open> case: BPF JMP \<close>
           (case x64_sem num l_bin (Next xpc1 xrs xm xss) of
           Stuck \<Rightarrow> (pc, Stuck) | \<comment>\<open> if one step error, stop, it should be impossible \<close>
@@ -117,7 +126,6 @@ proof-
           (pc+1, x64_sem num l_bin (Next xpc1 xrs xm xss)))" 
     apply(unfold flat_bpf_one_step_def Let_def) 
     using a3 a11 apply(cases "Next xpc1 xrs xm xss",simp_all)
-    (*subgoal for x11 by meson *)
     done
 
   have c1:"nat ?xpc= xpc1" using a8 c2 a9 by (smt (verit, ccfv_SIG) snd_conv) 
@@ -164,7 +172,7 @@ proof-
     proof(cases "(\<exists> d. x64_decode 0 ?l = Some(5, Pcall_i d))")
       case True
       have b3:"(\<exists> d. x64_decode 0 ?l = Some(5, Pcall_i d))" using True by simp
-      have "xxst' = (let caller = save_x64_caller xrs; fp = save_x64_frame_pointer xrs; 
+      have b4:"xxst' = (let caller = save_x64_caller xrs; fp = save_x64_frame_pointer xrs; 
             rs' = upate_x64_stack_pointer xrs (stack_pointer xss) in
         let ss' = update_stack caller fp (pc+1) xss in
           (case ss' of None \<Rightarrow> (pc, Stuck) | 
@@ -175,10 +183,46 @@ proof-
       have "?num >0 " using a8 apply(unfold well_formed_prog_def) using b0 a4 a7 by blast 
       hence b2_2:"x64_decode 0 ?l \<noteq> None" apply(cases "x64_decode 0 ?l",simp_all) using b3 by force 
 
-      have "\<exists> d. x64_decode 0 ?l = Some(5, Pcall_i d)" using b2 b2_1 b2_2 is_call_insn b3 by blast 
-      then obtain d where " x64_decode 0 ?l = Some(5, Pcall_i d)" by auto
-      hence "\<forall> n. \<not> (x64_bin_is_sequential n ?l 0)" using x64_bin_is_sequential_x64_decode_pcall_false by blast
-      then show ?thesis sorry
+      have "\<exists> d. x64_decode 0 ?l = Some(5, Pcall_i d)" using b2 b2_1 b2_2 b3 by blast 
+      then obtain d where d4:" x64_decode 0 ?l = Some(5, Pcall_i d)" by auto
+      (*hence "\<forall> n. \<not> (x64_bin_is_sequential n ?l 0)" using x64_bin_is_sequential_x64_decode_pcall_false by blast*)
+      have d3_1:"x64_decode 0 ?l = x64_decode xpc1 l_bin " 
+        using list_in_list_x64_decode c0 by (metis add.right_neutral c1 d4) 
+      hence d3:"fxst' = (case find_target_pc_in_l_pc l_jump (uint pc) of 
+              None \<Rightarrow> (pc, Stuck) |
+              Some npc \<Rightarrow> 
+                (let caller = save_x64_caller xrs; fp = save_x64_frame_pointer xrs; 
+                    rs' = upate_x64_stack_pointer xrs (stack_pointer xss) in
+                let ss' = update_stack caller fp (pc+1) xss in
+                  (case ss' of None \<Rightarrow> (pc, Stuck) | 
+                  Some ra \<Rightarrow> (npc, (Next (nat (fst (l_pc!(unat npc)))) rs' xm ra)))))"
+        using c2 a1 a7 a9 b0 b3 flattern_num split_pairs by (smt (verit))
+  
+      thus ?thesis
+        proof(cases "find_target_pc_in_l_pc l_jump (uint pc) \<noteq> None")
+          case True
+          have "\<exists> npc. find_target_pc_in_l_pc l_jump (uint pc) = Some npc" using True by simp
+          then obtain npc where d5_1:"find_target_pc_in_l_pc l_jump (uint pc) = Some npc" by auto
+          have d5_2:"distinct (map fst [])" by simp
+          have d5_4:"is_increase_list [] []" using is_increase_list_empty by blast 
+          hence d5:"npc = ?off" using a1 b0 d5_2 init_second_layer_def a7 d4 d5_4 d5_1 flattern_jump_index_2
+            by (smt (verit, ccfv_threshold) int_ops(1) list.size(3)) 
+
+          have d6_0:"fxst' = (let caller = save_x64_caller xrs; fp = save_x64_frame_pointer xrs; 
+                    rs' = upate_x64_stack_pointer xrs (stack_pointer xss) in
+                let ss' = update_stack caller fp (pc+1) xss in
+                  (case ss' of None \<Rightarrow> (pc, Stuck) | 
+                  Some ra \<Rightarrow> (?off, (Next (nat (fst (l_pc!(unat ?off)))) rs' xm ra))))" using d5 d3 d5_1 by auto
+          hence d6: "JITFlattern_def.match_state xxst' fxst'" 
+            using b4 d5 d3 True JITFlattern_def.match_state_def match_state1_def a9 a6
+            by (smt (z3) case_prod_beta' option.case_eq_if outcome.simps(4) prod.collapse prod.inject) 
+          then show ?thesis by simp             
+        next
+          case False
+          have "find_target_pc_in_l_pc l_jump (uint pc) = None" using False by simp
+           hence "fxst' = (pc,Stuck)" using d3 by simp
+          then show ?thesis using a9 by auto
+        qed
     next
       case False
       have b5:"x64_decode 0 ?l \<noteq> Some(1,Pret) \<and> (\<not>(\<exists> d. x64_decode 0 ?l = Some(5, Pcall_i d)))" using False b2 by simp
@@ -197,7 +241,7 @@ proof-
           Next xpc' rs' m' ss'\<Rightarrow>
             if rs' (CR ZF) = 1 then (?off+pc, xst')
             else (pc+1, xst') |
-          Stuck \<Rightarrow> (pc, Stuck) )" using True b1 b0 b5
+          Stuck \<Rightarrow> (pc, Stuck) )" using True b1 b0 b5 
           by (smt (verit) case_prod_conv outcome.exhaust outcome.simps(4) outcome.simps(5)) 
         
         have d1_1:"\<exists> src dst. x64_decode xpc1 l_bin = Some(3, Pcmpq_rr src dst)" 
@@ -240,7 +284,7 @@ proof-
         have d2_6:"xxst1 = (case x64_decode 0 ?l of Some (sz, ins) \<Rightarrow> (exec_instr ins sz 0 xrs xm xss))"
           using b7 d2_1 d2_5 by force 
         
-        have d2_7:"x64_decode 0 ?l = x64_decode xpc1 l_bin" using list_in_list_prop2 d2_3 d2_5 c3_0 by fastforce 
+        have d2_7:"x64_decode 0 ?l = x64_decode xpc1 l_bin" using list_in_list_x64_decode d2_3 d2_5 c3_0 by fastforce 
         have "\<exists> sz ins. x64_decode 0 ?l = Some (sz, ins)" using d2_5 by simp
         then obtain sz ins where "x64_decode 0 ?l = Some (sz, ins)" by auto
         hence d2_8:"xxst1 = (exec_instr ins sz 0 xrs xm xss)" using d2_6 by simp
@@ -264,8 +308,11 @@ proof-
               case True
                 have "\<exists> npc. find_target_pc_in_l_pc l_jump (uint pc) = Some npc" using True by simp
                 then obtain npc where d5_1:"find_target_pc_in_l_pc l_jump (uint pc) = Some npc" by auto
-                hence d5:"npc = ?off+pc" using a1 a4 b0 a7 flattern_jump_index init_second_layer_def is_increase_list_empty
-                  by (metis (mono_tags, lifting) add_cancel_left_left distinct.simps(1) list.size(3) map_is_Nil_conv of_nat_unat unsigned_0)                  
+                have d5_2:"distinct (map fst [])" by simp
+                have d5_4:"is_increase_list [] []" using is_increase_list_empty by blast 
+                hence d5:"npc = ?off+pc" using a1 a4 b0 a7 flattern_jump_index_1 init_second_layer_def d5_2 d5_1
+                  by (smt (verit, ccfv_threshold) Abs_fnat_hom_0 add_0 b7_0 int_ops(1) list.size(3)) 
+                           
                   
                 have d6_0:"fxst' =  (npc, (Next (nat (fst (l_pc!(unat npc)))) xrs1 xm1 xss1))" 
                   using d5_0 d5_1 True d4_0 d1 d2_0 d4 by (smt (verit, best) option.simps(5) outcome.simps(4))
@@ -303,10 +350,11 @@ proof-
           hence "x64_decode 0 ?l \<noteq> Some(1,Pret) \<and> (\<forall> d. x64_decode 0 ?l \<noteq> Some(5, Pcall_i d)) \<and> (\<forall> src dst. x64_decode 0 ?l \<noteq> Some(3, Pcmpq_rr src dst))"
             using not_ret_insn not_call_insn not_cmp_insn bn_1 b6 by simp
 
-          have "\<not> (\<exists> src dst. x64_decode xpc1 l_bin = Some(3, Pcmpq_rr src dst))" using b6 list_in_list_prop2 bn_0 c3_0 by fastforce
+          have "x64_decode xpc1 l_bin \<noteq> Some(1,Pret) \<and> (\<not>(\<exists> d. x64_decode xpc1 l_bin = Some(5, Pcall_i d))) \<and> \<not> (\<exists> src dst. x64_decode xpc1 l_bin = Some(3, Pcmpq_rr src dst))" 
+            using b6 list_in_list_x64_decode bn_0 c3_0 by fastforce
           hence c4:"fxst' = (let num = snd (l_pc!(unat pc)) in (pc+1, x64_sem num l_bin (Next xpc1 xrs xm xss)))"
-            using c2 b6  a1 a7 add.right_neutral c1 init_second_layer_def l_pc_length_prop a9
-            by (smt (verit, del_insts)  a9 c2 snd_conv) 
+            using c2 b6  a1 a7 add.right_neutral c1 init_second_layer_def l_pc_length_prop a9 a9 c2 snd_conv by auto
+           
           have c5_1:"l_pc \<noteq> []"  using a1 a4 apply(unfold init_second_layer_def) using num_corr by fastforce 
 
           have c5:"fxst' = (pc+1, x64_sem ?num l_bin (Next xpc1 xrs xm xss))"using b0 c5_1 a1 init_second_layer_def c4 a6 a7
