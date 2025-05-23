@@ -36,24 +36,6 @@ lemma match_state1_prop:
             by(cases "storev M64 xm (Vptr sp_block (xrs (IR SP) - u64_of_memory_chunk M64)) (Vlong (ucast x21a))",simp_all)
           done
 
-(*lemma x64_bin_is_sequential_x64_decode2:
-  "per_jit_ins ins = Some (num,off,l) \<Longrightarrow> 
-  x64_decode 0 l \<noteq> None \<Longrightarrow> 
-  x64_decode 0 l \<noteq> Some (1,Pret) \<Longrightarrow> 
-  (\<not>(\<exists> src dst. x64_decode 0 l = Some(3, Pcmpq_rr src dst))) \<Longrightarrow> 
-  (\<not>(\<exists> d. x64_decode 0 l = Some(5, Pcall_i d))) \<Longrightarrow>
-  \<exists> n. x64_bin_is_sequential n l 0"
-  using x64_encode_decode_consistency 
-  apply(unfold per_jit_ins_def,simp_all)
-apply(unfold per_jit_load_reg64_def per_jit_add_reg64_1_def per_jit_add_imm64_1_def  per_jit_sub_reg64_1_def per_jit_mov_reg64_1_def 
-per_jit_or_reg64_1_def per_jit_and_reg64_1_def per_jit_xor_reg64_1_def per_jit_mul_reg64_def per_jit_jcc_def per_jit_shift_lsh_reg64_def per_jit_shift_rsh_reg64_def
-per_jit_shift_arsh_reg64_def per_jit_load_reg64_def  per_jit_store_reg64_def per_jit_call_reg_def per_jit_exit_def Let_def)
-  apply(cases ins,simp_all)
-  sorry
-  subgoal for x21 x22 x23 x24 apply(cases "x64_decode 0 l",simp_all)
-    subgoal for a *)
-
-
 lemma one_step_equiv_layer1:
   assumes a0:"flat_bpf_sem 1 (l_bin,l_pc,l_jump) (pc, fxst) = fxst'" and
    a1:"jitflat_bpf lt init_second_layer = (l_bin,l_pc,l_jump)" and
@@ -121,8 +103,12 @@ proof-
             else \<comment>\<open> donot JUMP \<close>
               (pc+1, Next xpc1 rs1 m1 ss1)
           ))
-         else
+       else if x64_decode xpc1 l_bin = Some(1,Pret) then
+          let (pc', ss', caller,fp) = update_stack2 xss in 
+          let rs' = restore_x64_caller xrs caller fp in (pc', Next xpc1 rs' xm ss')
           \<comment>\<open> case: NOT BPF JMP \<close>
+          \<comment>\<open> case: NOT BPF JMP \<close>
+       else
           (pc+1, x64_sem num l_bin (Next xpc1 xrs xm xss)))" 
     apply(unfold flat_bpf_one_step_def Let_def) 
     using a3 a11 apply(cases "Next xpc1 xrs xm xss",simp_all)
@@ -157,14 +143,19 @@ proof-
   thus ?thesis
   proof(cases "x64_decode 0 ?l = Some(1,Pret)")
     case True
-    have b3:"xxst' = (let (num,off,l) = lt!(unat pc) in (let (pc', ss', caller,fp) = update_stack2 xss in 
-          let rs' = restore_x64_caller xrs caller fp in (pc', Next xpc rs' xm ss')))"
+    have b3:"xxst' = (let (pc', ss', caller,fp) = update_stack2 xss in 
+          let rs' = restore_x64_caller xrs caller fp in (pc', Next xpc rs' xm ss'))"
       using b1 True by (smt (verit) b0 case_prod_conv) 
    have b2_1:"?l \<noteq> []"  using a8 apply(unfold well_formed_prog_def) using b0 a4 a7 by blast
    have "?num >0 " using a8 apply(unfold well_formed_prog_def) using b0 a4 a7 by blast 
-   hence b2_2:"x64_decode 0 ?l \<noteq> None"  apply(cases "x64_decode 0 ?l",simp_all) using True by force 
-          
-    then show ?thesis sorry
+   hence b2_2:"x64_decode 0 ?l \<noteq> None"  apply(cases "x64_decode 0 ?l",simp_all) using True by force
+   hence b2_3:"x64_decode 0 ?l = x64_decode xpc1 l_bin" using b2_2 list_in_list_x64_decode by (metis True add.right_neutral c0 c1) 
+   have b2:"fxst' =  (let (pc', ss', caller,fp) = update_stack2 xss in
+          let rs' = restore_x64_caller xrs caller fp in (pc', Next xpc1 rs' xm ss'))" using b2_3 True c2
+     by (smt (verit) a9 instruction.distinct(195) instruction.distinct(209) option.inject snd_conv)   
+   have "JITFlattern_def.match_state xxst' fxst'" 
+     using  a6 a9 b2 b3 by(unfold JITFlattern_def.match_state_def match_state1_def Let_def update_stack2_def,simp_all) 
+    then show ?thesis by simp
   next
     case False
     have b2:"x64_decode 0 ?l \<noteq> Some(1,Pret)" using False by simp
@@ -268,7 +259,7 @@ proof-
         hence d2_5:"x64_decode 0 ?l \<noteq> None" using d2_1 apply(cases "x64_decode 0 ?l",simp_all)
           by (metis (no_types, lifting) Suc_diff_1 bn_2 option.simps(4) x64_sem.simps(3)) 
 
-        have b7_0:"\<exists> src dst. x64_decode 0 ?l = Some(3, Pcmpq_rr src dst)" using is_cmp_insn True bn_1 d2_5 by simp
+        have b7_0:"\<exists> src dst. x64_decode 0 ?l = Some(3, Pcmpq_rr src dst)" using True bn_1 d2_5 by simp
         have b7:"?num = 1" using a10 b7_0 by (metis a7 b0 jit_prog_prop4)  
         hence d2_2:"fxst1 = (case x64_decode xpc1 l_bin of
           None \<Rightarrow> Stuck |
@@ -348,7 +339,7 @@ proof-
           hence bn_0:"x64_decode 0 ?l \<noteq> None" using d0 a6 bn_2 apply(cases "x64_decode 0 ?l",simp_all)
             by (smt (verit) Suc_diff_1 option.simps(4) x64_sem.simps(3))
           hence "x64_decode 0 ?l \<noteq> Some(1,Pret) \<and> (\<forall> d. x64_decode 0 ?l \<noteq> Some(5, Pcall_i d)) \<and> (\<forall> src dst. x64_decode 0 ?l \<noteq> Some(3, Pcmpq_rr src dst))"
-            using not_ret_insn not_call_insn not_cmp_insn bn_1 b6 by simp
+            using  bn_1 b6 by simp
 
           have "x64_decode xpc1 l_bin \<noteq> Some(1,Pret) \<and> (\<not>(\<exists> d. x64_decode xpc1 l_bin = Some(5, Pcall_i d))) \<and> \<not> (\<exists> src dst. x64_decode xpc1 l_bin = Some(3, Pcmpq_rr src dst))" 
             using b6 list_in_list_x64_decode bn_0 c3_0 by fastforce

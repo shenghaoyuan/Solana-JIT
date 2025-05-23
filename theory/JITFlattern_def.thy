@@ -89,8 +89,11 @@ definition flat_bpf_one_step :: "flat_bpf_prog \<Rightarrow> hybrid_state \<Righ
             else \<comment>\<open> donot JUMP \<close>
               (pc+1, (Next xpc1 rs1 m1 ss1))
           ))
-         else
+        else if x64_decode xpc l_bin = Some(1,Pret) then
+          let (pc', ss', caller,fp) = update_stack2 ss in 
+          let rs' = restore_x64_caller rs caller fp in (pc', Next xpc rs' m ss')
           \<comment>\<open> case: NOT BPF JMP \<close>
+        else
           (pc+1, x64_sem num l_bin (Next xpc rs m ss))
 )))"
 
