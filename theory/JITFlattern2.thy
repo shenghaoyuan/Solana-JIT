@@ -106,6 +106,131 @@ qed
 qed*)
 
 
+(*lemma is_ret_insn:"l\<noteq>[] \<Longrightarrow> l!pc = 0xc3 \<Longrightarrow> x64_decode pc l \<noteq> None \<Longrightarrow> x64_decode pc l = Some(1,Pret)"
+  apply(unfold x64_decode_def Let_def)
+  apply(split if_splits,simp_all)
+  done  
+
+lemma is_call_insn:"l\<noteq>[] \<Longrightarrow> l!pc = 0xe8 \<Longrightarrow> x64_decode pc l \<noteq> None \<Longrightarrow> \<exists> d. x64_decode pc l = Some(5, Pcall_i d)"
+  apply(unfold x64_decode_def Let_def)
+  apply(split if_splits,simp_all)
+  apply(cases "u32_of_u8_list [l ! Suc pc, l ! Suc (Suc pc), l ! (pc + (3::nat)), l ! (pc + (4::nat))]",simp_all)
+  done
+
+lemma is_cmp_insn:"l\<noteq>[] \<Longrightarrow> l!(pc+1) = 0x39 \<Longrightarrow> x64_decode pc l \<noteq> None \<Longrightarrow> \<exists> src dst. x64_decode pc l = Some(3, Pcmpq_rr src dst)"
+   apply(simp add: x64_decode_def Let_def)
+  apply (cases "l ! pc = (195::8 word)"; simp)
+  sorry
+*)
+
+(*
+fun jitfix :: "((int\<times>u64) list) \<Rightarrow> x64_bin \<Rightarrow> (int \<times> nat) list \<Rightarrow> x64_bin" where
+  "jitfix [] l _  = l" |
+  "jitfix (x#xs) l l_pc = (let (fix_begin_addr,num1) = l_pc!(nat(fst x)); 
+                              (target_begin_addr,num2) = l_pc!(unat (snd x)) in 
+                           
+                          if (\<exists> d. x64_decode (nat fix_begin_addr) l = Some(5, Pcall_i d)) then
+                            
+                              let offset = ((of_int target_begin_addr)::i32) - ((of_int fix_begin_addr+5)::i32);
+                              u8_list = u8_list_of_i32 offset;
+                              l' = x64_bin_update l (nat (fix_begin_addr+1)) u8_list in 
+                            jitfix xs l' l_pc
+                          
+                          else if (\<exists> src dst. x64_decode (nat fix_begin_addr) l = Some(3, Pcmpq_rr src dst)) then 
+                           
+                              let offset = ((of_int target_begin_addr)::i32) - ((of_int fix_begin_addr+3+6)::i32);
+                              u8_list = u8_list_of_i32 offset;
+                              l' = x64_bin_update l (nat (fix_begin_addr+3+2)) u8_list in 
+                            jitfix xs l' l_pc
+                          
+                          else                           
+                              let offset = ((of_int target_begin_addr)::i32) - ((of_int fix_begin_addr+3+6)::i32);
+                              u8_list = u8_list_of_i32 offset;
+                              l' = x64_bin_update l (nat (fix_begin_addr+3+2)) u8_list in 
+                            jitfix xs l' l_pc)"
+*)
+
+(*
+fun jitfix :: "((u64\<times>u64) list) \<Rightarrow> x64_bin \<Rightarrow> (u64 \<times> nat) list \<Rightarrow> x64_bin" where
+  "jitfix [] _ _  = []" |
+  "jitfix (x#xs) l l_pc = (let (place_end,num1) = l_pc!(unat (fst x)); (addr_begin,num2) = l_pc!(unat (snd x-1));
+                              u8_list = u8_list_of_u32 ((ucast addr_begin)::u32);
+                              l' = x64_bin_update l (unat (place_end-3)) u8_list in 
+                          jitfix xs l' l_pc)"
+*)
+
+(*
+fun jit_fix_sem::"nat \<Rightarrow> x64_bin \<Rightarrow> outcome \<Rightarrow> outcome" where
+ "jit_fix_sem 0 _ st = st" |
+ "jit_fix_sem (Suc n) lt xst = 
+  (let xst' = x64_sem 1 lt xst in 
+   (case xst' of Stuck \<Rightarrow> Stuck |
+                 Next pc' rs' m' ss' \<Rightarrow> 
+    jit_fix_sem n lt xst'))"*)
+
+(*
+fun jit_fix_sem::" nat \<Rightarrow> nat \<Rightarrow> x64_bin \<Rightarrow> outcome \<Rightarrow> outcome" where
+ "jit_fix_sem 0 _ _ st = st" |
+ "jit_fix_sem (Suc n) num lt xst = 
+  (let xst' = x64_sem 1 lt xst in 
+   (case xst' of Stuck \<Rightarrow> Stuck |
+                 Next pc' rs' m' ss' \<Rightarrow> 
+    if pc' = num then xst' else 
+    jit_fix_sem n num lt xst'))"
+*)
+
+lemma "jitper insns = Some lt \<Longrightarrow> lt \<noteq> [] \<Longrightarrow> well_formed_prog1 lt"
+  using jit_prog_prop3 well_formed_prog1_def sorry
+
+
+
+(*
+lemma jit_prog_prop1:"x64_encode ins \<noteq> undefined \<Longrightarrow>  x64_encode ins \<noteq> []"
+  apply(unfold x64_encode_def)
+  apply(cases ins,simp_all)
+  subgoal for x7 
+    apply(unfold construct_rex_to_u8_def Let_def,simp_all)
+    done
+  subgoal for x8
+    apply(unfold construct_rex_to_u8_def Let_def,simp_all)
+    done
+  subgoal for x111 x112
+apply(unfold construct_rex_to_u8_def Let_def,simp_all)
+    done
+  subgoal for x151 x152 x153
+    apply(cases x151,simp_all)
+    subgoal for x1 x2 x3 
+      apply(cases x1,simp_all) 
+      subgoal for a apply(cases x2,simp_all)
+         apply(unfold construct_rex_to_u8_def Let_def,simp_all)
+        sorry
+      done
+    done
+  subgoal for x201 x202 x203
+    apply(cases x202,simp_all) 
+    subgoal for x1 x2 x3
+      apply(cases x1,simp_all) 
+      subgoal apply(cases x2,simp_all) 
+         apply(unfold construct_rex_to_u8_def Let_def,simp_all)
+         apply(cases x203,simp_all) 
+        sorry
+    done
+  done
+*)
+
+(*lemma "jitper insns = Some lt \<Longrightarrow> insns \<noteq> [] \<Longrightarrow> lt \<noteq> []"
+  using jit_prog_prop3 *)
+
+
+(*lemma jit_prog_prop2:"per_jit_ins ins = Some (num,off,l_bin0) \<Longrightarrow> \<exists> src dst. x64_decode 0 l_bin0 = Some(3, Pcmpq_rr src dst) \<Longrightarrow> l_bin0\<noteq>[] \<Longrightarrow> num = 1"*)
+lemma jit_prog_prop3:
+  "jitper insns = Some lt \<Longrightarrow> 
+  lt \<noteq> [] \<Longrightarrow>
+  lt!(unat pc) = (num,off,l_bin0) \<Longrightarrow> 
+  unat pc < length lt \<and> unat pc \<ge> 0 \<Longrightarrow> 
+  num > 0"
+  sorry
+
 (*
 lemma flattern_lbin_easy:
   assumes a0:"l_bin0!0=(num,off,l)" and

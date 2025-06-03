@@ -110,11 +110,41 @@ definition exec_store :: "nat \<Rightarrow> nat \<Rightarrow> memory_chunk \<Rig
 definition exec_call :: "nat \<Rightarrow> nat \<Rightarrow> memory_chunk \<Rightarrow> mem \<Rightarrow> stack_state \<Rightarrow> regset \<Rightarrow> u32 \<Rightarrow> outcome" where
 "exec_call pc sz chunk m ss rs n = (
   let nsp = (rs (IR SP))-(u64_of_memory_chunk chunk) in (
-      case Mem.storev M64 m (Vptr sp_block nsp) (Vlong (ucast n)) of
+      case Mem.storev M64 m (Vptr sp_block nsp)  (Vlong (of_nat pc+1)) of
         None \<Rightarrow> Stuck |
         Some m' \<Rightarrow> let rs1 = rs#(IR SP) <- nsp in
                     Next (unat n) rs1 m' ss
 ))"
+
+(*        (let caller = save_x64_caller rs; fp = save_x64_frame_pointer rs; 
+            rs' = upate_x64_stack_pointer rs (stack_pointer ss) in
+        let ss' = update_stack caller fp (pc+1) ss in
+          (case ss' of None \<Rightarrow> (pc, Stuck) | 
+          Some ra \<Rightarrow> (off, Next xpc rs' m ra))*)
+
+definition save_x64_caller::"regset \<Rightarrow> u64 list" where
+"save_x64_caller xrs = [xrs (IR R12), xrs (IR R13), xrs (IR R14), xrs (IR R15)]"
+
+definition save_x64_frame_pointer::"regset \<Rightarrow> u64" where
+"save_x64_frame_pointer xrs = xrs (IR RBP)"
+
+definition upate_x64_stack_pointer::"regset \<Rightarrow> u64 \<Rightarrow> regset" where
+"upate_x64_stack_pointer rs v = (rs#(IR RBP) <-- v)"
+
+definition restore_x64_caller::"regset \<Rightarrow> u64 list \<Rightarrow> u64 \<Rightarrow> regset" where
+"restore_x64_caller rs caller fp = (let rs'= (((((
+            rs#(IR RBP) <-- fp)
+              #(IR R15)  <-- (caller!(3)))
+              #(IR R14)  <-- (caller!(2)))
+              #(IR R13)  <-- (caller!(1)))
+              #(IR R12)  <-- (caller!(0))) in rs')"
+
+axiomatization
+  exec_call_external :: "nat \<Rightarrow> nat \<Rightarrow> memory_chunk \<Rightarrow> mem \<Rightarrow> stack_state \<Rightarrow> regset \<Rightarrow> u32 \<Rightarrow> outcome"  where
+  exec_call_external_prop: "\<And>pc sz  m ss rs n. (\<exists> xpc1 xrs1 xm1 xss1. exec_call_external pc sz M64 m ss rs n = Next xpc1 xrs1 xm1 xss1 \<and>
+         (let caller = save_x64_caller rs; fp = save_x64_frame_pointer rs; 
+            rs' = upate_x64_stack_pointer rs (stack_pointer ss) in
+        let ss' = update_stack caller fp (of_nat (pc+1)) ss in \<exists> ra. ss' = Some ra \<and> xpc1 = pc \<and> ra = xss1 \<and> xpc1 = pc \<and> xrs1 = rs' \<and> xm1 = m))"
 
 definition exec_ret :: "memory_chunk \<Rightarrow> mem \<Rightarrow> stack_state \<Rightarrow> regset \<Rightarrow> outcome" where
 "exec_ret chunk m ss rs = (
@@ -127,6 +157,13 @@ definition exec_ret :: "memory_chunk \<Rightarrow> mem \<Rightarrow> stack_state
                   Next (unat v) rs1 m ss |
       _ \<Rightarrow> Stuck)
 )"
+
+axiomatization
+  exec_ret_external :: "nat \<Rightarrow> nat \<Rightarrow> memory_chunk \<Rightarrow> mem \<Rightarrow> stack_state \<Rightarrow> regset \<Rightarrow> outcome"  where
+  exec_ret_external_prop: "\<And>pc sz m ss rs. (\<exists> xpc1 xrs1 xm1 xss1. exec_ret_external pc sz M64 m ss rs = Next xpc1 xrs1 xm1 xss1 \<and>
+  (let (pc', ss', caller,fp) = update_stack2 ss in 
+          let rs' = restore_x64_caller rs caller fp in ss' = xss1 \<and> xm1 = m \<and> xpc1 = (pc+sz) \<and> xrs1 = rs'))"
+
 
 definition exec_instr :: "instruction \<Rightarrow> nat \<Rightarrow> nat \<Rightarrow> regset \<Rightarrow> mem \<Rightarrow> stack_state \<Rightarrow> outcome" where
 "exec_instr i sz pc rs m ss = (\<comment> \<open> sz is the binary size (n-byte) of current instruction  \<close>
@@ -143,7 +180,7 @@ definition exec_instr :: "instruction \<Rightarrow> nat \<Rightarrow> nat \<Righ
   Pimulq_r   r1    \<Rightarrow> let rs1 = rs#(IR RAX) <- ((rs (IR RAX))*(rs (IR r1))) in
                      Next (pc + sz) (rs1#(IR RDX) <-( (rs (IR RAX))*(rs (IR r1)) div (2 ^ 32))) m ss|
   Pjcc      t d    \<Rightarrow> (case eval_testcond t rs of Some b \<Rightarrow> 
-                          if b then Next (unat d) rs m ss
+                          if b then Next (unat d+pc+1) rs m ss
                           else Next (pc+sz) rs m ss | 
                         None \<Rightarrow> Stuck) |
   Pcmpq_rr rd r1 \<Rightarrow> Next (pc+sz)(compare_longs (rs (IR r1)) (rs (IR rd)) rs) m ss |
@@ -158,8 +195,11 @@ definition exec_instr :: "instruction \<Rightarrow> nat \<Rightarrow> nat \<Righ
   Psarq_r   rd    \<Rightarrow> Next (pc + sz) (rs#(IR rd) <- (ucast (arsh64 ((scast (rs (IR rd)))::i64) (unat (and ( (ucast (rs(IR RCX)))::u32) (63::u32)))))) m ss |
 \<comment> \<open>TODO  Psarq_r   rd    \<Rightarrow> Next (pc + sz) (rs#(IR rd) <- (ucast (((scast (rs (IR rd)))::i64) >> (unat (and ( (ucast (rs(IR RCX)))::u32) (63::u32)))))) m ss | \<close>
   Pmov_rm  rd a c \<Rightarrow> exec_load pc sz c m ss a rs (IR rd) |            
-  Pcall_i   n   \<Rightarrow> exec_call pc sz M64 m ss rs n
+  Pcall_i   n   \<Rightarrow> exec_call pc sz M64 m ss rs n |
+  Pcall_anchor n \<Rightarrow> exec_call_external pc sz M64 m ss rs n |
+  Pret_anchor \<Rightarrow> exec_ret_external pc sz M64 m ss rs
 )"
+(* *)
 (*Ptestq_rr r1 r2 \<Rightarrow> Next (pc+sz) (compare_longs (and (rs (IR r1)) (rs (IR r2))) 0 rs) m ss*)
 
 fun x64_sem :: "nat \<Rightarrow> x64_bin \<Rightarrow> outcome \<Rightarrow> outcome" where
@@ -206,22 +246,50 @@ lemma x64_sem_add:
 type_synonym hybrid_state = "u64 \<times> outcome"
 
 
-definition save_x64_caller::"regset \<Rightarrow> u64 list" where
-"save_x64_caller xrs = [xrs (IR R12), xrs (IR R13), xrs (IR R14), xrs (IR R15)]"
-
-definition save_x64_frame_pointer::"regset \<Rightarrow> u64" where
-"save_x64_frame_pointer xrs = xrs (IR RBP)"
-
-definition upate_x64_stack_pointer::"regset \<Rightarrow> u64 \<Rightarrow> regset" where
-"upate_x64_stack_pointer rs v = (rs#(IR RBP) <-- v)"
-
-definition restore_x64_caller::"regset \<Rightarrow> u64 list \<Rightarrow> u64 \<Rightarrow> regset" where
-"restore_x64_caller rs caller fp = (let rs'= (((((
-            rs#(IR RBP) <-- fp)
-              #(IR R15)  <-- (caller!(3)))
-              #(IR R14)  <-- (caller!(2)))
-              #(IR R13)  <-- (caller!(1)))
-              #(IR R12)  <-- (caller!(0))) in rs')"
+(*definition perir_step:: " (nat \<times> u64 \<times> x64_bin) list \<Rightarrow> hybrid_state\<Rightarrow> hybrid_state" where
+"perir_step lt st  \<equiv>
+  let pc = fst st; xst = snd st in 
+  let (num,off,l) = lt!(unat pc) in
+    case xst of
+    Next xpc rs m ss \<Rightarrow> (   
+      case x64_decode 0 l of 
+      Some(_, Pret) \<Rightarrow> (of_nat xpc, Next xpc rs m ss)|
+      Some(_, Pcall_i _) \<Rightarrow> (off, Next xpc rs m ss)|
+      Some(_, Pcmpq_rr src dst) \<Rightarrow> 
+        (let xst_temp = Next 0 rs m ss; xst' = x64_sem num l xst_temp in
+          case xst' of
+          Next xpc' rs' m' ss'\<Rightarrow>
+            if rs' (CR ZF) = 1 then (off+pc, xst')
+            else (pc+1, xst') |
+          Stuck \<Rightarrow> (pc, Stuck))|      
+      _  \<Rightarrow>
+        (let xst_temp = Next 0 rs m ss; xst' = x64_sem num l xst_temp in
+          (pc+1, xst')))
+    | Stuck \<Rightarrow> (pc,Stuck)"
+*)
+(*
+definition perir_step:: " (nat \<times> u64 \<times> x64_bin) list \<Rightarrow> hybrid_state\<Rightarrow> hybrid_state" where
+"perir_step lt st  \<equiv>
+  let pc = fst st; xst = snd st in 
+  let (num,off,l) = lt!(unat pc) in
+    case xst of
+    Next xpc rs m ss \<Rightarrow> (   
+      case x64_decode 0 l of 
+      Some(_, Pcall_i _) \<Rightarrow> (let xst_temp = Next 0 rs m ss in (off, x64_sem 1 l xst_temp))|
+      Some(_, Pret_anchor) \<Rightarrow> (let (pc', ss', caller,fp) = update_stack2 ss in 
+          let rs' = restore_x64_caller rs caller fp in (pc', Next xpc rs' m ss'))|      
+      Some(_, Pcmpq_rr src dst) \<Rightarrow> 
+        (let xst_temp = Next 0 rs m ss; xst' = x64_sem 1 l xst_temp in
+          case xst' of
+          Next xpc' rs' m' ss'\<Rightarrow>
+            if rs' (CR ZF) = 1 then (off+pc, xst')
+            else (pc+1, xst') |
+          Stuck \<Rightarrow> (pc, Stuck))|      
+      _  \<Rightarrow>
+        (let xst_temp = Next 0 rs m ss; xst' = x64_sem num l xst_temp in
+          (pc+1, xst')))
+    | Stuck \<Rightarrow> (pc,Stuck)"
+*)
 
 definition perir_step:: " (nat \<times> u64 \<times> x64_bin) list \<Rightarrow> hybrid_state\<Rightarrow> hybrid_state" where
 "perir_step lt st  \<equiv>
@@ -229,30 +297,27 @@ definition perir_step:: " (nat \<times> u64 \<times> x64_bin) list \<Rightarrow>
   let (num,off,l) = lt!(unat pc) in
     case xst of
     Next xpc rs m ss \<Rightarrow> (   
-       if x64_decode 0 l = Some(1,Pret) then
-          let (pc', ss', caller,fp) = update_stack2 ss in 
-          let rs' = restore_x64_caller rs caller fp in (pc', Next xpc rs' m ss')
-      else if (\<exists> d. x64_decode 0 l = Some(5, Pcall_i d)) then 
-        let caller = save_x64_caller rs; fp = save_x64_frame_pointer rs; 
-            rs' = upate_x64_stack_pointer rs (stack_pointer ss) in
-        let ss' = update_stack caller fp (pc+1) ss in
-          (case ss' of None \<Rightarrow> (pc, Stuck) | 
-          Some ra \<Rightarrow> (off, Next xpc rs' m ra))
-      else if (\<exists> src dst. x64_decode 0 l = Some(3, Pcmpq_rr src dst)) then
-        let xst_temp = Next 0 rs m ss; xst' = x64_sem num l xst_temp in
+      case x64_decode 0 l of 
+      Some(_, Pcall_i _) \<Rightarrow> (let xst_temp = Next 0 rs m ss in (off, x64_sem 1 l xst_temp))|
+      Some(sz, Pret_anchor) \<Rightarrow> (let (pc', ss', caller,fp) = update_stack2 ss in 
+          let rs' = restore_x64_caller rs caller fp in 
+          let xst_temp = Next sz rs' m ss' in (pc', x64_sem 1 l xst_temp))|      
+      Some(_, Pcmpq_rr src dst) \<Rightarrow> 
+        (let xst_temp = Next 0 rs m ss; xst' = x64_sem 1 l xst_temp in
           case xst' of
           Next xpc' rs' m' ss'\<Rightarrow>
             if rs' (CR ZF) = 1 then (off+pc, xst')
             else (pc+1, xst') |
-          Stuck \<Rightarrow> (pc, Stuck)      
-      else
-        let xst_temp = Next 0 rs m ss; xst' = x64_sem num l xst_temp in
-          (pc+1, xst'))
+          Stuck \<Rightarrow> (pc, Stuck))|      
+      _  \<Rightarrow>
+        (let xst_temp = Next 0 rs m ss; xst' = x64_sem num l xst_temp in
+          (pc+1, xst')))
     | Stuck \<Rightarrow> (pc,Stuck)"
 
 (*if unat pc \<ge> length lt \<or> unat pc < 0 then (pc,Stuck)
   else*) 
-fun perir_sem :: "nat \<Rightarrow> (nat \<times> u64 \<times> x64_bin) list \<Rightarrow> hybrid_state \<Rightarrow> hybrid_state" where
+fun perir_sem :: "nat \<Rightarrow> (nat \<times> u64 \<times> x64_bin) list \<Rightarrow> 
+  hybrid_state \<Rightarrow> hybrid_state" where
 "perir_sem 0 _ (pc,st) = (pc,st)" |
 "perir_sem (Suc n) lt (pc,xst) = (
   let pair = perir_step lt (pc,xst) in

@@ -114,7 +114,7 @@ definition per_jit_xor_reg64_1 :: "bpf_ireg \<Rightarrow> bpf_ireg \<Rightarrow>
 definition per_jit_exit :: "(nat \<times> u64 \<times> x64_bin) option" where
 "per_jit_exit = (
   let ins = Pret in
-    Some (1, 0, x64_encode ins) 
+    Some (1, 0, x64_encode Pret_anchor@x64_encode ins) 
 )"
 
 
@@ -171,7 +171,7 @@ definition per_jit_jcc ::"condition \<Rightarrow> bpf_ireg \<Rightarrow> bpf_ire
 *)
 
 definition per_jit_call_reg :: "bpf_ireg \<Rightarrow> imm_ty \<Rightarrow> (nat \<times> u64 \<times> x64_bin) option" where
-  "per_jit_call_reg src imm = Some (1, ucast imm, x64_encode (Pcall_i 0))"
+  "per_jit_call_reg src imm = Some (2, ucast imm, x64_encode (Pcall_anchor 0)@x64_encode (Pcall_i 0))"
 
 definition per_jit_shift_lsh_reg64 :: "bpf_ireg \<Rightarrow> bpf_ireg \<Rightarrow> (nat \<times> u64 \<times> x64_bin) option" where
 "per_jit_shift_lsh_reg64 dst src = (
@@ -567,24 +567,31 @@ lemma x64_sem1_pc_aux1:
   a5:"xst = (Next xpc xrs xm xss)" and
   a6:"x64_prog!(unat pc) = (num,off,l)" and
   a7:"x64_sem num l (Next 0 xrs xm xss) = xst1 " and
-  a8:"(\<not>(x64_decode 0 l = Some(1,Pret))) \<and> (\<not>(\<exists> d. x64_decode 0 l = Some(5, Pcall_i d))) \<and> (\<not>(\<exists> src dst. x64_decode 0 l = Some(3, Pcmpq_rr src dst)))" and
+  a8:"(\<not>(\<exists> num. x64_decode 0 l = Some(num,Pret))) \<and> (\<not>(\<exists> d num. x64_decode 0 l = Some(num, Pcall_i d))) \<and> (\<not>(\<exists> num src dst. x64_decode 0 l = Some(num, Pcmpq_rr src dst)))" and
   a10:"xst1 = Next xpc1 xrs1 xm1 xss1" and
   a11:"prog!(unat pc) \<in> {BPF_ALU64 BPF_ADD dst (SOReg src), BPF_ALU64 BPF_ADD dst (SOImm imm), BPF_ALU64 BPF_MUL dst (SOReg src),  BPF_ALU64 BPF_SUB dst (SOReg src), 
   BPF_ALU64 BPF_MOV dst (SOReg src), BPF_ALU64 BPF_OR dst (SOReg src), BPF_ALU64 BPF_AND dst (SOReg src), BPF_ALU64 BPF_XOR dst (SOReg src),
   BPF_ALU64 BPF_LSH dst (SOReg src),BPF_ALU64 BPF_RSH dst (SOReg src), BPF_ALU64 BPF_ARSH dst (SOReg src),
   BPF_LDX chk dst src d, BPF_ST chk dst (SOReg src) d}"
 shows "perir_sem 1 x64_prog (pc,xst) = (pc', Next xpc1 xrs1 xm1 xss1)"
-proof-
+  sorry
+(*proof-
   have "perir_sem 1 x64_prog (pc,xst) = (let (num,off,l) = x64_prog!(unat pc) in
   let pair = let xst_temp = Next 0 xrs xm xss; xst' = x64_sem num l xst_temp in (pc+1, xst') in (perir_sem 0 x64_prog pair))"
-    using a5 a8 a6 perir_step_def a4 by auto
+    using a5 a8 a6 perir_step_def a4 apply(unfold Let_def,simp_all) 
+    apply(cases "x64_decode (0::nat) l",simp_all)
+      subgoal for a apply(cases a,simp_all)
+        subgoal for aa b apply(cases b,simp_all)
+          done
+        done
+      done    
   hence "perir_sem 1 x64_prog (pc,xst) = (perir_sem 0 x64_prog (pc+1,xst1))" using a3 a4 a5 a6 a7 a8 perir_step_def by simp
   hence "perir_sem 1 x64_prog (pc,xst) = (pc+1, Next xpc1 xrs1 xm1 xss1)" using a10 by simp
   moreover have "pc+1=pc'" using corr_pc_aux2 a3 a0 a1 a2 a4 a11 a6 a8
     by (smt (verit) insertCI insertE)
   hence "perir_sem 1 x64_prog (pc,xst) = (pc', Next xpc1 xrs1 xm1 xss1)" using calculation by blast
   thus ?thesis by blast
-qed
+qed*)
 
 lemma x64_sem1_pc_aux2:
   assumes 

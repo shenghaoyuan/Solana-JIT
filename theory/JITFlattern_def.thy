@@ -5,9 +5,10 @@ type_synonym flat_bpf_prog = "x64_bin \<times> (int \<times> nat) list \<times> 
 
 definition update_l_jump::"(nat \<times> u64 \<times> x64_bin) \<Rightarrow> (int \<times> nat) list \<Rightarrow> (int\<times>u64) list \<Rightarrow> (int\<times>u64) list" where
 "update_l_jump x l_pc l_jump \<equiv> let (num,off,l_bin0) = x in 
-  if (\<exists> d. x64_decode 0 l_bin0 = Some(5, Pcall_i d)) then l_jump@ [(of_nat (length l_pc), off)]
-  else if (\<exists> src dst. x64_decode 0 l_bin0 = Some(3, Pcmpq_rr src dst)) then l_jump@ [(of_nat (length l_pc), of_nat (length l_pc) +  off)]
-  else l_jump"
+  case x64_decode 0 l_bin0 of 
+  Some(_, Pcall_i _) \<Rightarrow> l_jump@ [(of_nat (length l_pc), off)]|
+  Some(_, Pcmpq_rr src dst) \<Rightarrow> l_jump@ [(of_nat (length l_pc), of_nat (length l_pc) +  off)]|
+  _ \<Rightarrow> l_jump"
 
 fun jitflat_bpf :: "(nat \<times> u64 \<times> x64_bin) list \<Rightarrow> flat_bpf_prog \<Rightarrow> flat_bpf_prog" where
 "jitflat_bpf [] st = st"| 
@@ -53,9 +54,63 @@ fun find_target_pc_in_l_pc :: "((int\<times>u64) list) \<Rightarrow> int \<Right
   else find_target_pc_in_l_pc xs pc
 )"
 
+
+fun find_target_pc_in_l_pc3 :: "((int\<times>u64) list) \<Rightarrow> int \<Rightarrow> int option" where
+"find_target_pc_in_l_pc3 [] _ = None" |
+"find_target_pc_in_l_pc3 ((x, y)#xs) pc = (
+  if y = (of_int pc) then Some x
+  else find_target_pc_in_l_pc3 xs pc
+)"
+
+
 (*value "((of_int (1::int))::nat)"*)
 
 (*if unat pc \<ge> length lp \<or> unat pc < 0 then (pc,Stuck) else *)
+(*definition flat_bpf_one_step :: "flat_bpf_prog \<Rightarrow> hybrid_state \<Rightarrow> hybrid_state" where
+"flat_bpf_one_step lp st = (
+  let (l_bin,l_pc,l_jump) = lp in
+  let (pc, xst) = st in
+    (case xst of
+    Stuck \<Rightarrow> (pc, Stuck) |
+    Next xpc rs m ss \<Rightarrow> (
+    if unat pc \<ge> length l_pc \<or> unat pc < 0 then (pc,Stuck) else 
+    let num = snd (l_pc!(unat pc)) in 
+    let old_xpc = nat (fst (l_pc!(unat pc))) in 
+      if xpc \<noteq> old_xpc then (pc, Stuck) else 
+        case x64_decode xpc l_bin of Some(_, Pcall_i _) \<Rightarrow>
+            (case find_target_pc_in_l_pc l_jump (uint pc) of 
+              None \<Rightarrow> (pc, Stuck) |
+              Some npc \<Rightarrow> (
+                let xst_temp = x64_sem 1 l_bin xst in 
+                  (case xst_temp of Stuck \<Rightarrow> (pc, Stuck) | 
+                                    Next xpc' rs' m' ss' \<Rightarrow> (npc, (Next (nat (fst (l_pc!(unat npc)))) rs' m' ss'))) )) |
+        Some(sz, Pcmpq_rr src dst) \<Rightarrow> \<comment>\<open> TODO: if the first byte is the opcode of cmp? \<close>
+          \<comment>\<open> case: BPF JMP \<close>
+          (case x64_decode (xpc+sz) l_bin of Some (sz2,Pjcc _ _) \<Rightarrow>
+            (case x64_sem num l_bin (Next xpc rs m ss) of
+            Stuck \<Rightarrow> (pc, Stuck) | \<comment>\<open> if one step error, stop, it should be impossible \<close>
+            Next xpc1 rs1 m1 ss1 \<Rightarrow> (
+              case find_target_pc_in_l_pc l_jump (uint pc) of
+                None \<Rightarrow> (pc, Stuck) |
+                Some npc \<Rightarrow>
+              if rs1 (CR ZF) = 1 then \<comment>\<open> must JUMP \<close>
+                ((npc, (Next (nat (fst (l_pc!(unat npc)))) rs1 m1 ss1))) \<comment>\<open> go to the target address in the jited x64 binary \<close>
+              else \<comment>\<open> donot JUMP \<close>
+                (pc+1, (Next (xpc1+sz2) rs1 m1 ss1))
+            ))|
+            _ \<Rightarrow> (pc, Stuck)) |
+        Some(sz,Pret_anchor) \<Rightarrow>
+          (case x64_decode (xpc+sz) l_bin of Some (sz2,Pret) \<Rightarrow>
+          let (pc', ss', caller,fp) = update_stack2 ss in 
+          if find_target_pc_in_l_pc3 l_jump (uint pc) \<noteq> Some (uint pc') then (pc,Stuck) else
+          let rs' = restore_x64_caller rs caller fp in (pc', Next (nat (fst (l_pc!(unat pc')))+1) rs' m ss') |
+          _ \<Rightarrow> (pc,Stuck)) |
+          \<comment>\<open> case: NOT BPF JMP \<close>
+        _ \<Rightarrow>
+          (pc+1, x64_sem num l_bin (Next xpc rs m ss))
+)))"
+*)
+
 definition flat_bpf_one_step :: "flat_bpf_prog \<Rightarrow> hybrid_state \<Rightarrow> hybrid_state" where
 "flat_bpf_one_step lp st = (
   let (l_bin,l_pc,l_jump) = lp in
@@ -67,35 +122,42 @@ definition flat_bpf_one_step :: "flat_bpf_prog \<Rightarrow> hybrid_state \<Righ
     let num = snd (l_pc!(unat pc)) in 
     let old_xpc = nat (fst (l_pc!(unat pc))) in 
       if xpc \<noteq> old_xpc then (pc, Stuck) else 
-        if (\<exists> d. x64_decode xpc l_bin = Some(5, Pcall_i d)) then
+        case x64_decode xpc l_bin of Some(sz, Pcall_i imm) \<Rightarrow>
             (case find_target_pc_in_l_pc l_jump (uint pc) of 
               None \<Rightarrow> (pc, Stuck) |
-              Some npc \<Rightarrow> 
-                (let caller = save_x64_caller rs; fp = save_x64_frame_pointer rs; 
-                    rs' = upate_x64_stack_pointer rs (stack_pointer ss) in
-                let ss' = update_stack caller fp (pc+1) ss in
-                  (case ss' of None \<Rightarrow> (pc, Stuck) | 
-                  Some ra \<Rightarrow> (npc, (Next (nat (fst (l_pc!(unat npc)))) rs' m ra)))))
-        else if (\<exists> src dst. x64_decode xpc l_bin = Some(3, Pcmpq_rr src dst)) then \<comment>\<open> TODO: if the first byte is the opcode of cmp? \<close>
+              Some npc \<Rightarrow> (
+                let xst_temp = exec_instr (Pcall_i (of_int(fst (l_pc!(unat npc))))) sz xpc rs m ss in 
+                  (case xst_temp of Stuck \<Rightarrow> (pc, Stuck) | 
+                                    Next xpc' rs' m' ss' \<Rightarrow> (npc, (Next xpc' rs' m' ss'))))) |
+        Some(sz,Pcmpq_rr src dst) \<Rightarrow> \<comment>\<open> TODO: if the first byte is the opcode of cmp? \<close>
           \<comment>\<open> case: BPF JMP \<close>
-          (case x64_sem num l_bin (Next xpc rs m ss) of
-          Stuck \<Rightarrow> (pc, Stuck) | \<comment>\<open> if one step error, stop, it should be impossible \<close>
-          Next xpc1 rs1 m1 ss1 \<Rightarrow> (
-            if rs1 (CR ZF) = 1 then \<comment>\<open> must JUMP \<close>
-              (case find_target_pc_in_l_pc l_jump (uint pc) of
-              None \<Rightarrow> (pc, Stuck) |
-              Some npc \<Rightarrow>
-                (npc, (Next (nat (fst (l_pc!(unat npc)))) rs1 m1 ss1))) \<comment>\<open> go to the target address in the jited x64 binary \<close>
-            else \<comment>\<open> donot JUMP \<close>
-              (pc+1, (Next xpc1 rs1 m1 ss1))
-          ))
-        else if x64_decode xpc l_bin = Some(1,Pret) then
+          (case x64_decode (xpc+sz) l_bin of Some (sz2,Pjcc _ _) \<Rightarrow>
+            (case x64_sem num l_bin (Next xpc rs m ss) of
+            Stuck \<Rightarrow> (pc, Stuck) | \<comment>\<open> if one step error, stop, it should be impossible \<close>
+            Next xpc1 rs1 m1 ss1 \<Rightarrow> (
+              case find_target_pc_in_l_pc l_jump (uint pc) of
+                None \<Rightarrow> (pc, Stuck) |
+                Some npc \<Rightarrow>
+              if rs1 (CR ZF) = 1 then \<comment>\<open> must JUMP \<close>
+                ((npc, (Next (nat (fst (l_pc!(unat npc)))) rs1 m1 ss1))) \<comment>\<open> go to the target address in the jited x64 binary \<close>
+              else \<comment>\<open> donot JUMP \<close>
+                (pc+1, (Next (xpc1+sz2) rs1 m1 ss1))
+            ))|
+            _ \<Rightarrow> (pc, Stuck)) |
+        Some(sz,Pret_anchor) \<Rightarrow>
+          (case x64_decode (xpc+sz) l_bin of Some (sz2,Pret) \<Rightarrow>
           let (pc', ss', caller,fp) = update_stack2 ss in 
-          let rs' = restore_x64_caller rs caller fp in (pc', Next xpc rs' m ss')
+          if find_target_pc_in_l_pc3 l_jump (uint pc) \<noteq> Some (uint pc') then (pc,Stuck) else
+          let rs' = restore_x64_caller rs caller fp in 
+          let xst_temp = exec_instr Pret sz2 (xpc+sz) rs' m ss' in 
+          (case xst_temp of Stuck \<Rightarrow> (pc,Stuck)| Next xpc1 rs1 m1 ss1 \<Rightarrow> 
+            (if xpc1 = (nat (fst (l_pc!(unat pc')))+1) then (pc',Next xpc1 rs1 m1 ss1) else (pc,Stuck) ))|
+          _ \<Rightarrow> (pc,Stuck)) |
           \<comment>\<open> case: NOT BPF JMP \<close>
-        else
+        _ \<Rightarrow>
           (pc+1, x64_sem num l_bin (Next xpc rs m ss))
 )))"
+
 
 fun flat_bpf_sem :: "nat \<Rightarrow> flat_bpf_prog \<Rightarrow> hybrid_state \<Rightarrow> hybrid_state" where
 "flat_bpf_sem 0 _ (pc,st) = (pc,st)" |
@@ -119,8 +181,5 @@ definition match_state::"hybrid_state \<Rightarrow> hybrid_state \<Rightarrow> b
       pc = pc1 \<and> match_state1 (Next xst1 xrs1 xm1 xss1) (Next xst xrs xm xss)  |
                    _ \<Rightarrow> False)|
                  _ \<Rightarrow> False)"
-(*x64_decode 0 l = x64_decode xpc l
-xxst = Next xpc1 xrs1 xm1 xss1 \<Longrightarrow>
-   fxst = Next xpc2 xrs2 xm2 xss2 \<Longrightarrow>
-xrs1 = xrs2 \<and> xm1 = xm2 \<and> xss1 = xss2*)
+
 end

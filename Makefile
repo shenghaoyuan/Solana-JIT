@@ -9,6 +9,10 @@ open:
 
 code:
 	@echo "Analyzing code statistics"
+	@echo "SBPF JIT Flattern"
+	cd theory && cloc --force-lang="OCaml" JITFlattern.thy JITFlattern_*.thy
+	@echo "SBPF JIT Fix"
+	cd theory && cloc --force-lang="OCaml" JITFix.thy
 	@echo "SBPF Syntax"
 	cd theory && cloc --force-lang="OCaml" Mem.thy Val.thy ebpf.thy rBPFCommType.thy rBPFSyntax.thy vm_state.thy 
 	@echo "SBPF Semantics"

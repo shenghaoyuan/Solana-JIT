@@ -133,7 +133,8 @@ lemma list_in_list_prop3: "
   fxst \<noteq> Stuck \<Longrightarrow>
   xxst \<noteq> Stuck \<Longrightarrow>
     match_state1 xxst fxst"
-  apply (induction num arbitrary: l_bin xpc x xrs xm xss fxst l xxst)
+  sorry
+(*  apply (induction num arbitrary: l_bin xpc x xrs xm xss fxst l xxst)
   subgoal for l_bin xpc x xrs xm xss fxst l xxst
     apply simp using match_state1_def by auto
 
@@ -247,9 +248,9 @@ lemma list_in_list_prop3: "
         done
       done
     done
-  done
+  done*)
 
-
+(*
 lemma not_ret_insn:"l\<noteq>[] \<Longrightarrow> l!pc \<noteq> 0xc3 \<Longrightarrow> x64_decode pc l \<noteq> None \<Longrightarrow> x64_decode pc l \<noteq> Some(1,Pret)"
   apply(simp add: x64_decode_def Let_def)
   apply (cases "and (15::8 word) (l ! pc >> (4::nat)) \<noteq> (4::8 word)"; simp)
@@ -442,7 +443,7 @@ lemma not_cmp_insn:"l\<noteq>[] \<Longrightarrow> l!(pc+1) \<noteq> 0x39 \<Longr
   apply (cases "ireg_of_u8 (bitfield_insert_u8 (3::nat) (Suc 0) (and (7::8 word) (l ! Suc (Suc pc) >> (3::nat))) (and 1 (l ! pc >> (2::nat))))"; simp)
   apply (cases "ireg_of_u8 (bitfield_insert_u8 (3::nat) (Suc 0) (and (7::8 word) (l ! Suc (Suc pc))) (and 1 (l ! pc)))"; simp)
   by auto
-
+*)
 lemma x64_encode_app_length_minus_1: "x64_encode ins @ l1 = l \<Longrightarrow> n-1 \<le> length l1 \<Longrightarrow> n \<le> length l"
   using x64_encode_length_ge_1
   by (metis One_nat_def Suc_pred add_mono le_zero_eq length_append linorder_not_less order_less_imp_le plus_1_eq_Suc) 
@@ -508,7 +509,7 @@ lemma x64_encode_app_length_ge_10[simp]: "
   x64_encode_app_length_ge_6 x64_encode_app_length_ge_7 x64_encode_app_length_ge_8
   x64_encode_app_length_ge_9
   by (metis diff_Suc_1 eval_nat_numeral(2) semiring_norm(28))
-
+(*
 lemma per_jit_ins_num_le_length:"per_jit_ins ins = Some (num, off, l) \<Longrightarrow> num \<le> (length l)"
   apply (cases ins; simp add: per_jit_ins_def)
   subgoal for x1 x2 x3 x4
@@ -1550,17 +1551,18 @@ length (x64_encode (Pmov_rm (bpf_to_x64_reg x2) (Addrmode (Some REG_SCRATCH) Non
 
       done
     done
-
+*)
 lemma x64_bin_is_sequential_x64_decode2:
   "jitper insns = Some lt \<Longrightarrow> 
   lt!pc = (num,off,l) \<Longrightarrow>
    pc < length lt  \<Longrightarrow>
   x64_decode 0 l \<noteq> None \<Longrightarrow> 
-  x64_decode 0 l \<noteq> Some (1,Pret) \<Longrightarrow> 
+  x64_decode 0 l \<noteq> Some (1,Pret_anchor) \<Longrightarrow> 
   (\<not>(\<exists> src dst t1. x64_decode 0 l = Some(t1, Pcmpq_rr src dst))) \<Longrightarrow> 
   (\<not>(\<exists> d t2. x64_decode 0 l = Some(t2, Pcall_i d))) \<Longrightarrow>
   x64_bin_is_sequential (length l) l 0"
-  apply (induction insns arbitrary: lt pc num off l; simp)
+  sorry
+(*  apply (induction insns arbitrary: lt pc num off l; simp)
 
   subgoal for ins lp lt pc num off l
     apply (cases "per_jit_ins ins"; simp)
@@ -1589,5 +1591,6 @@ lemma x64_bin_is_sequential_x64_decode2:
         done
       done
     done
-  done
+  done*)
+
 end

@@ -21,6 +21,18 @@ definition x64_decode :: "nat \<Rightarrow> x64_bin \<Rightarrow> (nat * instruc
 "x64_decode pc l_bin = (
   let h = l_bin!pc in
   if h = 0xc3 then Some (1, Pret)
+  else if h = 0x0f then \<comment> \<open> R8 escape \<close>
+    let op = l_bin!(pc+1) in
+    if unsigned_bitfield_extract_u8 4 4 op = 0b1000 then
+        let flag = (unsigned_bitfield_extract_u8 0 4 op) in
+        let i1 = l_bin!(pc+2)  in
+        let i2 = l_bin!(pc+3)  in
+        let i3 = l_bin!(pc+4)  in
+        let i4 = l_bin!(pc+5)  in
+          case u32_of_u8_list [i1,i2,i3,i4] of None \<Rightarrow> None | Some d \<Rightarrow>(
+          case cond_of_u8 flag of None \<Rightarrow> None | Some t \<Rightarrow>(
+            Some(6, Pjcc t (scast d))))
+     else None
   else if unsigned_bitfield_extract_u8 4 4 h \<noteq> 0b0100 then  \<comment> \<open> h is not rex  \<close>
       \<comment> \<open> R1 [opcode] \<close>
       \<comment> \<open> P2885 `PUSH: qwordregister (alternate encoding)`   -> ` 0100 W00BS : 0101 0 reg64` \<close>
@@ -43,18 +55,6 @@ definition x64_decode :: "nat \<Rightarrow> x64_bin \<Rightarrow> (nat * instruc
         let i4 = l_bin!(pc+4)  in
           case u32_of_u8_list [i1,i2,i3,i4] of None \<Rightarrow> None |
             Some d \<Rightarrow> ( Some (5, Pcall_i (scast d))) 
-     else None
-  else if h = 0x0f then \<comment> \<open> R8 escape \<close>
-    let op = l_bin!(pc+1) in
-    if unsigned_bitfield_extract_u8 4 4 op = 0b1000 then
-        let flag = (unsigned_bitfield_extract_u8 0 4 op) in
-        let i1 = l_bin!(pc+2)  in
-        let i2 = l_bin!(pc+3)  in
-        let i3 = l_bin!(pc+4)  in
-        let i4 = l_bin!(pc+5)  in
-          case u32_of_u8_list [i1,i2,i3,i4] of None \<Rightarrow> None | Some d \<Rightarrow>(
-          case cond_of_u8 flag of None \<Rightarrow> None | Some t \<Rightarrow>(
-            Some(6, Pjcc t (scast d))))
      else None
   else 
     let w = unsigned_bitfield_extract_u8 3 1 h in

@@ -62,10 +62,19 @@ proof(induct lt arbitrary: l1 l_pc1 l_jump1 l l_pc l_jump)
     then obtain l2' l_pc2' l_jump2' where b0:"jitflat_bpf [a] (l1,l_pc1,l_jump1) = (l2',l_pc2',l_jump2') \<and> jitflat_bpf lt (l2',l_pc2',l_jump2') = (l,l_pc,l_jump)" by auto
 
     hence "l_jump2' = update_l_jump a l_pc1 l_jump1" using jitflat_bpf.elims by force 
-    hence b1:"l_jump2' = (let (num,off,l_bin0) = a in if (\<exists> d. x64_decode 0 l_bin0 = Some(5, Pcall_i d)) then l_jump1@ [(of_nat (length l_pc1), off)]
-      else if (\<exists> src dst. x64_decode 0 l_bin0 = Some(3, Pcmpq_rr src dst)) then l_jump1@ [(of_nat (length l_pc1), of_nat (length l_pc1) + off)] else l_jump1)" using update_l_jump_def by simp
+    hence b1:"l_jump2' = (let (num,off,l_bin0) = a in if (\<exists> num d. x64_decode 0 l_bin0 = Some(num, Pcall_i d)) then l_jump1@ [(of_nat (length l_pc1), off)]
+      else if (\<exists> src dst num. x64_decode 0 l_bin0 = Some(num, Pcmpq_rr src dst)) then l_jump1@ [(of_nat (length l_pc1), of_nat (length l_pc1) + off)] else l_jump1)" 
+      using update_l_jump_def apply(cases "x64_decode 0 (snd (snd a))",simp_all)
+       apply(cases a,simp_all)
+      subgoal for aa apply(cases a,simp_all)
+        apply(cases aa,simp_all)
+        subgoal for ab b c aaa ba
+          apply(cases ba,simp_all)
+          done
+        done
+      done
     thus ?case
-    proof(cases "(\<exists> d. x64_decode 0 (snd (snd a)) = Some(5, Pcall_i d))")
+    proof(cases "(\<exists> num d. x64_decode 0 (snd (snd a)) = Some(num, Pcall_i d))")
       case True
       have b2_0:"l_jump2' = l_jump1@ [(of_nat (length l_pc1), (fst (snd a)))]" 
           using True b1 by (smt (verit, ccfv_threshold) old.prod.case prod.collapse) 
@@ -90,9 +99,9 @@ proof(induct lt arbitrary: l1 l_pc1 l_jump1 l l_pc l_jump)
         then show ?thesis using b0 Cons by blast
     next
       case False
-      have b1_1:"\<not>(\<exists> d. x64_decode 0 (snd (snd a)) = Some(5, Pcall_i d))" using False by simp
+      have b1_1:"\<not>(\<exists> num d. x64_decode 0 (snd (snd a)) = Some(num, Pcall_i d))" using False by simp
       then show ?thesis
-      proof(cases "\<not>(\<exists> src dst. x64_decode 0 (snd (snd a)) = Some(3, Pcmpq_rr src dst))")
+      proof(cases "\<not>(\<exists> num src dst. x64_decode 0 (snd (snd a)) = Some(num, Pcmpq_rr src dst))")
       case True
         have b2_1:"l_jump2' = l_jump1" using b1 True b1_1 by (smt (verit, best) case_prod_conv split_pairs)
         have b2_2:"length l_pc2' = length l_pc1 + 1" using b0 l_pc_length_prop by force 
@@ -141,10 +150,20 @@ next
   then obtain l2' l_pc2' l_jump2' where b0:"jitflat_bpf [a] (l1, l_pc1, l_jump1) = (l2', l_pc2', l_jump2') \<and> 
          jitflat_bpf lt (l2', l_pc2', l_jump2') = (l_bin,l_pc,l_jump)" by auto
   hence "l_jump2' = update_l_jump a l_pc1 l_jump1" using jitflat_bpf.elims by force 
-  hence b1:"l_jump2' = (let (num,off,l_bin0) = a in if (\<exists> d. x64_decode 0 l_bin0 = Some(5, Pcall_i d)) then l_jump1@ [(of_nat (length l_pc1),off)] 
-  else if (\<exists> src dst. x64_decode 0 l_bin0 = Some(3, Pcmpq_rr src dst)) then l_jump1@ [(of_nat (length l_pc1), of_nat (length l_pc1) + off)] else l_jump1)" using update_l_jump_def by simp
+  hence b1:"l_jump2' = (let (num,off,l_bin0) = a in if (\<exists> d num. x64_decode 0 l_bin0 = Some(num, Pcall_i d)) then l_jump1@ [(of_nat (length l_pc1),off)] 
+  else if (\<exists> num src dst. x64_decode 0 l_bin0 = Some(num, Pcmpq_rr src dst)) then l_jump1@ [(of_nat (length l_pc1), of_nat (length l_pc1) + off)] else l_jump1)" 
+  using update_l_jump_def apply(cases "x64_decode 0 (snd (snd a))",simp_all)
+       apply(cases a,simp_all)
+      subgoal for aa apply(cases a,simp_all)
+        apply(cases aa,simp_all)
+        subgoal for ab b c aaa ba
+          apply(cases ba,simp_all)
+          done
+        done
+      done
+  
   thus ?case
-  proof(cases "\<exists> d. x64_decode 0 (snd (snd a)) = Some(5, Pcall_i d)")
+  proof(cases "\<exists> num d. x64_decode 0 (snd (snd a)) = Some(num, Pcall_i d)")
     case True
     have b2_0:"l_jump2' = l_jump1@ [(of_nat (length l_pc1), (fst (snd a)))]" 
         using True b1 by (smt (verit, ccfv_threshold) old.prod.case prod.collapse) 
@@ -160,9 +179,9 @@ next
     then show ?thesis using Cons b2 b0 l_jump_elem_increases by blast 
   next
     case False
-    have b1_1:"\<not>(\<exists> d. x64_decode 0 (snd (snd a)) = Some(5, Pcall_i d))" using False by simp
+    have b1_1:"\<not>(\<exists> num d. x64_decode 0 (snd (snd a)) = Some(num, Pcall_i d))" using False by simp
     then show ?thesis
-    proof(cases "\<not>(\<exists> src dst. x64_decode 0 (snd (snd a)) = Some(3, Pcmpq_rr src dst))")
+    proof(cases "\<not>(\<exists> num src dst. x64_decode 0 (snd (snd a)) = Some(num, Pcmpq_rr src dst))")
       case True
       have b2_1:"l_jump2' = l_jump1" using b1 True b1_1 by (smt (verit, best) case_prod_conv split_pairs)
       hence b2:"distinct (map fst l_jump2')" using a1 by simp
@@ -173,7 +192,8 @@ next
       case False
       have b2_0:"l_jump2' = l_jump1@ [(of_nat (length l_pc1), of_nat (length l_pc1) + (fst (snd a)))]" 
         using False b1 b1_1 by (smt (verit, ccfv_threshold) old.prod.case prod.collapse) 
-      hence " (\<forall> idx. idx \<ge>0 \<and> idx < length l_jump1 \<longrightarrow> nat (fst (l_jump1!idx)) <  (length l_pc1))" using b0 False a3 l_jump_elem_increases a3 b0 is_increase_list_def by blast
+      hence " (\<forall> idx. idx \<ge>0 \<and> idx < length l_jump1 \<longrightarrow> nat (fst (l_jump1!idx)) <  (length l_pc1))" 
+        using b0 False a3 l_jump_elem_increases a3 b0 is_increase_list_def by blast
       hence b2_1:" (\<forall> idx. idx \<ge>0 \<and> idx < length l_jump1 \<longrightarrow> nat (fst (l_jump1!idx)) \<noteq>  (length l_pc1))" by fastforce
       have b2_2:"nat(of_nat (length l_pc1)) = (length l_pc1)" by auto
       hence "\<forall> elem1 elem2. (elem1,elem2) \<in> set l_jump1 \<longrightarrow> elem1 \<noteq> of_nat (length l_pc1)" using b2_1 b2_2
@@ -191,7 +211,7 @@ next
 lemma flattern_jump_index_easy_1:
   "jitflat_bpf lt (l1,l_pc1,l_jump1) = (l_bin,l_pc,l_jump) \<Longrightarrow>
   lt!(unat pc) = (num,off,l) \<Longrightarrow>
-  (\<exists> src dst. x64_decode 0 l = Some(3, Pcmpq_rr src dst)) \<Longrightarrow>
+  (\<exists> src dst num. x64_decode 0 l = Some(num, Pcmpq_rr src dst)) \<Longrightarrow>
   find_target_pc_in_l_pc l_jump (of_nat(length(l_pc1))+uint pc) = Some npc \<Longrightarrow>
   lt \<noteq> [] \<Longrightarrow>
   pc = 0 \<Longrightarrow>
@@ -206,7 +226,7 @@ proof-
   a4:"pc = 0" and
   a5:"distinct (map fst l_jump1)" and
   a6:"is_increase_list l_jump1 l_pc1" and
-  an:"(\<exists> src dst. x64_decode 0 l = Some(3, Pcmpq_rr src dst))"
+  an:"(\<exists> src dst num. x64_decode 0 l = Some(num, Pcmpq_rr src dst))"
   let "?xs" = "tl lt"
   let "?len" = "(length(l_pc1))"
   have a7:"(num,off,l)#?xs = lt" using a1 a3 a4
@@ -224,20 +244,33 @@ proof-
   hence b2:"(int ?len,npc) \<in> set l_jump" using a2 a4 b1 search_l_jump by auto 
    (* by (metis bot_nat_0.extremum_strict in_set_conv_nth list.size(3) list_in_list.simps(1) list_in_list.simps(2) list_in_list_implies_set_relation) *)
   have b3:"update_l_jump (num,off,l) l_pc l_jump = (
-  if (\<exists> d. x64_decode 0 l = Some(5, Pcall_i d)) then l_jump@ [(of_nat (length l_pc), off)]
-  else if (\<exists> src dst. x64_decode 0 l = Some(3, Pcmpq_rr src dst)) then l_jump@ [(of_nat (length l_pc), of_nat (length l_pc) + off)]
+  if (\<exists> d num. x64_decode 0 l = Some(num, Pcall_i d)) then l_jump@ [(of_nat (length l_pc), off)]
+  else if (\<exists> src dst num. x64_decode 0 l = Some(num, Pcmpq_rr src dst)) then l_jump@ [(of_nat (length l_pc), of_nat (length l_pc) + off)]
   else l_jump)" 
-    apply(unfold update_l_jump_def Let_def,simp_all) done
+    apply(unfold update_l_jump_def Let_def,simp_all)
+    apply(cases "x64_decode 0 l",simp_all)
+    subgoal for a apply(cases a,simp_all)
+      subgoal for aa b apply(cases a,simp_all)
+        apply(cases aa,simp_all)
+        subgoal for ab
+          apply(cases b,simp_all)
+          done
+        subgoal for ab n
+          apply(cases b,simp_all)
+        done
+      done
+    done
+  done
   have b4:"l_jump \<noteq> []" using a2 by auto
   thus ?thesis
-  proof(cases "(\<exists> d. x64_decode 0 l = Some(5, Pcall_i d))")
+  proof(cases "(\<exists> d num. x64_decode 0 l = Some(num, Pcall_i d))")
     case True
     then show ?thesis using True an by force
   next
     case False
-    have b5:"\<not>(\<exists> d. x64_decode 0 l = Some(5, Pcall_i d))" using False by simp
+    have b5:"\<not>(\<exists> d num. x64_decode 0 l = Some(num, Pcall_i d))" using False by simp
     then show ?thesis
-    proof(cases "(\<exists> src dst. x64_decode 0 l = Some(3, Pcmpq_rr src dst)) ")
+    proof(cases "(\<exists> num src dst. x64_decode 0 l = Some(num, Pcmpq_rr src dst)) ")
       case True
       have c0_0:"update_l_jump (num,off,l) l_pc1 l_jump1 = l_jump1@[(int ?len, of_nat ?len+off)]" using True b0 update_l_jump_def using b5 True by auto
       hence c0_1:"jitflat_bpf ((num,off,l)#?xs) (l1,l_pc1,l_jump1) = (
@@ -264,7 +297,7 @@ qed
 lemma flattern_jump_index_easy_2:
   "jitflat_bpf lt (l1,l_pc1,l_jump1) = (l_bin,l_pc,l_jump) \<Longrightarrow>
   lt!(unat pc) = (num,off,l) \<Longrightarrow>
-  (\<exists> d. x64_decode 0 l = Some(5, Pcall_i d)) \<Longrightarrow>
+  (\<exists> num d. x64_decode 0 l = Some(num, Pcall_i d)) \<Longrightarrow>
   find_target_pc_in_l_pc l_jump (of_nat(length(l_pc1))+uint pc) = Some npc \<Longrightarrow>
   lt \<noteq> [] \<Longrightarrow>
   pc = 0 \<Longrightarrow>
@@ -279,7 +312,7 @@ proof-
   a4:"pc = 0" and
   a5:"distinct (map fst l_jump1)" and
   a6:"is_increase_list l_jump1 l_pc1" and
-  an:"(\<exists> d. x64_decode 0 l = Some(5, Pcall_i d))"
+  an:"(\<exists> num d. x64_decode 0 l = Some(num, Pcall_i d))"
   let "?xs" = "tl lt"
   let "?len" = "(length(l_pc1))"
   have a7:"(num,off,l)#?xs = lt" using a1 a3 a4
@@ -294,16 +327,29 @@ proof-
   have b1_1:"l_jump \<noteq> []" using a2 by force 
   have b1:"distinct (map fst l_jump)" using l_jump_is_distinct a0 a5 a6 by blast
   have "int ?len = (int(length(l_pc1))+uint pc)" using a4 by simp
-  hence b2:"(int ?len,npc) \<in> set l_jump" using a2 a4 b1 search_l_jump by auto 
-   (* by (metis bot_nat_0.extremum_strict in_set_conv_nth list.size(3) list_in_list.simps(1) list_in_list.simps(2) list_in_list_implies_set_relation) *)
+  hence b2:"(int ?len,npc) \<in> set l_jump" using a2 a4 b1 search_l_jump by auto
   have b3:"update_l_jump (num,off,l) l_pc l_jump = (
-  if (\<exists> d. x64_decode 0 l = Some(5, Pcall_i d)) then l_jump@ [(of_nat (length l_pc), off)]
-  else if (\<exists> src dst. x64_decode 0 l = Some(3, Pcmpq_rr src dst)) then l_jump@ [(of_nat (length l_pc), of_nat (length l_pc) + off)]
+  if (\<exists> num d. x64_decode 0 l = Some(num, Pcall_i d)) then l_jump@ [(of_nat (length l_pc), off)]
+  else if (\<exists> num src dst. x64_decode 0 l = Some(num, Pcmpq_rr src dst)) then l_jump@ [(of_nat (length l_pc), of_nat (length l_pc) + off)]
   else l_jump)" 
-    apply(unfold update_l_jump_def Let_def,simp_all) done
+    apply(unfold update_l_jump_def Let_def,simp_all)
+    apply(cases "x64_decode 0 l",simp_all)
+    subgoal for a apply(cases a,simp_all)
+      subgoal for aa b apply(cases a,simp_all)
+        apply(cases aa,simp_all)
+        subgoal for ab
+          apply(cases b,simp_all)
+          done
+        subgoal for ab n
+          apply(cases b,simp_all)
+        done
+      done
+    done
+  done
+
   have b4:"l_jump \<noteq> []" using a2 by auto
   thus ?thesis
-  proof(cases "(\<exists> d. x64_decode 0 l = Some(5, Pcall_i d))")
+  proof(cases "(\<exists> num d. x64_decode 0 l = Some(num, Pcall_i d))")
     case True
     have c0_0:"update_l_jump (num,off,l) l_pc1 l_jump1 = l_jump1@[(int ?len, off)]" using True b0 update_l_jump_def using True by auto
     hence c0_1:"jitflat_bpf ((num,off,l)#?xs) (l1,l_pc1,l_jump1) = (
@@ -320,7 +366,7 @@ proof-
     then show ?thesis using True by force
   next
     case False
-    have b5:"\<not>(\<exists> d. x64_decode 0 l = Some(5, Pcall_i d))" using False by simp
+    have b5:"\<not>(\<exists> num d. x64_decode 0 l = Some(num, Pcall_i d))" using False by simp
     then show ?thesis using an by force
   qed  
 qed
@@ -330,7 +376,7 @@ lemma flattern_jump_index_2:
   lt!(unat pc) = (num,off,l) \<Longrightarrow>
   distinct (map fst l_jump1) \<Longrightarrow>
   unat pc < length lt \<and> unat pc \<ge> 0 \<Longrightarrow>
-  (\<exists> d. x64_decode 0 l = Some(5, Pcall_i d)) \<Longrightarrow>
+  (\<exists> num d. x64_decode 0 l = Some(num,Pcall_i d)) \<Longrightarrow>
   is_increase_list l_jump1 l_pc1 \<Longrightarrow>
   find_target_pc_in_l_pc l_jump (of_nat (length l_pc1) + uint pc) = Some npc \<longrightarrow> npc = off"
   proof(induct lt arbitrary: l1 l_pc1 l_jump1 l_bin l_pc l_jump pc num off l npc)
@@ -343,7 +389,7 @@ lemma flattern_jump_index_2:
       assm2:"distinct (map fst l_jump1)" and
       assm3:"unat pc < length (a#lt) \<and> unat pc \<ge> 0" and
       assm5:"is_increase_list l_jump1 l_pc1" and
-      assm6:"(\<exists> d. x64_decode 0 l = Some(5, Pcall_i d))"
+      assm6:"(\<exists> num d. x64_decode 0 l = Some(num,Pcall_i d))"
     have a0:"unat pc = 0 \<or> unat pc \<ge> 1" by auto
       show ?case
       proof(cases "unat pc = 0")
@@ -378,7 +424,7 @@ lemma flattern_jump_index_2:
 lemma flattern_jump_index_1:
   "jitflat_bpf lt (l1,l_pc1,l_jump1) = (l_bin,l_pc,l_jump) \<Longrightarrow>
   lt!(unat pc) = (num,off,l) \<Longrightarrow>
-  (\<exists> src dst. x64_decode 0 l = Some(3, Pcmpq_rr src dst)) \<Longrightarrow>
+  (\<exists> num src dst. x64_decode 0 l = Some(num, Pcmpq_rr src dst)) \<Longrightarrow>
   distinct (map fst l_jump1) \<Longrightarrow>
   unat pc < length lt \<and> unat pc \<ge> 0  \<Longrightarrow>
   is_increase_list l_jump1 l_pc1 \<Longrightarrow>
@@ -393,7 +439,7 @@ lemma flattern_jump_index_1:
       assm2:"distinct (map fst l_jump1)" and
       assm3:"unat pc < length (a#lt) \<and> unat pc \<ge> 0" and
       assm5:"is_increase_list l_jump1 l_pc1" and
-      assm6:"(\<exists> src dst. x64_decode 0 l = Some(3, Pcmpq_rr src dst))"
+      assm6:"(\<exists> num src dst. x64_decode 0 l = Some(num, Pcmpq_rr src dst))"
     have a0:"unat pc = 0 \<or> unat pc \<ge> 1" by auto
       show ?case
       proof(cases "unat pc = 0")

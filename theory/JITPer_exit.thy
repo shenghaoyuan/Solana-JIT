@@ -6,7 +6,7 @@ imports
   JITPer_aux
 
 begin
-
+(*
 lemma exit_subgoal_aux1:"s' = sbpf_step prog s \<Longrightarrow> s = (SBPF_OK pc rs m ss) \<Longrightarrow> s' = (SBPF_OK pc' rs' m' ss') \<Longrightarrow> 
   prog \<noteq> [] \<and> unat pc < length prog \<and> unat pc \<ge> 0 \<Longrightarrow> prog!(unat pc) = BPF_EXIT \<Longrightarrow> 
   \<forall> r. r  \<notin> {BR6, BR7, BR8, BR9, BR10} \<longrightarrow> rs' r = rs r"
@@ -152,7 +152,7 @@ lemma exit_reg_subgoal_aux8:"xst' = Next xpc1 xrs1 xm1 xss1 \<Longrightarrow>
   apply(split if_splits,simp_all)
   apply(unfold update_stack2_def Let_def eval_exit_def Let_def pop_frame_def ,simp_all)
   done
- 
+*) 
 lemma exit_one_step:
   assumes a0:"prog!(unat pc) = BPF_EXIT" and
        a1:"jitper prog = Some x64_prog" and
@@ -165,7 +165,8 @@ lemma exit_one_step:
        a8:"prog \<noteq> [] \<and> unat pc < length prog \<and> unat pc \<ge> 0"
      shows "\<exists> xst'. perir_sem 1 x64_prog (pc,xst) = (pc',xst') \<and> 
   match_state s' (pc',xst')"
-proof-
+  sorry
+(*proof-
   have b0:"\<not> (call_depth ss = 0)" using a0 a4 a7 a8 a4 a3 a2 by auto
 
   let "?bpf_ins" = "prog!(unat pc)"
@@ -190,12 +191,17 @@ proof-
 
   have c4_1:"length l = 1" using c4 by(unfold x64_encode_def,simp_all)
 
-  hence "x64_decode 0 l = Some (1,Pret)" using c4 c4_1 list_in_list_prop x64_encode_decode_consistency by blast
+  hence "\<exists> num. x64_decode 0 l = Some (num,Pret)" using c4 c4_1 list_in_list_prop x64_encode_decode_consistency by blast
 
   hence c5:"?one_step = (let (pc', ss', caller,fp) = update_stack2 xss in 
-          let rs' = restore_x64_caller xrs caller fp in (pc', Next xpc rs' xm ss'))" using c4 c4_1 perir_step_def a5 c_aux c2_1
-    by (smt (verit) One_nat_def case_prod_conv fst_conv outcome.simps(4) perir_sem.simps(1) perir_sem.simps(2) snd_conv update_stack2_def) 
-    
+          let rs' = restore_x64_caller xrs caller fp in (pc', Next xpc rs' xm ss'))" using c4 c4_1 perir_step_def a5 c_aux c2_1 update_stack2_def
+    apply(cases "x64_decode 0 l",simp_all)
+    subgoal for a apply(unfold Let_def,simp_all)
+      apply(cases "x64_decode (0::nat) l",simp_all)
+      subgoal for aa apply(cases aa,simp_all)
+      done
+    done
+  done    
 
   have "\<exists> xpc1 xrs1 xm1 xss1. Next xpc1 xrs1 xm1 xss1 = ?st" using a5 c5 restore_x64_caller_def update_stack2_def c2_1 
     by (metis (mono_tags, lifting) case_prod_conv snd_conv)
@@ -227,6 +233,6 @@ proof-
           let rs' = restore_x64_caller xrs caller fp in (pc', Next xpc rs' xm ss'))" using c5 by simp
   have e6:"?t_pc = pc'" using exit_reg_subgoal_aux8 c6 e6_1 a2 a3 a4 a0 d0 a8 by fast
   then show ?thesis using e5 by (metis split_pairs)
-qed
+qed*)
 
 end

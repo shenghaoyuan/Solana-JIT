@@ -34,11 +34,11 @@ proof-
 qed
 
 lemma cast_aux1:"\<forall> x y. ((scast(x::u64))::i64) + ((scast(y::u64))::i64) = (scast(x+y)::i64)"
-  by (smt (verit, ccfv_SIG) of_int_add of_int_sint scast_nop_1 scast_scast_id(1))
+  by (smt (verit, ccfv_SIG) of_int_add of_int_sint scast_nop1 scast_scast_id(1))
 
 
 lemma cast_aux2:"(ucast ((scast(x::u64))::i64)::u64) = x"
-  by (metis of_int_uint scast_nop_2 scast_scast_id(1) word_of_int_uint)
+  by (metis of_int_uint scast_nop2 scast_scast_id(1) word_of_int_uint)
 
 lemma cast_lemma1:"(ucast(((scast(x::u64))::i64) + ((scast(y::u64))::i64))::u64) = x+y"
   using cast_aux1 cast_aux2 by auto

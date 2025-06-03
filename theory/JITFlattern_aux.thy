@@ -35,30 +35,10 @@ next
 qed
 
 
-
-
-(*
-lemma list_in_list_prop1:"list_in_list l2 (length l1) (l1@l2@l3) \<Longrightarrow> 
-  list_in_list (l1@l2@l3) (length l1') (l1'@((l1@l2@l3))@l3') \<Longrightarrow>
-  list_in_list l2 (length l1+length l1') (l1'@((l1@l2@l3))@l3')"
-  sorry*)
-
-(*lemma "list_in_list l xpc l_bin \<Longrightarrow> length l = len \<Longrightarrow> l  \<noteq> [] \<Longrightarrow> 
-  idx \<ge>0 \<and> idx < len \<Longrightarrow> l!idx = l_bin!(xpc+idx)"
-  apply(induction l arbitrary:xpc l_bin len idx)
-   apply simp
-  subgoal for a l xpc l_bin len idx 
-    sorry
-  done
-*)
 value "take 0 [1::nat,2]"
 (*value "take 0 ([]::nat)"*)
 value "list_in_list [] 0 [1::nat,2]"
-(*\<forall> idx. idx \<ge>0 \<and> idx < len \<longrightarrow> l!idx = l_bin!(xpc+idx)   l  \<noteq> [] *)
-(*lemma list_in_list_prop4:"list_in_list l 0 l_bin \<Longrightarrow> l_bin \<noteq> [] \<Longrightarrow> take (length l) l_bin = l"
-  sorry*)
 
-(*value "x64_decode 0 []"*)
 
 lemma not_change_prefix_l_bin:
   "jitflat_bpf l_bin0 (l1,l_pc1,l_jump1) = (l2,l_pc2,l_jump2) \<Longrightarrow> list_in_list l1 0 l2"
@@ -221,15 +201,25 @@ next
         l1@?l_bin0,
         l_pc1@[(curr_pc,?num)],
         l_jump'))"  using jitflat_bpf.simps(2) by blast
-  have a4:"l_jump2' = (let (num,off,l_bin0) = a in if (\<exists> d. x64_decode 0 l_bin0 = Some(5, Pcall_i d)) then l_jump1@ [(of_nat (length l_pc1), off)] 
-  else if (\<exists> src dst. x64_decode 0 l_bin0 = Some(3, Pcmpq_rr src dst)) then l_jump1@ [(of_nat (length l_pc1), of_nat (length l_pc1) + off)]
-  else l_jump1)" using a3 a0 update_l_jump_def by auto
-  hence a4:"l_jump2' = (if (\<exists> d. x64_decode 0 ?l_bin0 = Some(5, Pcall_i d)) then l_jump1@ [(of_nat (length l_pc1), ?off)] 
-  else if (\<exists> src dst. x64_decode 0 ?l_bin0 = Some(3, Pcmpq_rr src dst)) then l_jump1@ [(of_nat (length l_pc1), of_nat (length l_pc1) + ?off)]
+  have a4:"l_jump2' = (let (num,off,l_bin0) = a in if (\<exists> num d. x64_decode 0 l_bin0 = Some(num, Pcall_i d)) then l_jump1@ [(of_nat (length l_pc1), off)] 
+  else if (\<exists> num src dst. x64_decode 0 l_bin0 = Some(num, Pcmpq_rr src dst)) then l_jump1@ [(of_nat (length l_pc1), of_nat (length l_pc1) + off)]
+  else l_jump1)" 
+    using a3 a0 update_l_jump_def
+    apply(cases "x64_decode 0 (snd (snd a))",simp_all)
+       apply(cases a,simp_all)
+      subgoal for aa apply(cases a,simp_all)
+        apply(cases aa,simp_all)
+        subgoal for ab b c aaa ba
+          apply(cases ba,simp_all)
+          done
+        done
+      done
+  hence a4:"l_jump2' = (if (\<exists> num d. x64_decode 0 ?l_bin0 = Some(num, Pcall_i d)) then l_jump1@ [(of_nat (length l_pc1), ?off)] 
+  else if (\<exists> num src dst. x64_decode 0 ?l_bin0 = Some(num, Pcmpq_rr src dst)) then l_jump1@ [(of_nat (length l_pc1), of_nat (length l_pc1) + ?off)]
   else l_jump1)" by (smt (verit) case_prod_conv prod.collapse) 
       (*lemma list_in_list_concat: "list_in_list (l1 @ l2) pc l = (list_in_list l1 pc l \<and> list_in_list l2 (pc + length l1) l)"*)
   thus ?case
-  proof(cases "(\<exists> d. x64_decode 0 ?l_bin0 = Some(5, Pcall_i d))")
+  proof(cases "(\<exists> num d. x64_decode 0 ?l_bin0 = Some(num, Pcall_i d))")
     case True
     have "l_jump2' = l_jump1@[(of_nat (length l_pc1), ?off)]" using True a4 by simp
     hence a5:"list_in_list l_jump1 0 l_jump2'" using list_in_list_concat list_in_list_prop by blast 
@@ -240,9 +230,9 @@ next
     then show ?thesis by simp
   next
     case False
-    have b0:"\<not> (\<exists> d. x64_decode 0 ?l_bin0 = Some(5, Pcall_i d))" using False by simp
+    have b0:"\<not> (\<exists> num d. x64_decode 0 ?l_bin0 = Some(num, Pcall_i d))" using False by simp
     then show ?thesis
-    proof(cases "(\<exists> src dst. x64_decode 0 ?l_bin0 = Some(3, Pcmpq_rr src dst))")
+    proof(cases "(\<exists> num src dst. x64_decode 0 ?l_bin0 = Some(num, Pcmpq_rr src dst))")
       case True
       have "l_jump2' = l_jump1@[(of_nat (length l_pc1), of_nat (length l_pc1) + ?off)]" using True a4 b0 by simp
       hence a5:"list_in_list l_jump1 0 l_jump2'" using list_in_list_concat list_in_list_prop by blast 
@@ -381,14 +371,6 @@ next
         by (metis append_Nil append_eq_conv_conj) 
       have c1:"map snd l_pc2 = map fst (a#l_bin0)" using num_corr assm3 init_second_layer_def
         by (metis drop0 list.size(3)) 
-      (*have c2:"l_pc2 \<noteq> []" using c1 by auto
-      have c3:"l_pc2' \<noteq> []" sorry*)
-      (*have c2:"map fst (a#l_bin0) = fst a # map fst l_bin0" by auto*)
-  
-      (*have "\<exists> l2'' l_pc2'' l_jump2''. jitflat_bpf [a] init_second_layer = l2'' l_pc2'' l_jump2''" by blast
-      then obtain l2'' l_pc2'' l_jump2'' where "jitflat_bpf [a] init_second_layer = l2'' l_pc2'' l_jump2''" by auto
-      have b2_3:"list_in_list [(0, fst a)] 0 l_pc2" using not_change_prefix_l_pc b2_2 assm3 by metis
-      have b2_4:"l_pc2!0 = (0, fst a)" using b2_3 by auto*)
       have "map snd l_pc2 = (fst a)#(map snd l_pc2')" using c0 c1 b2_2 by auto
         (*using assm3 b3 init_second_layer_def not_change_prefix_l_pc b2_2 b2_3 b2_4 num_corr *)
       hence "(map snd l_pc2)!(unat pc) = (map snd l_pc2')!?pc" using b3 False by auto
@@ -423,23 +405,6 @@ lemma intermediate_step_is_ok3:
   apply simp 
   apply (meson outcome.exhaust)
   by (metis err_is_still_err3 outcome.exhaust prod.collapse) 
-
-(*lemma is_ret_insn:"l\<noteq>[] \<Longrightarrow> l!pc = 0xc3 \<Longrightarrow> x64_decode pc l \<noteq> None \<Longrightarrow> x64_decode pc l = Some(1,Pret)"
-  apply(unfold x64_decode_def Let_def)
-  apply(split if_splits,simp_all)
-  done  
-
-lemma is_call_insn:"l\<noteq>[] \<Longrightarrow> l!pc = 0xe8 \<Longrightarrow> x64_decode pc l \<noteq> None \<Longrightarrow> \<exists> d. x64_decode pc l = Some(5, Pcall_i d)"
-  apply(unfold x64_decode_def Let_def)
-  apply(split if_splits,simp_all)
-  apply(cases "u32_of_u8_list [l ! Suc pc, l ! Suc (Suc pc), l ! (pc + (3::nat)), l ! (pc + (4::nat))]",simp_all)
-  done
-
-lemma is_cmp_insn:"l\<noteq>[] \<Longrightarrow> l!(pc+1) = 0x39 \<Longrightarrow> x64_decode pc l \<noteq> None \<Longrightarrow> \<exists> src dst. x64_decode pc l = Some(3, Pcmpq_rr src dst)"
-   apply(simp add: x64_decode_def Let_def)
-  apply (cases "l ! pc = (195::8 word)"; simp)
-  sorry
-*)
 
 
 end

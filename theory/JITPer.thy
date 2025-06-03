@@ -17,19 +17,19 @@ imports
   rBPFCommType rBPFSyntax rBPFSem
   x64Syntax x64Semantics x64Assembler
    x64DecodeProofAux
-  JITPer_add JITPer_mul_rax JITPer_mul_rdx JITPer_mul_other
+
+begin
+
+(* JITPer_add JITPer_mul_rax JITPer_mul_rdx JITPer_mul_other
   JITPer_exit JITPer_jump
   JITPer_load JITPer_shift
   JITPer_store JITPer_call JITPer_exit
   JITPer_sub JITPer_and JITPer_xor JITPer_or JITPer_mov_rr
   JITPer_shift JITPer_shift_rcx JITPer_load_32   
-  JITPer_add_imm
-begin
-
-
+  JITPer_add_imm*)
 lemma one_step_equiv_proof: 
   assumes a0:"s' = sbpf_step prog s" and
-  a1:"s = (SBPF_OK pc rs m ss)" and
+  a1l:"s = (SBPF_OK pc rs m ss)" and
   a2:"s' = (SBPF_OK pc' rs' m' ss')" and
   a3:"xst = (Next xpc xrs xm xss')" and
   a4:"match_state s (pc,xst)" and
@@ -37,8 +37,30 @@ lemma one_step_equiv_proof:
   a6:"prog \<noteq> [] \<and> unat pc < length prog \<and> unat pc \<ge> 0" 
 shows "\<exists> xst'. perir_sem 1 x64_prog (pc,xst) = (pc',xst') \<and> 
   match_state s' (pc',xst')"
+  sorry
+
+
+lemma x64_sem1_induct_aux1:
+ "perir_sem (m+n) x64_prog xst = xst'\<Longrightarrow> 
+  \<exists> xst1. perir_sem m x64_prog xst = xst1 \<and>
+  perir_sem n x64_prog xst1 = xst'"
+ apply(induct m arbitrary: n x64_prog xst xst' )
+   apply auto[1]
+  subgoal for m n x64_prog xst xst'
+    apply (simp add: Let_def)
+    apply(cases xst;simp)
+    done
+  done
+
+lemma x64_sem1_induct_aux3:
+  "perir_sem (Suc n) x64_prog xst = xst' \<Longrightarrow> 
+  perir_sem 1 x64_prog xst = xst1 \<Longrightarrow> 
+  perir_sem n x64_prog xst1 = xst'"  
+using x64_sem1_induct_aux1
+  by (metis plus_1_eq_Suc)
+
 (* \<and> snd xst' = unat (pc+1)*)
-proof-
+(*proof-
   let "?bpf_ins" = "prog!(unat pc)"
   have b1:"(\<exists> dst src. prog!(unat pc) = BPF_ALU64 BPF_ADD dst (SOReg src) \<or> 
     prog!(unat pc) = BPF_ALU64 BPF_SUB dst (SOReg src) \<or>
@@ -493,7 +515,7 @@ next
   hence an:"match_state s' xst'" using b1 by simp
   then show ?case using an by auto
 qed
-
+*)
 lemma n_steps_equiv_proof:
   "\<lbrakk> sbpf_sem n prog s = s';
    s = (SBPF_OK pc rs m ss);
@@ -504,7 +526,8 @@ lemma n_steps_equiv_proof:
    prog \<noteq> [] \<rbrakk> \<Longrightarrow>
    \<exists> xst'.  perir_sem n x64_prog (pc,xst) = xst' \<and>
    match_state s' xst'"
-  using n_steps_equiv_proof_aux
-  by blast
+  sorry
+(*  using n_steps_equiv_proof_aux
+  by blast*)
                                  
 end
