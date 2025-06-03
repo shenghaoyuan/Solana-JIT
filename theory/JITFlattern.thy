@@ -669,7 +669,23 @@ proof-
             done
           done
         done
-              
+
+      have b5:"xxst' = (?off, x64_sem 0 ?l (exec_instr (Pcall_i d) sz 0 xrs xm xss))"
+        using b3_0 b4 a3 by(cases "x64_decode 0 ?l",simp_all) 
+
+      hence b5_1:"xxst' = (?off, x64_sem 0 ?l ((
+      let nsp = (xrs (IR SP))-(u64_of_memory_chunk M64) in (
+          case Mem.storev M64 xm (Vptr sp_block nsp)  (Vlong 1) of
+            None \<Rightarrow> Stuck |
+            Some m' \<Rightarrow> let rs1 = xrs#(IR SP) <- nsp in
+                        Next (unat d) rs1 m' xss
+    ))))" using exec_instr_def exec_call_def by simp
+
+      hence "\<exists> m'. Mem.storev M64 xm (Vptr sp_block ((xrs (IR SP))-(u64_of_memory_chunk M64))) (Vlong 1) = Some m'"
+        using  storev_stack_some by blast 
+      then obtain m' where b6:"Mem.storev M64 xm (Vptr sp_block ((xrs (IR SP))-(u64_of_memory_chunk M64))) (Vlong 1) = Some m'" by auto
+      hence b7:"xxst' = (?off, Next (unat d) (xrs#(IR SP) <- ((xrs (IR SP))-(u64_of_memory_chunk M64))) m' xss)"
+        using b6 b5_1 by simp
       have b2_1:"?l \<noteq> []"  using a8 apply(unfold well_formed_prog_def) using b0 a4 a7 by blast
       have "?num >0 " using a8 apply(unfold well_formed_prog_def) using b0 a4 a7 by blast 
       hence b2_2:"x64_decode 0 ?l \<noteq> None" apply(cases "x64_decode 0 ?l",simp_all) using b3 by force 
@@ -682,42 +698,42 @@ proof-
       have d3_2:"x64_decode xpc1 l_bin = Some(sz, Pcall_i d)"
         using b3_0 d3_1 by auto 
 
-      hence d3:"fxst' =  (case x64_decode (xpc1+sz) l_bin of Some (sz2,Pjcc _ _) \<Rightarrow>
-            (case x64_sem ?num l_bin (Next xpc1 xrs xm xss) of
-            Stuck \<Rightarrow> (pc, Stuck) | \<comment>\<open> if one step error, stop, it should be impossible \<close>
-            Next xpc' rs1 m1 ss1 \<Rightarrow> (
-              case find_target_pc_in_l_pc l_jump (uint pc) of
-                None \<Rightarrow> (pc, Stuck) |
-                Some npc \<Rightarrow>
-              if rs1 (CR ZF) = 1 then \<comment>\<open> must JUMP \<close>
-                ((npc, (Next (nat (fst (l_pc!(unat npc)))) rs1 m1 ss1))) \<comment>\<open> go to the target address in the jited x64 binary \<close>
-              else \<comment>\<open> donot JUMP \<close>
-                (pc+1, (Next (xpc'+sz2) rs1 m1 ss1))
-            )))"
-        using d3_2 a9 c2 a7 a3 a11 c1 apply(split if_splits,simp_all) sorry
+      hence d3:"fxst' = (case find_target_pc_in_l_pc l_jump (uint pc) of 
+              None \<Rightarrow> (pc, Stuck) |
+              Some npc \<Rightarrow> (
+                let xst_temp = exec_instr (Pcall_i (of_int(fst (l_pc!(unat npc))))) sz xpc1 xrs xm xss in 
+                  (case xst_temp of Stuck \<Rightarrow> (pc, Stuck) | 
+                                    Next xpc' rs' m' ss' \<Rightarrow> (npc, (Next xpc' rs' m' ss')))))"
+        using d3_2 a9 c2 a7 a3 a11 c1 by(split if_splits,simp_all) 
         
+        have "\<exists> npc. find_target_pc_in_l_pc l_jump (uint pc) = Some npc" using d3 a9 by(cases "find_target_pc_in_l_pc l_jump (uint pc)",simp_all)
+        then obtain npc where d5_1:"find_target_pc_in_l_pc l_jump (uint pc) = Some npc" by auto
+        have d5_2:"distinct (map fst [])" by simp
+        have d5_4:"is_increase_list [] []" using is_increase_list_empty by blast 
+        hence d5:"npc = ?off" using a1 b0 d5_2 init_second_layer_def a7 b3 d5_4 d5_1 flattern_jump_index_2
+          by (smt (verit, ccfv_threshold) int_ops(1) list.size(3)) 
 
-      thus ?thesis
-        proof(cases "find_target_pc_in_l_pc l_jump (uint pc) \<noteq> None")
-          case True
-          have "\<exists> npc. find_target_pc_in_l_pc l_jump (uint pc) = Some npc" using True by simp
-          then obtain npc where d5_1:"find_target_pc_in_l_pc l_jump (uint pc) = Some npc" by auto
-          have d5_2:"distinct (map fst [])" by simp
-          have d5_4:"is_increase_list [] []" using is_increase_list_empty by blast 
-          hence d5:"npc = ?off" using a1 b0 d5_2 init_second_layer_def a7 b3 d5_4 d5_1 flattern_jump_index_2
-            by (smt (verit, ccfv_threshold) int_ops(1) list.size(3)) 
-
-          have d6_0:"fxst' = (case x64_sem 1 l_bin fxst of  Next xpc' rs' m' ss' \<Rightarrow> (?off, (x64_sem 1 l_bin (Next (nat (fst (l_pc!(unat npc)))) rs' m' ss'))) )" using d5 d3 d5_1 sorry
-
-          hence d6: "JITFlattern_def.match_state xxst' fxst'" 
-            using b4 d5 d3 True JITFlattern_def.match_state_def match_state1_def a9 a6 sorry
-          then show ?thesis by simp             
-        next
-          case False
-          have "find_target_pc_in_l_pc l_jump (uint pc) = None" using False by simp
-           hence "fxst' = (pc,Stuck)" using d3 by simp
-          then show ?thesis using a9 by auto
-        qed
+        have d6_0:"fxst' = (let xst_temp = exec_instr (Pcall_i (of_int(fst (l_pc!(unat ?off))))) sz xpc1 xrs xm xss in 
+                  (case xst_temp of Stuck \<Rightarrow> (pc, Stuck) | 
+                                    Next xpc' rs' m' ss' \<Rightarrow> (?off, (Next xpc' rs' m' ss'))))" using d5 d3 d5_1 d3 d5_1 by simp
+        have d6_1:"exec_instr (Pcall_i (of_int(fst (l_pc!(unat ?off))))) sz xpc1 xrs xm xss = (
+              let nsp = (xrs (IR SP))-(u64_of_memory_chunk M64) in (
+                  case Mem.storev M64 xm (Vptr sp_block nsp)  (Vlong (of_nat xpc1+1)) of
+                    None \<Rightarrow> Stuck |
+                    Some m' \<Rightarrow> let rs1 = xrs#(IR SP) <- nsp in
+                                Next (unat ((of_int(fst (l_pc!(unat ?off)))))) rs1 m' xss
+            ))" sorry
+        have "\<exists> m''. Mem.storev M64 xm (Vptr sp_block ((xrs (IR SP))-(u64_of_memory_chunk M64))) (Vlong (of_nat xpc1+1)) = Some m''"
+        using  storev_stack_some by blast 
+        then obtain m'' where d6_2:"Mem.storev M64 xm (Vptr sp_block ((xrs (IR SP))-(u64_of_memory_chunk M64))) (Vlong (of_nat xpc1+1)) = Some m''" by auto
+        hence "exec_instr (Pcall_i (of_int(fst (l_pc!(unat ?off))))) sz xpc1 xrs xm xss = Next (unat ((of_int(fst (l_pc!(unat ?off)))))) (xrs#(IR SP) <- ((xrs (IR SP))-(u64_of_memory_chunk M64))) m'' xss" 
+          using d6_0 d6_1 by simp
+        hence "fxst' = (?off, Next (unat ((of_int(fst (l_pc!(unat ?off)))))) (xrs#(IR SP) <- ((xrs (IR SP))-(u64_of_memory_chunk M64))) m'' xss)"
+          using d6_0 by (metis outcome.simps(4)) 
+        have d6_4:"match_mem m' m''" using match_mem_def sorry
+        hence d6: "JITFlattern_def.match_state xxst' fxst'" 
+          using b4 d5 d3 True JITFlattern_def.match_state_def match_state1_def a9 a6 b7 sp_block_def d6_4 sorry
+        then show ?thesis by simp                       
     next
       case False
       have b5:"(\<not> (\<exists> num. x64_decode 0 ?l = Some(num,Pret_anchor))) \<and> (\<not>(\<exists> num d. x64_decode 0 ?l = Some(num, Pcall_i d)))" using False b2 by simp
@@ -772,6 +788,17 @@ proof-
             done
           done
         then obtain sz2 cond d where d1_3:"x64_decode (xpc1+sz) l_bin = Some (sz2,Pjcc cond d)" by auto
+        hence d1_4:"fxst' = ((case x64_sem (snd (l_pc!(unat pc))) l_bin (Next xpc1 xrs xm xss) of
+          Stuck \<Rightarrow> (pc, Stuck) | \<comment>\<open> if one step error, stop, it should be impossible \<close>
+          Next xpc1 rs1 m1 ss1 \<Rightarrow> (
+          case find_target_pc_in_l_pc l_jump (uint pc) of
+                      None \<Rightarrow> (pc, Stuck) |
+                      Some npc \<Rightarrow>
+            if rs1 (CR ZF) = 1 then \<comment>\<open> must JUMP \<close>
+             (npc, (Next (nat (fst (l_pc!(unat npc)))) rs1 m1 ss1)) \<comment>\<open> go to the target address in the jited x64 binary \<close>
+            else \<comment>\<open> donot JUMP \<close>
+              (pc+1, Next (xpc1+sz2) rs1 m1 ss1)
+          )))" using d1 d1_3 by(cases "x64_decode (xpc1+sz) l_bin",simp_all)
 
         have d4:"(snd (l_pc!(unat pc))) = ?num"
           by (metis (mono_tags, lifting) a1 a7 b0 flattern_num)      
@@ -779,8 +806,8 @@ proof-
         have b7:"?num = 1" using a10 b7_0 by (metis a7 b0 jit_prog_prop4)  
 
         have "\<exists> fxst1. fxst1 = x64_sem 1 l_bin (Next xpc1 xrs xm xss)" by fastforce
-        then obtain fxst1 where d2_0:"fxst1 = x64_sem 1 l_bin (Next xpc1 xrs xm xss)" by auto
-        have "\<exists> xxst1. xxst1 = x64_sem 1 ?l (Next 0 xrs xm xss)" by fastforce
+        then obtain fxst1 where d2_0:"fxst1 = x64_sem ?num l_bin (Next xpc1 xrs xm xss)" by auto
+        have "\<exists> xxst1. xxst1 = x64_sem ?num ?l (Next 0 xrs xm xss)" by fastforce
         then obtain xxst1 where d2_1:"xxst1 = x64_sem 1 ?l (Next 0 xrs xm xss)" by auto
         have d2_5_1:"xxst1 \<noteq> Stuck" using a6 d1 d2_1 d4 d0 by force
         hence d2_5:"x64_decode 0 ?l \<noteq> None" using d2_1 by(cases "x64_decode 0 ?l",simp_all)
@@ -789,13 +816,11 @@ proof-
           None \<Rightarrow> Stuck |
           Some (sz, ins) \<Rightarrow>
             x64_sem 0 l_bin (exec_instr ins sz xpc1 xrs xm xss)
-          )" using d2_0 by simp
-        have d2_3_1:"fxst1 \<noteq> Stuck" using a9 d1 d2_0 b0 d4 d1_2 d1_3 b7 d1_0 sorry
+          )" using d2_0 b7 by simp
+        have d2_3_1:"fxst1 \<noteq> Stuck" using a9 d1_4 d2_0 d4 by fastforce 
         hence d2_3:"x64_decode xpc1 l_bin \<noteq> None" using d2_2 by(cases "x64_decode xpc1 l_bin",simp_all)
         hence d2_4:"fxst1 = (case x64_decode xpc1 l_bin of Some (sz, ins) \<Rightarrow> (exec_instr ins sz xpc1 xrs xm xss))" 
           using d2_2 by force
-
-      
         have d2_6:"xxst1 = (case x64_decode 0 ?l of Some (sz, ins) \<Rightarrow> (exec_instr ins sz 0 xrs xm xss))"
           using b7 d2_1 d2_5 by force 
         
@@ -813,23 +838,30 @@ proof-
           have "\<exists> xpc''. Next xpc'' xrs1 xm1 xss1 = xxst1" 
             using d3 match_state1_def d4_0 by (smt (verit, ccfv_SIG) d2 outcome.exhaust outcome.simps(4) outcome.simps(5))
           then obtain xpc'' where d4_1:"Next xpc'' xrs1 xm1 xss1 = xxst1" by auto
-          
+
+        hence d4_2:"fxst' = (case find_target_pc_in_l_pc l_jump (uint pc) of
+                      None \<Rightarrow> (pc, Stuck) |
+                      Some npc \<Rightarrow>
+            if xrs1 (CR ZF) = 1 then \<comment>\<open> must JUMP \<close>
+             (npc, (Next (nat (fst (l_pc!(unat npc)))) xrs1 xm1 xss1)) \<comment>\<open> go to the target address in the jited x64 binary \<close>
+            else \<comment>\<open> donot JUMP \<close>
+              (pc+1, Next (xpc'+sz2) xrs1 xm1 xss1))" using d1_4 d4_0 d2_3_1 d2_0 
+          apply(cases "x64_sem ?num l_bin (Next xpc1 xrs xm xss)",simp_all)
+          subgoal for x11 using d4 by auto 
+          done
+        hence "\<exists> npc. find_target_pc_in_l_pc l_jump (uint pc) = Some npc" using a9 by(cases "find_target_pc_in_l_pc l_jump (uint pc)",simp_all)
+        then obtain npc where d5_1:"find_target_pc_in_l_pc l_jump (uint pc) = Some npc" by auto
+        have d5_2:"distinct (map fst [])" by simp
+        have d5_4:"is_increase_list [] []" using is_increase_list_empty by blast 
+        hence d5:"npc = ?off+pc" using a1 a4 b0 a7 flattern_jump_index_1 init_second_layer_def d5_2 d5_1 b7_0
+        by (metis (mono_tags, lifting) Abs_fnat_hom_0 add_0 int_ops(1) list.size(3))
+
           thus ?thesis
           proof(cases "xrs1 (CR ZF) = 1")
             case True
-            have d5_0: "xrs1 (CR ZF) = 1" using True by auto
-            thus ?thesis
-            proof(cases "find_target_pc_in_l_pc l_jump (uint pc) \<noteq> None")
-              case True
-                have "\<exists> npc. find_target_pc_in_l_pc l_jump (uint pc) = Some npc" using True by simp
-                then obtain npc where d5_1:"find_target_pc_in_l_pc l_jump (uint pc) = Some npc" by auto
-                have d5_2:"distinct (map fst [])" by simp
-                have d5_4:"is_increase_list [] []" using is_increase_list_empty by blast 
-                hence d5:"npc = ?off+pc" using a1 a4 b0 a7 flattern_jump_index_1 init_second_layer_def d5_2 d5_1 b7_0
-                  by (metis (mono_tags, lifting) Abs_fnat_hom_0 add_0 int_ops(1) list.size(3))
-                                                 
+            have d5_0: "xrs1 (CR ZF) = 1" using True by auto                                        
                 have d6_0:"fxst' =  (npc, (Next (nat (fst (l_pc!(unat npc)))) xrs1 xm1 xss1))" 
-                  using d5_0 d5_1 True d4_0 d1 d2_0 d4 d1_2 sorry
+                  using d5_1 d4_2 True by simp
                 have d6_1:"xxst' = (?off+pc, xxst1)"
                   by (smt (verit, ccfv_threshold) d0 d2_1 d4_1 d5_0 outcome.simps(4)) 
 
@@ -837,19 +869,14 @@ proof-
                   using d6_0 d6_1 JITFlattern_def.match_state_def d4_1 d5 match_state1_def by auto
                 then show ?thesis using JITFlattern_def.match_state_def d6_0 d6_1 match_state1_def \<open>\<And>thesis::bool. (\<And>xpc''::nat. Next xpc'' (xrs1::preg \<Rightarrow> 64 word) (xm1::nat \<Rightarrow> int \<Rightarrow> 8 word option) (xss1::stack_state) = (xxst1::outcome) \<Longrightarrow> thesis) \<Longrightarrow> thesis\<close> by fastforce 
                next
-                 case False
-                 have "find_target_pc_in_l_pc l_jump (uint pc) = None" using False by simp
-                 hence "fxst' = (pc,Stuck)" using a9 d1 d2_0 d4 d4_0 d5_0 d1_2 sorry
-                   
-                then show ?thesis using a9 by auto
-              qed
+                
             next
               case False
-              have d5_0:"xrs1 (CR ZF) \<noteq> 1" using False by simp
-              have d5_1:"xxst' = (pc+1, xxst1)" by (smt (verit) d0 d2_1 d4_1 d5_0 outcome.simps(4)) 
-              have d5_2:"fxst' = (pc+1, fxst1)" 
-                using d5_0 d1 d2_0 d4 d4_0 d1_2 sorry
-            then show ?thesis using d5_1 d5_2 JITFlattern_def.match_state_def d2 d3 d4_1 by force 
+              have d5_0:"\<not> (xrs1 (CR ZF) = 1)" using False by simp
+              have d6_1:"xxst' = (pc+1, xxst1)" by (smt (verit) d0 d2_1 d4_1 d5_0 outcome.simps(4)) 
+              have d6_2:"fxst' = (pc+1, Next (xpc'+sz2) xrs1 xm1 xss1)" 
+                using d4_2 d5_0 d5_1 by(cases "find_target_pc_in_l_pc l_jump (uint pc)",simp_all)                
+            then show ?thesis using JITFlattern_def.match_state_def d4_1 d6_1 fst_conv match_state1_def by force 
         qed
 
       next
