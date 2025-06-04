@@ -141,10 +141,10 @@ definition restore_x64_caller::"regset \<Rightarrow> u64 list \<Rightarrow> u64 
 
 axiomatization
   exec_call_external :: "nat \<Rightarrow> nat \<Rightarrow> memory_chunk \<Rightarrow> mem \<Rightarrow> stack_state \<Rightarrow> regset \<Rightarrow> u32 \<Rightarrow> outcome"  where
-  exec_call_external_prop: "\<And>pc sz  m ss rs n. (\<exists> xpc1 xrs1 xm1 xss1. exec_call_external pc sz M64 m ss rs n = Next xpc1 xrs1 xm1 xss1 \<and>
+  exec_call_external_prop: "\<And>pc sz  m ss rs n. (\<exists> xrs1 xm1 xss1. exec_call_external pc sz M64 m ss rs n = Next (pc+sz) xrs1 xm1 xss1 \<and>
          (let caller = save_x64_caller rs; fp = save_x64_frame_pointer rs; 
             rs' = upate_x64_stack_pointer rs (stack_pointer ss) in
-        let ss' = update_stack caller fp (of_nat (pc+1)) ss in \<exists> ra. ss' = Some ra \<and> xpc1 = pc \<and> ra = xss1 \<and> xpc1 = pc \<and> xrs1 = rs' \<and> xm1 = m))"
+        let ss' = update_stack caller fp (of_nat (pc+1)) ss in \<exists> ra. ss' = Some ra \<and> ra = xss1 \<and> xrs1 = rs' \<and> xm1 = m))"
 
 definition exec_ret :: "memory_chunk \<Rightarrow> mem \<Rightarrow> stack_state \<Rightarrow> regset \<Rightarrow> outcome" where
 "exec_ret chunk m ss rs = (
@@ -160,9 +160,9 @@ definition exec_ret :: "memory_chunk \<Rightarrow> mem \<Rightarrow> stack_state
 
 axiomatization
   exec_ret_external :: "nat \<Rightarrow> nat \<Rightarrow> memory_chunk \<Rightarrow> mem \<Rightarrow> stack_state \<Rightarrow> regset \<Rightarrow> outcome"  where
-  exec_ret_external_prop: "\<And>pc sz m ss rs. (\<exists> xpc1 xrs1 xm1 xss1. exec_ret_external pc sz M64 m ss rs = Next xpc1 xrs1 xm1 xss1 \<and>
+  exec_ret_external_prop: "\<And>pc sz m ss rs. (\<exists> xrs1 xm1 xss1. exec_ret_external pc sz M64 m ss rs = Next (pc+sz) xrs1 xm1 xss1 \<and>
   (let (pc', ss', caller,fp) = update_stack2 ss in 
-          let rs' = restore_x64_caller rs caller fp in ss' = xss1 \<and> xm1 = m \<and> xpc1 = (pc+sz) \<and> xrs1 = rs'))"
+          let rs' = restore_x64_caller rs caller fp in ss' = xss1 \<and> xm1 = m \<and> xrs1 = rs'))"
 
 
 definition exec_instr :: "instruction \<Rightarrow> nat \<Rightarrow> nat \<Rightarrow> regset \<Rightarrow> mem \<Rightarrow> stack_state \<Rightarrow> outcome" where
