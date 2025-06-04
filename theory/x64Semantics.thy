@@ -301,7 +301,9 @@ definition perir_step:: " (nat \<times> u64 \<times> x64_bin) list \<Rightarrow>
       Some(_, Pcall_i _) \<Rightarrow> (let xst_temp = Next 0 rs m ss in (off, x64_sem 1 l xst_temp))|
       Some(sz, Pret_anchor) \<Rightarrow> (let (pc', ss', caller,fp) = update_stack2 ss in 
           let rs' = restore_x64_caller rs caller fp in 
-          let xst_temp = Next sz rs' m ss' in (pc', x64_sem 1 l xst_temp))|      
+          let xst_temp = Next sz rs' m ss' in 
+          (case x64_decode sz l of Some(_, Pret) \<Rightarrow> (pc', x64_sem 1 l xst_temp)|
+                                               _ \<Rightarrow> (pc,Stuck)))|      
       Some(_, Pcmpq_rr src dst) \<Rightarrow> 
         (let xst_temp = Next 0 rs m ss; xst' = x64_sem 1 l xst_temp in
           case xst' of

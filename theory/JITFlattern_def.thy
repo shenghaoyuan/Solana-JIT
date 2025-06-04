@@ -166,19 +166,23 @@ fun flat_bpf_sem :: "nat \<Rightarrow> flat_bpf_prog \<Rightarrow> hybrid_state 
     flat_bpf_sem n lt pair
 )"
 
+definition match_mem :: "mem \<Rightarrow> mem \<Rightarrow> bool" where
+"match_mem bm xm = (
+  \<forall> addr v. bm 0 addr = Some v \<longrightarrow> xm 0 addr = Some v)"
+
 definition match_state1::"outcome \<Rightarrow> outcome \<Rightarrow> bool" where
   "match_state1 fxst xxst \<equiv> 
   (case fxst of (Next xst xrs xm xss) \<Rightarrow>
     (case xxst of (Next xst1 xrs1 xm1 xss1) \<Rightarrow> 
-     xrs = xrs1 \<and> xm = xm1 \<and> xss = xss1 |
+     xrs = xrs1 \<and> match_mem xm xm1 \<and> xss = xss1 |
                    _ \<Rightarrow> False)|
                  _ \<Rightarrow> False)"
 
 definition match_state::"hybrid_state \<Rightarrow> hybrid_state \<Rightarrow> bool" where
   "match_state fxst xxst \<equiv> 
-  (case fxst of (pc,Next xst xrs xm xss) \<Rightarrow>
-    (case xxst of (pc1,Next xst1 xrs1 xm1 xss1) \<Rightarrow> 
-      pc = pc1 \<and> match_state1 (Next xst1 xrs1 xm1 xss1) (Next xst xrs xm xss)  |
+  (case fxst of (pc,Next xpc xrs xm xss) \<Rightarrow>
+    (case xxst of (pc1,Next xpc1 xrs1 xm1 xss1) \<Rightarrow> 
+      pc = pc1 \<and> match_state1 (Next xpc xrs xm xss) (Next xpc1 xrs1 xm1 xss1) |
                    _ \<Rightarrow> False)|
                  _ \<Rightarrow> False)"
 

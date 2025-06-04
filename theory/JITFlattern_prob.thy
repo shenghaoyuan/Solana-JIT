@@ -125,6 +125,18 @@ lemma "x64_decode x l = Some (sz2, Pcall_i x1) \<Longrightarrow> \<not> (x64_bin
   using x64_bin_is_sequential_x64_decode_pcall_false by blast
 
  (*l!x \<noteq> 0xe8 \<and> l!x \<noteq> 0xc3 \<and> l!(x+1) \<noteq> (0x39::u8) \<Longrightarrow>*)
+
+lemma list_in_list_prop3: "
+  x64_sem num l_bin (Next (xpc+x) xrs xm1 xss) = fxst \<Longrightarrow>
+  x64_sem num l (Next x xrs xm xss) = xxst \<Longrightarrow>
+  x64_bin_is_sequential (length l) l x \<Longrightarrow>
+  list_in_list l xpc l_bin \<Longrightarrow>
+  fxst \<noteq> Stuck \<Longrightarrow>
+  xxst \<noteq> Stuck \<Longrightarrow>
+  match_mem xm1 xm \<Longrightarrow>
+  match_state1 fxst xxst"
+  sorry
+(*  
 lemma list_in_list_prop3: "
   x64_sem num l_bin (Next (xpc+x) xrs xm xss) = fxst \<Longrightarrow>
   x64_sem num l (Next x xrs xm xss) = xxst \<Longrightarrow>
@@ -133,8 +145,7 @@ lemma list_in_list_prop3: "
   fxst \<noteq> Stuck \<Longrightarrow>
   xxst \<noteq> Stuck \<Longrightarrow>
     match_state1 xxst fxst"
-  sorry
-(*  apply (induction num arbitrary: l_bin xpc x xrs xm xss fxst l xxst)
+apply (induction num arbitrary: l_bin xpc x xrs xm xss fxst l xxst)
   subgoal for l_bin xpc x xrs xm xss fxst l xxst
     apply simp using match_state1_def by auto
 
