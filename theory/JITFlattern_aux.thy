@@ -268,7 +268,7 @@ lemma flattern_l_bin0:
    jitflat_bpf l_bin0 init_second_layer = (l2,l_pc2,l_jump2) \<Longrightarrow>
    fst (l_pc2 ! (unat pc)) = xpc \<Longrightarrow>
     well_formed_prog l_bin0 \<Longrightarrow>
-   list_in_list l (nat xpc) l2"
+   list_in_list l xpc l2"
 proof-
   assume assm0:"l_bin0!(unat pc)=(num,off,l)" and
    assm1:"unat pc < length l_bin0 \<and> unat pc \<ge> 0" and
@@ -307,7 +307,7 @@ proof-
   
   have c6:"list_in_list l (length l2') l2" using c0 c1 not_change_prefix_l_bin
     by (metis (mono_tags, lifting) list_in_list_concat plus_nat.add_0)     
-  have "list_in_list l (nat(fst (l_pc2 ! (unat pc)))) l2" using c6 c4 by auto
+  have "list_in_list l (fst (l_pc2 ! (unat pc))) l2" using c6 c4 by auto
      then show ?thesis using assm3 by force 
    qed
 

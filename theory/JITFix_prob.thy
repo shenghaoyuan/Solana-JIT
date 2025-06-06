@@ -5,26 +5,19 @@ begin
 (*
 lemma l_pc_index_corr_geric:
   "l_pc \<noteq> [] \<Longrightarrow> pc < length l_pc \<Longrightarrow> 
-  nat (fst (l_pc!pc)) = xpc \<Longrightarrow> 
-  find_target_pc_in_l_pc2 (l@l_pc) (int xpc) (of_nat (length l)) = Some (of_nat pc)"
-  apply (induction l_pc arbitrary: pc xpc l; simp)
+  fst (l_pc!pc) = xpc \<Longrightarrow> 
+  find_target_pc_in_l_pc2 l_pc xpc 0 = Some pc"
+  apply (induction l_pc arbitrary: pc xpc; simp)
   subgoal for a l_pc1 pc xpc l
-    apply (cases pc; simp) *)
+    apply (cases pc; simp)
+    subgoal *)
 
-(*
-l_pc = [(- (1::int), 0::nat)]
-  pc = 0::nat
-  xpc = 0::nat
-  l = [] *)
-
-    value "nat (fst ([(- (1::int), 0::nat)]!0))"
-    value "find_target_pc_in_l_pc2 [(- (1::int), 0::nat)] 0 0"
 
 lemma l_pc_index_corr:
   "l_pc \<noteq> [] \<Longrightarrow> 
-  unat pc < length l_pc \<and> unat pc \<ge> 0 \<Longrightarrow> 
-  nat (fst (l_pc!(unat pc))) = xpc \<Longrightarrow> 
-  find_target_pc_in_l_pc2 l_pc (int xpc) 0 = Some (uint pc)"
+   pc < length l_pc  \<Longrightarrow> 
+  fst (l_pc! pc) = xpc \<Longrightarrow> 
+  find_target_pc_in_l_pc2 l_pc xpc 0 = Some pc"
   sorry
 
 lemma x64_bin_is_sequential_x64_decode3:

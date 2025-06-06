@@ -2,7 +2,7 @@ theory JITFix_def
 imports JITFlattern
 begin
 
-fun find_target_pc_in_l_pc2 :: "((int\<times>nat) list) \<Rightarrow> int \<Rightarrow> int \<Rightarrow> int option" where
+fun find_target_pc_in_l_pc2 :: "((nat\<times>nat) list) \<Rightarrow> nat \<Rightarrow> nat \<Rightarrow> nat option" where
 "find_target_pc_in_l_pc2 [] _ _ = None" |
 "find_target_pc_in_l_pc2 (x#xs) xpc num = (
   if fst x = xpc then Some num
@@ -160,22 +160,22 @@ definition fix_bpf_one_step :: "flat_bpf_prog \<Rightarrow> outcome \<Rightarrow
   let (l_bin,l_pc,l_jump) = lp in  
     (case xst of
     Stuck \<Rightarrow> Stuck |
-    Next xpc rs m ss \<Rightarrow> (
+    Next xpc rs m ss \<Rightarrow> (   
           (case x64_decode xpc l_bin of 
                   Some(sz, Pcall_i imm) \<Rightarrow>
-                      let v = find_target_pc_in_l_pc2 l_pc (int xpc) 0 in
+                      let v = find_target_pc_in_l_pc2 l_pc xpc 0 in
                       (case v of None \<Rightarrow> Stuck | Some pc \<Rightarrow>
                       (case find_target_pc_in_l_pc l_jump pc of
                         None \<Rightarrow> Stuck |
                         Some npc \<Rightarrow>
-                      exec_instr (Pcall_i (of_int(fst (l_pc!(unat npc))))) sz xpc rs m ss)) |
+                      exec_instr (Pcall_i (of_nat(fst (l_pc!(unat npc))))) sz xpc rs m ss)) |
                   Some(sz, Pjcc cond d) \<Rightarrow> 
-                      let v = find_target_pc_in_l_pc2 l_pc (int xpc-3) 0 in
+                      let v = find_target_pc_in_l_pc2 l_pc (xpc-3) 0 in
                       (case v of None \<Rightarrow> Stuck | Some pc \<Rightarrow>
                       (case find_target_pc_in_l_pc l_jump pc of
                         None \<Rightarrow> Stuck |
                         Some npc \<Rightarrow>
-                          (exec_instr (Pjcc cond (of_int (fst (l_pc!(unat npc)))-(of_nat (xpc+1)))) sz xpc rs m ss))) |
+                          (exec_instr (Pjcc cond (of_nat (fst (l_pc!(unat npc)))-(of_nat (xpc+1)))) sz xpc rs m ss))) |
                   Some(sz,ins) \<Rightarrow> (exec_instr ins sz xpc rs m ss) |
                   _ \<Rightarrow> Stuck 
 ))))"
