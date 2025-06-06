@@ -61,7 +61,9 @@ proof(induct lt arbitrary: l1 l_pc1 l_jump1 l l_pc l_jump)
       using jitflat_bpf_induct assm1 by blast 
     then obtain l2' l_pc2' l_jump2' where b0:"jitflat_bpf [a] (l1,l_pc1,l_jump1) = (l2',l_pc2',l_jump2') \<and> jitflat_bpf lt (l2',l_pc2',l_jump2') = (l,l_pc,l_jump)" by auto
 
-    hence "l_jump2' = update_l_jump a l_pc1 l_jump1" using jitflat_bpf.elims by force 
+    hence b0_k: "jitflat_bpf [a] (l1,l_pc1,l_jump1) = (l2',l_pc2',l_jump2')" using b0 by simp
+    hence "l_jump2' = update_l_jump a l_pc1 l_jump1" 
+      by (cases a; simp)
     hence b1:"l_jump2' = (let (num,off,l_bin0) = a in if (\<exists> num d. x64_decode 0 l_bin0 = Some(num, Pcall_i d)) then l_jump1@ [(of_nat (length l_pc1), off)]
       else if (\<exists> src dst num. x64_decode 0 l_bin0 = Some(num, Pcmpq_rr src dst)) then l_jump1@ [(of_nat (length l_pc1), of_nat (length l_pc1) + off)] else l_jump1)" 
       using update_l_jump_def apply(cases "x64_decode 0 (snd (snd a))",simp_all)
@@ -104,7 +106,8 @@ proof(induct lt arbitrary: l1 l_pc1 l_jump1 l l_pc l_jump)
       proof(cases "\<not>(\<exists> num src dst. x64_decode 0 (snd (snd a)) = Some(num, Pcmpq_rr src dst))")
       case True
         have b2_1:"l_jump2' = l_jump1" using b1 True b1_1 by (smt (verit, best) case_prod_conv split_pairs)
-        have b2_2:"length l_pc2' = length l_pc1 + 1" using b0 l_pc_length_prop by force 
+        have b2_2:"length l_pc2' = length l_pc1 + 1" using b0 l_pc_length_prop
+          by (metis add.commute add.right_neutral list.size(3) list.size(4) plus_1_eq_Suc)  
         hence "\<forall> x. x < length l_pc1 \<longrightarrow> x < length l_pc2'" by auto
         hence "is_increase_list l_jump2' l_pc2'" using assm0 is_increase_list_def b2_1 by simp
         hence "is_increase_list l_jump l_pc" using b0 Cons.hyps by blast 
@@ -149,7 +152,7 @@ next
          jitflat_bpf lt (l2', l_pc2', l_jump2') = (l_bin,l_pc,l_jump)" using jitflat_bpf_induct a0 by simp
   then obtain l2' l_pc2' l_jump2' where b0:"jitflat_bpf [a] (l1, l_pc1, l_jump1) = (l2', l_pc2', l_jump2') \<and> 
          jitflat_bpf lt (l2', l_pc2', l_jump2') = (l_bin,l_pc,l_jump)" by auto
-  hence "l_jump2' = update_l_jump a l_pc1 l_jump1" using jitflat_bpf.elims by force 
+  hence "l_jump2' = update_l_jump a l_pc1 l_jump1" by (cases a; simp)
   hence b1:"l_jump2' = (let (num,off,l_bin0) = a in if (\<exists> d num. x64_decode 0 l_bin0 = Some(num, Pcall_i d)) then l_jump1@ [(of_nat (length l_pc1),off)] 
   else if (\<exists> num src dst. x64_decode 0 l_bin0 = Some(num, Pcmpq_rr src dst)) then l_jump1@ [(of_nat (length l_pc1), of_nat (length l_pc1) + off)] else l_jump1)" 
   using update_l_jump_def apply(cases "x64_decode 0 (snd (snd a))",simp_all)
@@ -412,7 +415,8 @@ lemma flattern_jump_index_2:
         have "distinct (map fst l_jump2')" using l_jump_is_distinct b3_1 assm0 assm2  assm5 by blast
         hence b4:"find_target_pc_in_l_pc l_jump (((length l_pc2'))+unat ?pc) = Some npc \<longrightarrow> npc = off" 
           using Cons b1 b2 b3_1 l_jump_elem_increases by blast 
-        have b5:"length l_pc2' = length l_pc1 + 1" using b3_1 l_pc_length_prop by force
+        have b5:"length l_pc2' = length l_pc1 + 1" using b3_1 l_pc_length_prop
+          by (metis One_nat_def add.commute list.size(3) list.size(4) plus_1_eq_Suc) 
         
         have "find_target_pc_in_l_pc l_jump (((length l_pc1))+unat pc) = Some npc \<longrightarrow> npc = off" 
           using b4 b5
@@ -464,7 +468,8 @@ lemma flattern_jump_index_1:
         unat pc < length lt \<and> (0::nat) \<le> unat pc \<Longrightarrow> find_target_pc_in_l_pc l_jump ((length l_pc1)+ unat pc) = Some npc \<Longrightarrow> npc = off + (of_nat (length l_pc1) + pc)" using Cons by blast
         have "distinct (map fst l_jump2')" using l_jump_is_distinct b3_1 assm0 assm2  assm5 by blast
         hence b4:"find_target_pc_in_l_pc l_jump (((length l_pc2'))+unat ?pc) = Some npc \<longrightarrow> npc = off + ((of_nat (length l_pc2'))+?pc)" using Cons b1 b2 b3_1 l_jump_elem_increases by blast 
-        have b5:"length l_pc2' = length l_pc1 + 1" using b3_1 l_pc_length_prop by force
+        have b5:"length l_pc2' = length l_pc1 + 1" using b3_1 l_pc_length_prop
+          by (metis One_nat_def add.commute list.size(3) list.size(4) plus_1_eq_Suc) 
         
         have "find_target_pc_in_l_pc l_jump (((length l_pc1))+unat pc) = Some npc \<longrightarrow> npc = off +  ((of_nat (length l_pc1))+pc)" 
           using b4 b5

@@ -12,7 +12,9 @@ definition update_l_jump::"(nat \<times> u64 \<times> x64_bin) \<Rightarrow> (na
 
 fun jitflat_bpf :: "(nat \<times> u64 \<times> x64_bin) list \<Rightarrow> flat_bpf_prog \<Rightarrow> flat_bpf_prog" where
 "jitflat_bpf [] st = st"| 
-"jitflat_bpf ((num,off,l_bin0)#xs) (l_bin,l_pc,l_jump) = (
+"jitflat_bpf (x#xs) k = (
+  let (num,off,l_bin0) = x in
+  let (l_bin,l_pc,l_jump) = k in
   let curr_pc = of_nat (length l_bin) in 
   let l_jump' = update_l_jump (num,off,l_bin0) l_pc l_jump in
       jitflat_bpf xs (
