@@ -2,22 +2,33 @@ theory JITFix_prob
   imports JITFlattern JITFix_def
 begin
 
+(*
 fun is_lt_list_nat:: "(nat list) \<Rightarrow> bool" where
 "is_lt_list_nat [] = True" |
 "is_lt_list_nat (x#xs) = (
   case xs of
   [] \<Rightarrow> True |
   y#ys \<Rightarrow> (x < y) \<and> (is_lt_list_nat ys)
-)"
+)" *)
+
+definition is_lt_list_nat :: "(nat list) \<Rightarrow> nat \<Rightarrow> bool" where
+"is_lt_list_nat l m = (\<forall> i j. i < j \<and> j < length l \<longrightarrow> (l!i < l!j \<and> l!j < m))"
+
 
 lemma jitflat_bpf_is_lt_list_nat_inv: "
-  is_lt_list_nat (map fst l_pc) \<Longrightarrow>
+  is_lt_list_nat (map fst l_pc) (length l_bin) \<Longrightarrow>
   jitflat_bpf l (l_bin, l_pc, l_jump) = (l_bin1, l_pc1, l_jump1) \<Longrightarrow>
-    is_lt_list_nat (map fst l_pc1)"
+    is_lt_list_nat (map fst l_pc1) (length l_bin1)"
   apply (induction l arbitrary: l_bin l_pc l_jump l_bin1 l_pc1 l_jump1; simp?)
   subgoal for a l1 l_bin l_pc l_jump l_bin1 l_pc1 l_jump1
     apply (cases a; simp)
     subgoal for na ba ca
+      sorry
+      sorry
+      sorry
+(*
+is_lt_list_nat (map fst (l_pc @ [(length l_bin, aa)])) (length (l_bin @ c))
+      using not_change_prefix_l_pc *)
 
 lemma l_pc_index_corr_geric:
   "l_pc \<noteq> [] \<Longrightarrow> pc < length l_pc \<Longrightarrow> 
@@ -27,7 +38,8 @@ lemma l_pc_index_corr_geric:
   subgoal for a l_pc1 pc xpc l
     apply (cases pc; simp)
     subgoal
-
+      sorry
+    sorry
 
 lemma l_pc_index_corr:
   "l_pc \<noteq> [] \<Longrightarrow> 
