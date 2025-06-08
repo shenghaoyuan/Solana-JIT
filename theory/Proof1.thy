@@ -19,9 +19,13 @@ lemma list_in_list_prop_aux2: "list_in_list l2 (length l1) (l1@l2@l3)"
     by (metis append.left_neutral append_Cons append_assoc length_append_singleton)
   done
 
-lemma list_in_list_prop:"list_in_list l 0 l"
+lemma list_in_list_prop: "list_in_list l 0 l"
   using list_in_list_prop_aux1
   by (metis append_Nil list_in_list_prop_aux2 list.size(3))
+
+(*
+lemma list_in_list_0_app: "list_in_list l0 0 l \<Longrightarrow> \<exists> l1. l = l0 @ l1"
+  apply (induction l0 arbitrary: l) *)
 
 (*
 lemma list_in_list_prop2:"list_in_list l1 0 l2 \<Longrightarrow> list_in_list l2 0 l3 \<Longrightarrow> list_in_list l1 0 l3"

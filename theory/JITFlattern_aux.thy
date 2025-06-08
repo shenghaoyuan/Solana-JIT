@@ -5,11 +5,12 @@ lemma jitflat_bpf_induct:
   "jitflat_bpf (a # l_bin0) (l1, l_pc1, l_jump1) = (l2, l_pc2, l_jump2) \<Longrightarrow> 
    \<exists> l2' l_pc2' l_jump2'. jitflat_bpf [a] (l1, l_pc1, l_jump1) = (l2', l_pc2', l_jump2') \<and> 
          jitflat_bpf l_bin0 (l2', l_pc2', l_jump2') = (l2, l_pc2, l_jump2)"
-  by (smt (verit) fst_conv jitflat_bpf.elims list.distinct(1) list.sel(3) nth_Cons_0 snd_conv)
+  by (smt (verit) jitflat_bpf.simps(1) jitflat_bpf.simps(2) old.prod.case prod_cases3)
 
 lemma jitflat_bpf_induct2:"jitflat_bpf [a] (l1, l_pc1, l_jump1) = (l2', l_pc2', l_jump2') \<and> 
          jitflat_bpf l_bin0 (l2', l_pc2', l_jump2') = (l2, l_pc2, l_jump2) \<Longrightarrow> jitflat_bpf (a # l_bin0) (l1, l_pc1, l_jump1) = (l2, l_pc2, l_jump2)"
-  using jitflat_bpf.elims by force
+  using jitflat_bpf.elims
+  by (metis (no_types, opaque_lifting) jitflat_bpf_induct prod_cases3) 
 
 
 lemma jitflat_bpf_induct3:
@@ -58,14 +59,15 @@ next
   let "?num" = "fst a"
   let "?off" = "fst (snd a)"
   let "?l_bin0" = "snd (snd a)"
-  have a3:"jitflat_bpf [(?num,?off,?l_bin0)] (l1, l_pc1, l_jump1) =  (
+  let "?k" = "(?num,?off,?l_bin0)"
+  have a3:"jitflat_bpf [?k] (l1, l_pc1, l_jump1) =  (
     let curr_pc = of_nat (length l1) in 
     let l_jump' = update_l_jump (?num,?off,?l_bin0) l_pc1 l_jump1 in
       jitflat_bpf [] (
         l1@?l_bin0,
         l_pc1@[(curr_pc,?num)],
-        l_jump'))"  
-    using jitflat_bpf.simps(2) by blast
+        l_jump'))"
+    by (metis (no_types, lifting) jitflat_bpf.simps(2) old.prod.case)  
   have a4:"l1@?l_bin0 = l2'" using a3
     by (smt (verit) a0 jitflat_bpf.simps(1) split_pairs) 
       (*lemma list_in_list_concat: "list_in_list (l1 @ l2) pc l = (list_in_list l1 pc l \<and> list_in_list l2 (pc + length l1) l)"*)
@@ -96,13 +98,15 @@ next
   let "?num" = "fst a"
   let "?off" = "fst (snd a)"
   let "?l_bin0" = "snd (snd a)"
-  have a3:"jitflat_bpf [(?num,?off,?l_bin0)] (l1, l_pc1, l_jump1) =  (
+  let "?k" = "(?num,?off,?l_bin0)"
+  have a3:"jitflat_bpf [?k] (l1, l_pc1, l_jump1) =  (
     let curr_pc = of_nat (length l1) in 
     let l_jump' = update_l_jump (?num,?off,?l_bin0) l_pc1 l_jump1 in
       jitflat_bpf [] (
         l1@?l_bin0,
         l_pc1@[(curr_pc,?num)],
-        l_jump'))"  using jitflat_bpf.simps(2) by blast
+        l_jump'))"
+    by (metis (no_types, lifting) jitflat_bpf.simps(2) old.prod.case)
   have a4:"l_pc1@[(of_nat (length l1),?num)] = l_pc2'" using a3
     by (smt (verit) a0 jitflat_bpf.simps(1) split_pairs) 
       (*lemma list_in_list_concat: "list_in_list (l1 @ l2) pc l = (list_in_list l1 pc l \<and> list_in_list l2 (pc + length l1) l)"*)
@@ -114,21 +118,13 @@ next
   then show ?case by simp
 qed
 
-lemma l_pc_length_prop:"jitflat_bpf l_bin0 (l1,l_pc1,l_jump1) = (l2,l_pc2,l_jump2) \<Longrightarrow> length l_pc2 = length l_bin0 + length l_pc1"
-proof(induct l_bin0 arbitrary: l1 l_pc1 l_jump1 l2 l_pc2 l_jump2)
-  case Nil
-  then show ?case by simp
-next
-  case (Cons a l_bin0)
-  assume assm0:"jitflat_bpf (a#l_bin0)  (l1,l_pc1,l_jump1) = (l2,l_pc2,l_jump2)"
-  have "\<exists> l2' l_pc2' l_jump2'. jitflat_bpf [a] (l1,l_pc1,l_jump1) = (l2',l_pc2',l_jump2') \<and> jitflat_bpf l_bin0 (l2',l_pc2',l_jump2') = (l2,l_pc2,l_jump2)" using jitflat_bpf_induct assm0 by simp
-  then obtain l2' l_pc2' l_jump2' where a0:"jitflat_bpf [a] (l1,l_pc1,l_jump1) = (l2',l_pc2',l_jump2') \<and> jitflat_bpf l_bin0 (l2',l_pc2',l_jump2') = (l2,l_pc2,l_jump2)" by auto
-  hence a1:"length l_pc2 = length l_bin0 + length l_pc2'" using Cons by blast
-  have a2:"length l_pc2' = 1 + length l_pc1" using a0
-    by (smt (verit) One_nat_def add.commute fst_conv jitflat_bpf.elims length_append list.distinct(1) list.sel(3) list.size(3) list.size(4) plus_1_eq_Suc snd_conv) 
-  hence "length l_pc2 = length(a#l_bin0 )+length l_pc1" using a1 a2 by simp
-  then show ?case by simp
-qed
+lemma l_pc_length_prop:"jitflat_bpf l_bin0 (l1,l_pc1,l_jump1) = (l2,l_pc2,l_jump2) \<Longrightarrow>
+  length l_pc2 = length l_bin0 + length l_pc1"
+  apply(induct l_bin0 arbitrary: l1 l_pc1 l_jump1 l2 l_pc2 l_jump2; simp)
+  subgoal for a l l1 l_pc1 l_jump1 l2 l_pc2 l_jump2
+    apply (cases a; simp)
+    done
+  done
 
 lemma num_corr:"jitflat_bpf l_bin0 (l1, l_pc1, l_jump1) = (l2,l_pc2,l_jump2) \<Longrightarrow> map snd (drop (length l_pc1) l_pc2) = map fst l_bin0"
 proof(induction l_bin0 arbitrary: l1 l_pc1 l_jump1 l2 l_pc2 l_jump2)
@@ -159,7 +155,7 @@ next
         l1@(snd(snd a)),
         l_pc1@[(of_nat(length l1), fst a)],
         update_l_jump a l_pc1 l_jump1))" using b4
-    by (metis jitflat_bpf.simps(2) prod.collapse) 
+    by (metis (mono_tags, lifting) jitflat_bpf.simps(2) old.prod.case prod.collapse)
 
   hence b8:"l_pc2' = l_pc1@[(of_nat(length l1), fst a)]" using b4 by force
   hence "drop (length l_pc1) l_pc2' = [(of_nat(length l1), fst a)]" by auto
@@ -194,13 +190,15 @@ next
   let "?num" = "fst a"
   let "?off" = "fst (snd a)"
   let "?l_bin0" = "snd (snd a)"
-  have a3:"jitflat_bpf [(?num,?off,?l_bin0)] (l1, l_pc1, l_jump1) =  (
+  let "?k" = "(?num,?off,?l_bin0)"
+  have a3:"jitflat_bpf [?k] (l1, l_pc1, l_jump1) =  (
     let curr_pc = of_nat (length l1) in 
     let l_jump' = update_l_jump (?num,?off,?l_bin0) l_pc1 l_jump1 in
       jitflat_bpf [] (
         l1@?l_bin0,
         l_pc1@[(curr_pc,?num)],
-        l_jump'))"  using jitflat_bpf.simps(2) by blast
+        l_jump'))"
+    by (metis (no_types, lifting) case_prod_conv jitflat_bpf.simps(2))  
   have a4:"l_jump2' = (let (num,off,l_bin0) = a in if (\<exists> num d. x64_decode 0 l_bin0 = Some(num, Pcall_i d)) then l_jump1@ [(of_nat (length l_pc1), off)] 
   else if (\<exists> num src dst. x64_decode 0 l_bin0 = Some(num, Pcmpq_rr src dst)) then l_jump1@ [(of_nat (length l_pc1), of_nat (length l_pc1) + off)]
   else l_jump1)" 
@@ -268,7 +266,7 @@ lemma flattern_l_bin0:
    jitflat_bpf l_bin0 init_second_layer = (l2,l_pc2,l_jump2) \<Longrightarrow>
    fst (l_pc2 ! (unat pc)) = xpc \<Longrightarrow>
     well_formed_prog l_bin0 \<Longrightarrow>
-   list_in_list l (nat xpc) l2"
+   list_in_list l xpc l2"
 proof-
   assume assm0:"l_bin0!(unat pc)=(num,off,l)" and
    assm1:"unat pc < length l_bin0 \<and> unat pc \<ge> 0" and
@@ -295,7 +293,8 @@ proof-
           l2'@l,
           l_pc2'@[(of_nat(length l2'),num)],
           l_jump')
-  )" using assm2 init_second_layer_def of_nat_def c0 using jitflat_bpf.simps(2) by presburger   
+  )" using assm2 init_second_layer_def of_nat_def c0 using jitflat_bpf.simps(2)
+    by simp   
 
   have c2:"list_in_list l_pc2' 0 l_pc2" using not_change_prefix_l_pc c0 c1 by blast
 
@@ -307,10 +306,20 @@ proof-
   
   have c6:"list_in_list l (length l2') l2" using c0 c1 not_change_prefix_l_bin
     by (metis (mono_tags, lifting) list_in_list_concat plus_nat.add_0)     
-  have "list_in_list l (nat(fst (l_pc2 ! (unat pc)))) l2" using c6 c4 by auto
+  have "list_in_list l (fst (l_pc2 ! (unat pc))) l2" using c6 c4 by auto
      then show ?thesis using assm3 by force 
    qed
 
+(*
+lemma flattern_num_geric:
+  "l_bin0!pc=(num,off,l) \<Longrightarrow>
+   pc < length l_bin0  \<Longrightarrow>
+   jitflat_bpf l_bin0 (l1,l_pc1,l_jump1) = (l2,l_pc2,l_jump2) \<Longrightarrow>
+   snd (l_pc2!pc) = num"
+  apply(induct l_bin0 arbitrary: pc num off l l1 l_pc1 l_jump1 l2 l_pc2 l_jump2 ; simp)
+  subgoal for a al pc num off l l1 l_pc1 l_jump1 l2 l_pc2 l_jump2
+    apply (cases pc; simp)
+    subgoal *)
 
 lemma flattern_num:
   "l_bin0!(unat pc)=(num,off,l) \<Longrightarrow>
@@ -339,8 +348,9 @@ next
   proof(cases "unat pc = 0")
     case True
       have "snd (l_pc2!(unat pc)) = num" using not_change_prefix_l_pc True
-        by (smt (verit, ccfv_threshold) append_Nil assm1 assm3 init_second_layer_def jitflat_bpf.simps(2) 
-            list_in_list.simps(2) nth_Cons_0 prod.collapse prod.inject)
+        using append_Nil assm1 assm3 init_second_layer_def jitflat_bpf.simps(2) 
+            list_in_list.simps(2) nth_Cons_0 prod.collapse prod.inject
+        by (smt (z3) case_prod_conv)
       then show ?thesis by simp
   next
     case False
@@ -355,8 +365,9 @@ next
         jitflat_bpf l_bin0 (
           []@(snd(snd a)),
           []@[(0, fst a)],
-          update_l_jump a [] []))" using init_second_layer_def 
-        by (metis jitflat_bpf.simps(2) list.size(3) prod.exhaust_sel semiring_1_class.of_nat_0) 
+          update_l_jump a [] []))"
+        apply simp
+        by (cases a; simp add: init_second_layer_def)
   
       hence b2_2:"jitflat_bpf (a#l_bin0) init_second_layer = jitflat_bpf l_bin0 ((snd(snd a)),[(0, fst a)],update_l_jump a [] [])" by auto
       
