@@ -2,6 +2,22 @@ theory JITFix_aux
   imports JITFlattern JITFix_prob JITFix_def
 begin
 
+
+lemma err_is_still_err4:"fix_bpf_sem n lp Stuck = s'\<Longrightarrow> s' = Stuck "
+  apply(induct n, simp)
+  subgoal for a using fix_bpf_one_step_def by auto
+  done
+   
+lemma intermediate_step_is_ok4:
+  "fix_bpf_sem n lp s = s' \<Longrightarrow> n \<ge> 0 \<Longrightarrow> s' \<noteq> Stuck \<Longrightarrow> 
+  \<exists> xpc xrs xm xss. s = (Next xpc xrs xm xss)"
+  apply(induct n arbitrary: lp s s')
+  apply simp 
+  apply (meson outcome.exhaust)
+  using err_is_still_err4
+  by (metis outcome.exhaust) 
+
+
 lemma length_of_decoded_instr1:
   "x64_decode xpc l_bin0 = Some(sz, Pcmpq_rr src dst) \<Longrightarrow> 
   sz = 3"
@@ -30,7 +46,7 @@ lemma hhh:" (let nsp::64 word = xrs (IR SP) - u64_of_memory_chunk M64 in case st
   apply(unfold exec_call_def)
   by blast
 
-lemma hh:
+lemma one_steps_equiv_layer2:
   assumes a0:"flat_bpf_sem 1 (l_bin0,l_pc,l_jump) (pc,xst) = fxst'" and 
     a1:"snd fxst' = Next xpc'' xrs'' xm'' xss''" and 
     a2:"jitper insns = Some lt" and 
@@ -210,7 +226,7 @@ proof-
                 hence "fix_bpf_sem 2 (l_bin0,l_pc,l_jump) xst =  (Next (nat (fst (l_pc!(unat npc)))) xrs1 xm1 xss1)" using d2 by auto
 
                 hence "\<exists> num fst'. fix_bpf_sem num (l_bin0,l_pc,l_jump) xst = fst' \<and> match_state2 fst' (snd fxst')" 
-                  using match_state2_def match_mem_def c3 a1 by (smt (verit, ccfv_SIG) outcome.simps(4)) 
+                  using match_state2_def match_mem_def c3 a1 by auto
                 thus ?thesis by simp
   
  next
@@ -227,7 +243,7 @@ proof-
    
    hence "fix_bpf_sem 2 (l_bin0,l_pc,l_jump) xst = Next (xpc1+sz2) xrs1 xm1 xss1" using b3 a2 d2 by simp
    hence "\<exists> num fst'. fix_bpf_sem num (l_bin0,l_pc,l_jump) xst = fst' \<and> match_state2 fst' (snd fxst')" 
-   using match_state2_def match_mem_def by (smt (verit, del_insts) b1_1 outcome.simps(4)) 
+   using match_state2_def match_mem_def b1_1 by auto
 
    then show ?thesis by simp
  qed
@@ -293,7 +309,7 @@ next
 
     have "(unat (of_int (fst (l_pc!(unat npc))))) = nat (fst (l_pc!(unat npc)))" using c4_1 by metis
     hence "match_state2 (fix_bpf_sem 1 (l_bin0,l_pc,l_jump) xst) (snd fxst')" using match_state2_def match_mem_def d3 c4
-      by (smt (verit, best) outcome.simps(4)) 
+      by (metis (no_types, lifting) c3_1 c4_0) 
     hence "\<exists> num fst'. fix_bpf_sem num (l_bin0,l_pc,l_jump) xst = fst' \<and> match_state2 fst' (snd fxst')" by blast
     then show ?thesis by simp
   next
@@ -421,7 +437,8 @@ next
         using d4 d5 c1 apply (simp add: exec_instr_def) using d4_0 by fastforce 
       hence "\<exists> num fst'. fix_bpf_sem num (l_bin0,l_pc,l_jump) xst = fst' \<and> match_state2 fst' (snd fxst')"
         using c1 match_state2_def match_mem_def
-        by (smt (verit, del_insts) outcome.simps(4)) 
+        by auto
+        
       then show ?thesis by blast
     next
       case False
@@ -438,13 +455,111 @@ next
 
       have d0:"x64_sem ?num l_bin0 (Next xpc xrs xm xss) = fix_bpf_sem ?num (l_bin0,l_pc,l_jump) xst" 
         using x64_bin_is_sequential_equivalence a3 cn by presburger 
-      then show ?thesis
-         using c0 by (smt (verit, best) a1 match_mem_def match_state2_def outcome.simps(4)) 
+      then show ?thesis using c0 a1 match_state2_def by (metis outcome.distinct(1)) 
     qed
   qed
  qed
 qed
 
+
+lemma fix_bpf_sem_induct:
+  "fix_bpf_sem (Suc n) (l_bin0,l_pc,l_jump) xst = fst' \<Longrightarrow> 
+  xst = (Next pc rs ms ss) \<Longrightarrow>
+   \<exists> fst1. fix_bpf_sem 1 (l_bin0,l_pc,l_jump) xst = fst1 \<and> 
+         fix_bpf_sem n (l_bin0,l_pc,l_jump) fst1 = fst'"
+  by simp
+
+lemma fix_bpf_sem_induct2:
+  "xst = (Next pc rs ms ss) \<Longrightarrow>
+   \<exists> fst1. fix_bpf_sem 1 (l_bin0,l_pc,l_jump) xst = fst1 \<and> 
+         fix_bpf_sem n (l_bin0,l_pc,l_jump) fst1 = fst' \<Longrightarrow> 
+fix_bpf_sem (Suc n) (l_bin0,l_pc,l_jump) xst = fst'"
+  by simp
+
+(*lemma fix_bpf_sem_stuck : 
+" fix_bpf_sem (m+n) lt Stuck = fst' \<Longrightarrow>
+  fix_bpf_sem n lt (fix_bpf_sem m lt Stuck) = fst'"
+  apply (cases m,simp)
+  subgoal for m
+    apply(cases n,simp)              
+    subgoal for nat 
+  done*)
+
+lemma fix_bpf_sem_induct3:
+  "xst = (Next pc rs ms ss) \<Longrightarrow>
+  fix_bpf_sem m (l_bin0,l_pc,l_jump) xst = fst1 \<Longrightarrow>
+  fix_bpf_sem n (l_bin0,l_pc,l_jump) fst1 = fst' \<Longrightarrow> 
+  fix_bpf_sem (m+n) (l_bin0,l_pc,l_jump) xst = fst'"
+  sorry
+(*  apply(induct m arbitrary: xst pc rs ms ss l_bin0 l_pc l_jump fst1 n fst')
+  subgoal for xst pc rs ms ss l_bin0 l_pc l_jump fst1 pc' rs' 
+    by simp 
+  subgoal for m xst pc rs ms ss l_bin0 l_pc l_jump fst1 pc' rs'  *)
+
+lemma n_steps_equiv_layer2:
+  "flat_bpf_sem n (l_bin0,l_pc,l_jump) (pc,xst) = fxst' \<Longrightarrow> 
+  snd fxst' = Next xpc'' xrs'' xm'' xss'' \<Longrightarrow> 
+  jitper insns = Some lt \<Longrightarrow> 
+  xst = Next xpc xrs xm xss \<Longrightarrow> 
+  jitflat_bpf lt init_second_layer = (l_bin0,l_pc,l_jump) \<Longrightarrow> 
+  well_formed_prog lt \<Longrightarrow> 
+  \<exists> num fst'. fix_bpf_sem num (l_bin0,l_pc,l_jump) xst = fst' \<and> match_state2 fst' (snd fxst')"
+proof(induct n arbitrary:l_bin0 l_pc l_jump pc xst fxst' xpc'' xrs'' xm'' xss'' insns lt xpc xrs xm xss)
+  case 0
+  have "\<exists> num fst'. num = 0 \<and> fix_bpf_sem num (l_bin0,l_pc,l_jump) xst = fst' \<and> match_state2 fst' (snd fxst')"
+    using match_state2_def "0.prems"(2) JITPer_aux.match_mem_def "0.prems"(1) by fastforce 
+  then show ?case by blast
+next
+  case (Suc n)
+  assume a0:"flat_bpf_sem (Suc n) (l_bin0,l_pc,l_jump) (pc,xst) = fxst'" and 
+    a1:"snd fxst' = Next xpc'' xrs'' xm'' xss''" and 
+    a2:"jitper insns = Some lt" and 
+    a3:"xst = Next xpc xrs xm xss" and     
+    a4:"jitflat_bpf lt init_second_layer = (l_bin0,l_pc,l_jump)" and 
+    a5:"well_formed_prog lt" 
+
+  have "\<exists> next_f. flat_bpf_sem 1 (l_bin0,l_pc,l_jump) (pc,xst) = next_f" by blast
+  then obtain next_f where b0:"flat_bpf_sem 1 (l_bin0,l_pc,l_jump) (pc,xst) = next_f" by auto
+  have b1:"unat pc < length lt \<and> unat pc \<ge> 0" 
+  proof(rule ccontr)
+    assume assm:"\<not> (unat pc < length lt \<and> unat pc \<ge> 0)"
+    have "snd next_f = snd (let pair = flat_bpf_one_step (l_bin0,l_pc,l_jump) (pc, xst) in
+    flat_bpf_sem 0 (l_bin0,l_pc,l_jump) pair)" 
+      using b0 by fastforce
+    hence "snd next_f = snd (flat_bpf_one_step (l_bin0,l_pc,l_jump) (pc, xst))"
+      by (metis flat_bpf_sem.simps(1) prod.collapse) 
+    hence "snd next_f = Stuck" 
+      using flat_bpf_one_step_def assm a1 apply(cases xst,simp_all)
+      subgoal for x11 x12 x13 x14 apply(cases "(l_bin0,l_pc,l_jump)",simp_all)
+        subgoal for a 
+          by (smt (z3) Suc.prems(5) add.right_neutral init_second_layer_def l_pc_length_prop list.size(3) nat_le_linear nat_less_le)
+        done
+      done
+      thus "False" using a1
+        by (metis a0 b0 err_is_still_err3 flat_bpf_sem_induct_aux2 outcome.distinct(1) prod.collapse) 
+    qed
+    have "\<exists> xpc1 xrs1 xm1 xss1. snd next_f = Next xpc1 xrs1 xm1 xss1" using flat_bpf_sem_induct_aux2 intermediate_step_is_ok3 a0 a3
+      by (metis Suc.prems(2) b0 bot_nat_0.extremum outcome.distinct(1) prod.collapse) 
+    then obtain xpc1 xrs1 xm1 xss1 where b2:"snd next_f = Next xpc1 xrs1 xm1 xss1" by auto
+    hence "\<exists> num next_s. fix_bpf_sem num (l_bin0,l_pc,l_jump) xst = next_s \<and> match_state2 next_s (snd next_f)"
+      using one_steps_equiv_layer2 b0 a5 a1 a2 a3 a4 b1 by blast
+    then obtain num1 next_s where b3:"fix_bpf_sem num1 (l_bin0,l_pc,l_jump) xst = next_s \<and> match_state2 next_s (snd next_f)" by auto
+    have b4:"flat_bpf_sem n (l_bin0,l_pc,l_jump) next_f = fxst'" using flat_bpf_sem_induct_aux2 a0 b0 by blast
+    hence "\<exists> num fst'. fix_bpf_sem num (l_bin0,l_pc,l_jump) (snd next_f) = fst' \<and> match_state2 fst' (snd fxst')"
+      using fix_bpf_sem_induct match_state2_def jitflat_bpf_induct b2 a1 a4 a5 b3 b4
+      by (metis Suc.hyps a2 prod.collapse) 
+    then obtain num2 fst2 where b5:"fix_bpf_sem num2 (l_bin0,l_pc,l_jump) (snd next_f) = fst2 \<and> match_state2 fst2 (snd fxst')" by auto
+    hence "fix_bpf_sem (num1+num2) (l_bin0,l_pc,l_jump) xst = fst2" using fix_bpf_sem_induct3
+      using Suc.prems(4) b2 b3 match_state2_def by auto 
+    hence "\<exists> num fst'. num = num1+num2 \<and> fst' = fst2 \<and> fix_bpf_sem num (l_bin0,l_pc,l_jump) xst = fst' \<and> match_state2 fst' (snd fxst')"
+      using b5 by blast 
+    then show ?case by blast 
+  qed
+(*lemma flat_bpf_sem_induct_aux2:
+"flat_bpf_sem (Suc n) x64_prog xst = xst'\<Longrightarrow> 
+  \<exists> xst1. flat_bpf_sem 1 x64_prog xst = xst1 \<and>
+  flat_bpf_sem n x64_prog xst1 = xst'"
+  using flat_bpf_sem_induct_aux1 by simp*)
 
 
 end

@@ -160,23 +160,23 @@ fun jitfix :: "((u64\<times>u64) list) \<Rightarrow> x64_bin \<Rightarrow> (u64 
 *)
 
 (*
-fun jit_fix_sem::"nat \<Rightarrow> x64_bin \<Rightarrow> outcome \<Rightarrow> outcome" where
- "jit_fix_sem 0 _ st = st" |
- "jit_fix_sem (Suc n) lt xst = 
+fun last_fix_sem::"nat \<Rightarrow> x64_bin \<Rightarrow> outcome \<Rightarrow> outcome" where
+ "last_fix_sem 0 _ st = st" |
+ "last_fix_sem (Suc n) lt xst = 
   (let xst' = x64_sem 1 lt xst in 
    (case xst' of Stuck \<Rightarrow> Stuck |
                  Next pc' rs' m' ss' \<Rightarrow> 
-    jit_fix_sem n lt xst'))"*)
+    last_fix_sem n lt xst'))"*)
 
 (*
-fun jit_fix_sem::" nat \<Rightarrow> nat \<Rightarrow> x64_bin \<Rightarrow> outcome \<Rightarrow> outcome" where
- "jit_fix_sem 0 _ _ st = st" |
- "jit_fix_sem (Suc n) num lt xst = 
+fun last_fix_sem::" nat \<Rightarrow> nat \<Rightarrow> x64_bin \<Rightarrow> outcome \<Rightarrow> outcome" where
+ "last_fix_sem 0 _ _ st = st" |
+ "last_fix_sem (Suc n) num lt xst = 
   (let xst' = x64_sem 1 lt xst in 
    (case xst' of Stuck \<Rightarrow> Stuck |
                  Next pc' rs' m' ss' \<Rightarrow> 
     if pc' = num then xst' else 
-    jit_fix_sem n num lt xst'))"
+    last_fix_sem n num lt xst'))"
 *)
 
 lemma "jitper insns = Some lt \<Longrightarrow> lt \<noteq> [] \<Longrightarrow> well_formed_prog1 lt"
