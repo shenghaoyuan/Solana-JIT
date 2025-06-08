@@ -2,6 +2,38 @@ theory JITFix_prob1
   imports JITFlattern JITFix_def
 begin
 
+lemma jit_fix_not_change:
+  "jitfix l_jump l_bin0 l_pc = Some prog \<Longrightarrow> 
+  x64_decode xpc l_bin0 = Some v \<Longrightarrow>
+  (\<not>(\<exists> num d. x64_decode xpc l_bin0 = Some(num, Pcall_i d))) \<and> (\<not> (\<exists> num cond d. x64_decode xpc l_bin0 = Some(num, Pjcc cond d))) \<Longrightarrow>
+  x64_decode xpc prog = Some v"
+  sorry
+
+lemma x64_bin_update_is_disjoint:
+  "jitfix [x] l_bin0 l_pc = Some prog' \<Longrightarrow>
+  jitfix l_jump l_bin0 l_pc = Some prog \<Longrightarrow>
+  x \<in> set l_jump \<Longrightarrow>
+  Some prog' = Some (x64_bin_update (length u8_list) l_bin0 xpc u8_list) \<Longrightarrow>
+  x64_decode xpc prog' = Some v \<Longrightarrow>
+  x64_decode xpc prog = Some v"
+  sorry
+
+lemma x64_bin_update_is_disjoint2:
+  "jitfix l_jump l_bin0 l_pc = Some prog \<Longrightarrow>
+  x \<in> set l_jump \<Longrightarrow>
+  jitfix [x] l_bin0 l_pc = prog' \<Longrightarrow>
+  prog' \<noteq> None"
+  sorry
+
+lemma x64_encode_x64_decode_same2:
+  "xpc + sz < length l \<Longrightarrow>
+  sz = length (x64_encode (Pjcc cond d)) \<Longrightarrow>
+  u8_list = x64_encode (Pjcc cond d) \<Longrightarrow>
+  l1 = x64_bin_update (length u8_list) l xpc u8_list \<Longrightarrow>
+    x64_decode xpc l1 = Some (sz, Pjcc cond d)"
+  sorry
+
+
 lemma x64_decode_Pcall_i_x64_encode_length_eq: "
   x64_decode xpc l = Some (sz, Pcall_i i) \<Longrightarrow>
   u8_list = x64_encode (Pcall_i i1) \<Longrightarrow> 
@@ -124,5 +156,6 @@ lemma x64_encode_x64_decode_same:"
     apply (rule x64_decode_list_in_list_x64_bin_update_Pcall_i_eq; simp?)
     done
   done
+
 
 end

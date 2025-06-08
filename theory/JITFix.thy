@@ -54,12 +54,6 @@ next
   then show ?case using Cons b0 b1 by argo
 qed
 
-lemma jit_fix_not_change:
-  "jitfix l_jump l_bin0 l_pc = Some prog \<Longrightarrow> 
-  x64_decode xpc l_bin0 = Some v \<Longrightarrow>
-  (\<not>(\<exists> num d. x64_decode xpc l_bin0 = Some(num, Pcall_i d))) \<and> (\<not> (\<exists> num cond d. x64_decode xpc l_bin0 = Some(num, Pjcc cond d))) \<Longrightarrow>
-  x64_decode xpc prog = Some v"
-  sorry
 
 lemma l_pc_index_corr2:
   "find_target_pc_in_l_pc2 l_pc xpc 0 = Some pc \<Longrightarrow> fst (l_pc!pc) = xpc"
@@ -72,30 +66,6 @@ lemma l_pc_index_corr2:
   x64_decode xpc l_bin0 = Some (len,ins) \<Longrightarrow>
   x64_decode xpc prog = Some (len,ins)"
   sorry*)
-
-lemma x64_bin_update_is_disjoint:
-  "jitfix [x] l_bin0 l_pc = Some prog' \<Longrightarrow>
-  jitfix l_jump l_bin0 l_pc = Some prog \<Longrightarrow>
-  x \<in> set l_jump \<Longrightarrow>
-  Some prog' = Some (x64_bin_update (length u8_list) l_bin0 xpc u8_list) \<Longrightarrow>
-  x64_decode xpc prog' = Some v \<Longrightarrow>
-  x64_decode xpc prog = Some v"
-  sorry
-
-
-
-lemma x64_bin_update_decode_incode_consistency:
-  "Some someprog = Some (x64_bin_update (length (x64_encode ins)) l_bin0 xpc (x64_encode ins)) \<Longrightarrow>
-  x64_decode xpc someprog = Some (length (x64_encode ins),ins)"
-  sorry
-
-
-lemma x64_bin_update_is_disjoint2:
-  "jitfix l_jump l_bin0 l_pc = Some prog \<Longrightarrow>
-  x \<in> set l_jump \<Longrightarrow>
-  jitfix [x] l_bin0 l_pc = prog' \<Longrightarrow>
-  prog' \<noteq> None"
-  sorry
 
 
 lemma one_steps_equiv_layer3:
@@ -345,8 +315,9 @@ lemma x64_bin_update_decode_incode_consistency:
         
       have "\<exists> someprog. ?prog = Some someprog" using a2 d3_1 by auto
       then obtain someprog where d4:"?prog = Some someprog" by auto
-      have d7:"x64_decode xpc someprog = Some (?len_u8_list,?u8_list)"
-        using d4 d5_1 d6 x64_bin_update_decode_incode_consistency by presburger 
+      have "xpc + ?len_u8_list < length l_bin0" sorry
+      hence d7:"x64_decode xpc someprog = Some (?len_u8_list,?u8_list)"
+        using d4 d5_1 d6 x64_encode_x64_decode_same2 by auto 
      
       have d8_1:"last_fix_sem 1 someprog xst = (x64_sem 1 someprog xst)" using last_fix_sem_def by blast
       hence d8_2:"last_fix_sem 1 someprog xst = (case x64_decode xpc someprog of
