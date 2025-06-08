@@ -35,7 +35,7 @@ lemma l_pc_index_corr_geric:
   fst (l_pc!pc) = xpc \<Longrightarrow> 
   find_target_pc_in_l_pc2 l_pc xpc n = Some (pc+n)"
   apply (induction l_pc arbitrary: pc xpc; simp)
-  subgoal for a l_pc1 pc xpc l
+  subgoal for a l_pc1 pc xpc 
     apply (cases pc; simp)
     subgoal
       sorry
@@ -43,9 +43,9 @@ lemma l_pc_index_corr_geric:
 
 lemma l_pc_index_corr:
   "l_pc \<noteq> [] \<Longrightarrow> 
-   pc < length l_pc  \<Longrightarrow> 
-  fst (l_pc! pc) = xpc \<Longrightarrow> 
-  find_target_pc_in_l_pc2 l_pc xpc 0 = Some pc"
+   (unat pc) < length l_pc  \<Longrightarrow> 
+  fst (l_pc! (unat pc)) = xpc \<Longrightarrow> 
+  find_target_pc_in_l_pc2 l_pc xpc 0 = Some (unat pc)"
   sorry
 
 lemma x64_bin_is_sequential_x64_decode3:

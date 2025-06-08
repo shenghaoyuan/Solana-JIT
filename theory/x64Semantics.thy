@@ -180,7 +180,7 @@ definition exec_instr :: "instruction \<Rightarrow> nat \<Rightarrow> nat \<Righ
   Pimulq_r   r1    \<Rightarrow> let rs1 = rs#(IR RAX) <- ((rs (IR RAX))*(rs (IR r1))) in
                      Next (pc + sz) (rs1#(IR RDX) <-( (rs (IR RAX))*(rs (IR r1)) div (2 ^ 32))) m ss|
   Pjcc      t d    \<Rightarrow> (case eval_testcond t rs of Some b \<Rightarrow> 
-                          if b then Next (unat d+pc+1) rs m ss
+                          if b then Next (unat d+pc+sz+1) rs m ss
                           else Next (pc+sz) rs m ss | 
                         None \<Rightarrow> Stuck) |
   Pcmpq_rr rd r1 \<Rightarrow> Next (pc+sz)(compare_longs (rs (IR r1)) (rs (IR rd)) rs) m ss |
