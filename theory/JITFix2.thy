@@ -1,3 +1,166 @@
+ (*have c0_0:"\<exists> num src dst. x64_decode xpc l_bin0 = Some(num, Pjcc cond d)" using True by simp
+      then obtain num src dst where c0_1:"x64_decode xpc l_bin0 = Some(num, Pcmpq_rr src dst)" by auto
+      have c0:"snd fxst' = snd (let num = snd (l_pc!(unat pc)) in case x64_sem num l_bin0 (Next xpc xrs xm xss) of
+          Stuck \<Rightarrow> (pc, Stuck) | \<comment>\<open> if one step error, stop, it should be impossible \<close>
+          Next xpc1 rs1 m1 ss1 \<Rightarrow> (
+            if rs1 (CR ZF) = 1 then \<comment>\<open> must JUMP \<close>
+              (case find_target_pc_in_l_pc l_jump (uint pc) of
+              None \<Rightarrow> (pc, Stuck) |
+              Some npc \<Rightarrow>
+                (npc, (Next (nat (fst (l_pc!(unat npc)))) rs1 m1 ss1))) \<comment>\<open> go to the target address in the jited x64 binary \<close>
+            else \<comment>\<open> donot JUMP \<close>
+              (pc+1, (Next xpc1 rs1 m1 ss1))
+          ))" using True a0 b0_1 a3 a6 b0_3 a1
+        apply(unfold flat_bpf_one_step_def Let_def,simp_all) 
+        apply(cases "x64_decode xpc l_bin0",simp_all)
+        subgoal for a apply(split if_splits,simp_all)
+          done
+        done
+      let "?num" = "(snd (l_pc!(unat pc)))"
+      have "\<exists> fxst1. fxst1 = x64_sem ?num l_bin0 (Next xpc xrs xm xss)" by fastforce
+      then obtain fxst1 where c1:"fxst1 = x64_sem ?num l_bin0 (Next xpc xrs xm xss)" by auto
+      have "fxst1 \<noteq> Stuck" using c0 a1 c1 by(cases "x64_sem ?num l_bin0 (Next xpc xrs xm xss)",simp_all)
+      hence "\<exists> xpc1 xrs1 xm1 xss1. Next xpc1 xrs1 xm1 xss1 = fxst1"
+        by (metis outcome.exhaust) 
+      then obtain xpc1 xrs1 xm1 xss1 where c2:"Next xpc1 xrs1 xm1 xss1 = fxst1" by auto
+      have c3_0:"snd fxst' = snd (if xrs1 (CR ZF) = 1 then \<comment>\<open> must JUMP \<close>
+              (case find_target_pc_in_l_pc l_jump (uint pc) of
+              None \<Rightarrow> (pc, Stuck) |
+              Some npc \<Rightarrow>
+                (npc, (Next (nat (fst (l_pc!(unat npc)))) xrs1 xm1 xss1))) \<comment>\<open> go to the target address in the jited x64 binary \<close>
+            else \<comment>\<open> donot JUMP \<close>
+              (pc+1, (Next xpc1 xrs1 xm1 xss1))
+          )" using c2 c1 c0
+        by (metis (no_types, lifting) outcome.simps(4)) 
+      thus ?thesis
+      proof(cases "xrs1 (CR ZF) = 1")
+        case True
+        have b1:"xrs1 (CR ZF) = 1" using True by simp
+        then show ?thesis
+            proof(cases "find_target_pc_in_l_pc l_jump (uint pc) \<noteq> None")
+              case True
+                have "\<exists> npc. find_target_pc_in_l_pc l_jump (uint pc) = Some npc" using True by simp
+                then obtain npc where c3_1:"find_target_pc_in_l_pc l_jump (uint pc) = Some npc" by auto                                 
+                have c3:"snd fxst' = (Next (nat (fst (l_pc!(unat npc)))) xrs1 xm1 xss1)" 
+                  using True c3_0 c3_1 b1 by simp
+                have "distinct (map fst l_jump)" using init_second_layer_def a4 is_increase_list_empty
+                  by (metis distinct.simps(1) l_jump_is_distinct list.simps(8)) 
+                hence d0:"(uint pc,npc) \<in> set l_jump" using c3_1 search_l_jump by auto
+                have d1_1:"l_bin0 \<noteq> []" using a2
+                  by (metis True find_target_pc_in_l_pc.simps(1) jitfix.elims option.distinct(1)) 
+                hence "jitfix [(uint pc,npc)] l_bin0 l_pc = get_updated_l_bin (uint pc,npc) l_bin0 l_pc" 
+                  by(cases "get_updated_l_bin (uint pc,npc) l_bin0 l_pc",simp_all)
+                hence d1:"jitfix [(uint pc,npc)] l_bin0 l_pc = (let fix_begin_addr = fst (l_pc!(nat(uint pc))); 
+        (target_begin_addr,num2) = l_pc!(unat npc) in 
+        (case x64_decode fix_begin_addr l_bin0 of 
+              Some(sz, Pcall_i _) \<Rightarrow> let offset = ((of_int target_begin_addr)::i32) - ((of_int fix_begin_addr+of_nat sz+1)::i32) in 
+                                     let u8_list = x64_encode (Pcall_i (ucast offset)) in
+                                     Some (x64_bin_update (length u8_list) l_bin0 fix_begin_addr u8_list) |
+              Some(sz, Pcmpq_rr src dst) \<Rightarrow> let loc = nat fix_begin_addr+sz in 
+                    (case x64_decode loc l_bin0 of 
+                            Some(sz2, Pjcc cond _) \<Rightarrow> let offset = ((of_int target_begin_addr)::i32) - ((of_nat (loc+sz2)+1)::i32) in
+                                                      let u8_list = x64_encode (Pjcc cond (ucast offset)) in                                                     
+                                                      Some (x64_bin_update (length u8_list) l_bin0 loc u8_list) | 
+                            _ \<Rightarrow> None ) |
+              _ \<Rightarrow> None ))" using get_updated_l_bin_def by simp
+
+                let "?fix_begin_addr" = "fst (l_pc!(nat(uint pc)))"
+                let "?target_begin_addr" = "fst (l_pc!(unat npc))"
+                have d2:"nat ?fix_begin_addr = xpc" using b0_2 by auto
+                hence "\<exists> sz src dst. x64_decode (nat ?fix_begin_addr) l_bin0 = Some(sz, Pcmpq_rr src dst)" using c0_0 by force 
+                then obtain sz src dst where d3_1:"x64_decode (nat ?fix_begin_addr) l_bin0 = Some(sz, Pcmpq_rr src dst)" by auto
+                hence d3:"jitfix [(uint pc,npc)] l_bin0 l_pc =  (let loc = nat ?fix_begin_addr+sz in 
+                    (case x64_decode loc l_bin0 of 
+                            Some(sz2, Pjcc cond _) \<Rightarrow> let offset = ((of_nat ?target_begin_addr)::i32) - ((of_nat (loc+sz2)+1)::i32) in
+                                                      let u8_list = x64_encode (Pjcc cond (ucast offset)) in                                                     
+                                                      Some (x64_bin_update (length u8_list) l_bin0 loc u8_list) | 
+                            _ \<Rightarrow> None ))" using d1 d2 d1_1
+                  apply(cases "x64_decode (nat ?fix_begin_addr) l_bin0",simp_all)
+                  subgoal for a apply(cases "l_pc ! unat npc",simp_all)
+                    subgoal for aa b
+                    proof -
+                      assume "nat (fst (l_pc ! unat pc)) = xpc"
+                      assume "(case get_updated_l_bin (uint pc, npc) l_bin0 l_pc of None \<Rightarrow> None | Some x \<Rightarrow> Some x) = 
+                          (let loc = xpc + sz in case x64_decode loc l_bin0 of None \<Rightarrow> None | Some (sz2, Pjcc cond x) \<Rightarrow> 
+                           let offset = word_of_int aa - (word_of_nat (loc + sz2) + (1::32 signed word)); 
+                               u8_list = x64_encode (Pjcc cond (ucast offset)) in Some (x64_bin_update (length u8_list) l_bin0 loc u8_list) | Some (sz2, _) \<Rightarrow> None)"
+                      assume a1: "l_pc ! unat npc = (aa, b)"
+                      have "\<forall>i n. fst (i::int, n::nat) = i"
+                        by simp
+                      then show ?thesis
+                        using a1 by presburger
+                    qed 
+                    done
+                  done
+                have "jitfix [(uint pc,npc)] l_bin0 l_pc \<noteq> None"
+                proof(rule ccontr)
+                  assume assm:"\<not> (jitfix [(uint pc,npc)] l_bin0 l_pc\<noteq> None)"
+                  have "jitfix [(uint pc,npc)] l_bin0 l_pc = None" using assm by simp
+                  hence "jitfix l_jump l_bin0 l_pc = None " using d0 sorry
+                  thus "False" using a2 by simp
+                qed
+                hence "\<exists> prog'. Some prog' = jitfix [(uint pc,npc)] l_bin0 l_pc"
+                  by force
+                then obtain prog' where "Some prog' = jitfix [(uint pc,npc)] l_bin0 l_pc" by auto
+                hence "prog' = (let loc = nat ?fix_begin_addr+sz in 
+                    (case x64_decode loc l_bin0 of 
+                            Some(sz2, Pjcc cond _) \<Rightarrow> let offset = ((of_nat ?target_begin_addr)::i32) - ((of_nat (loc+sz2)+1)::i32) in
+                                                      let u8_list = x64_encode (Pjcc cond (ucast offset)) in                                                     
+                                                      (x64_bin_update (length u8_list) l_bin0 loc u8_list)))"
+                  using d3 apply(cases "x64_decode (nat ?fix_begin_addr+sz) l_bin0",simp_all)
+                  subgoal for a apply(cases a,simp_all)
+                    subgoal for aa b apply(cases b,simp_all)
+                      subgoal for x131 x132
+                        by (meson option.inject)
+                      done
+                    done
+                  done
+                
+                have "last_fix_sem 2 prog' xst = x64_sem 2 prog' xst" using last_fix_sem_def by simp
+                hence e0_0:"last_fix_sem 2 prog' xst =  (
+                  case x64_decode xpc prog' of
+                  None \<Rightarrow> Stuck |
+                  Some (sz, ins) \<Rightarrow>
+                    x64_sem 1 prog' (exec_instr ins sz xpc xrs xm xss)
+                )"  by (metis Suc_1 a3 x64_sem.simps(3)) 
+
+               (* have "list_in_list (x64_encode(Pcmpq_rr src dst)) xpc l_bin0" using d2 d3_1 
+                proof(rule ccontr)
+                  assume assm:"\<not> (list_in_list (x64_encode(Pcmpq_rr src dst)) xpc l_bin0)"
+                  have "\<not> (x64_decode xpc l_bin0 = Some (length (x64_encode(Pcmpq_rr src dst)), Pcmpq_rr src dst))" using x64_encode_decode_consistency assm 
+                  have e0:"x64_decode xpc prog' = x64_decode xpc l_bin0" 
+                  proof(rule ccontr)*)
+
+                hence e1:"last_fix_sem 2 prog' xst =  (
+                  case x64_decode xpc prog' of
+                  Some (sz, Pcmpq_rr src dst) \<Rightarrow>
+                    x64_sem 1 prog' (exec_instr (Pcmpq_rr src dst) sz xpc xrs xm xss)
+                )" using c0_0 a3 e0_0 apply(cases "x64_decode xpc prog'",simp_all) sorry
+                
+                have "last_fix_sem 2 prog xst = x64_sem 2 prog xst" using last_fix_sem_def by simp
+                hence e0:"last_fix_sem 2 prog xst =  (
+                  case x64_decode xpc prog of
+                  None \<Rightarrow> Stuck |
+                  Some (sz, ins) \<Rightarrow>
+                    x64_sem 1 prog (exec_instr ins sz xpc xrs xm xss)
+                )"
+                  by (metis Suc_1 a3 x64_sem.simps(3)) 
+                have e1:"\<exists> num src dst. x64_decode xpc prog = Some(num, Pcmpq_rr src dst)" sorry
+                hence "\<exists> src dst sz. last_fix_sem 2 prog xst = x64_sem 1 prog (exec_instr (Pcmpq_rr src dst) sz xpc xrs xm xss)"
+                  using e0 e1 by force
+                then obtain src dst sz where e2:"last_fix_sem 2 prog xst = x64_sem 1 prog (exec_instr (Pcmpq_rr src dst) sz xpc xrs xm xss)" by auto
+                hence e3:"sz = 3" using x64_encode_decode_consistency x64_encode_def list_in_list_prop sorry
+
+              then show ?thesis sorry
+            next
+              case False
+              then show ?thesis sorry
+            qed
+      next
+        case False
+        then show ?thesis sorry
+      qed*)
+
 (*
 lemma jit_fix_change:
   "jitfix l_jump l_bin0 l_pc = Some prog \<Longrightarrow> 

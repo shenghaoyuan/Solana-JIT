@@ -31,8 +31,10 @@ is_lt_list_nat (map fst (l_pc @ [(length l_bin, aa)])) (length (l_bin @ c))
       using not_change_prefix_l_pc *)
 
 lemma l_pc_index_corr_geric:
-  "l_pc \<noteq> [] \<Longrightarrow> pc < length l_pc \<Longrightarrow> 
+  "l_pc \<noteq> [] \<Longrightarrow> 
+  pc < length l_pc \<Longrightarrow> 
   fst (l_pc!pc) = xpc \<Longrightarrow> 
+  distinct (map fst l_pc) \<Longrightarrow>
   find_target_pc_in_l_pc2 l_pc xpc n = Some (pc+n)"
   apply (induction l_pc arbitrary: pc xpc; simp)
   subgoal for a l_pc1 pc xpc 
@@ -40,11 +42,13 @@ lemma l_pc_index_corr_geric:
     subgoal
       sorry
     sorry
+done
 
 lemma l_pc_index_corr:
   "l_pc \<noteq> [] \<Longrightarrow> 
    (unat pc) < length l_pc  \<Longrightarrow> 
   fst (l_pc! (unat pc)) = xpc \<Longrightarrow> 
+  distinct (map fst l_pc) \<Longrightarrow>
   find_target_pc_in_l_pc2 l_pc xpc 0 = Some (unat pc)"
   sorry
 

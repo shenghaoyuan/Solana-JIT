@@ -187,8 +187,9 @@ proof-
                   )))" using c2 fix_bpf_one_step_def by auto
 
      have d1_0:"fst (l_pc!(unat pc)) = xpc" using a0 a1 a3 flat_bpf_one_step_def apply(cases xst,simp_all) subgoal for x11
-          using b0_2 by fastforce done
-     hence d1:"find_target_pc_in_l_pc2 l_pc xpc 0 = Some (unat pc)" using l_pc_index_corr b0_3 by (metis a6 less_nat_zero_code list.size(3))
+         using b0_2 by fastforce done
+     have "distinct (map fst l_pc)" sorry
+     hence d1:"find_target_pc_in_l_pc2 l_pc xpc 0 = Some (unat pc)" using l_pc_index_corr b0_3 d1_0 by (metis a6 less_nat_zero_code list.size(3))
      have d1_3:"sz+xpc =xpc1"  using c2 c0_1 c5 by(unfold exec_instr_def,simp_all)
      hence d1_1:"int xpc1-3 = int xpc" using c0_2 by simp
      hence d1_2:"find_target_pc_in_l_pc2 l_pc (xpc1-3) 0 = Some (unat pc)" using d1_1 d1 c0_2 d1_3 by force 
@@ -294,7 +295,8 @@ next
       using b2 a3 by(unfold fix_bpf_one_step_def,simp_all)
     
     let "?imm" = "(of_nat(fst (l_pc!(unat npc))))"
-    have d1:"find_target_pc_in_l_pc2 l_pc xpc 0 = Some (unat pc)"
+    have "distinct (map fst l_pc)" sorry
+    hence d1:"find_target_pc_in_l_pc2 l_pc xpc 0 = Some (unat pc)"
       by (metis a6 b0_2 b0_3 l_pc_index_corr less_nat_zero_code list.size(3)) 
     hence d2:"fix_bpf_sem 1 (l_bin0,l_pc,l_jump) xst = exec_instr (Pcall_i ?imm) sz xpc xrs xm xss"
       using d1 c2 d0 by force
