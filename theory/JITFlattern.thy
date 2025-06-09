@@ -43,7 +43,128 @@ lemma match_state1_prop:
   xst1 \<noteq> Stuck \<Longrightarrow>
   xst2 \<noteq> Stuck \<Longrightarrow>
   match_state1 xst1 xst2"
-  sorry
+   apply(unfold exec_instr_def match_state1_def JITFlattern_def.match_mem_def JITPer_aux.match_mem_def sp_block_def,simp_all)
+  apply(cases ins,simp_all)
+        apply(unfold exec_ret_def Let_def)
+        apply(cases "loadv M64 xm1 (Vptr sp_block (xrs (IR SP) + u64_of_memory_chunk M64))",simp_all)
+  subgoal for a apply(cases a,simp_all)
+    subgoal for x5 apply(cases "loadv M64 xm2 (Vptr sp_block (xrs (IR SP) + u64_of_memory_chunk M64))",simp_all)
+      subgoal for aa apply(cases aa,simp_all)
+        done
+      done
+    done
+  subgoal for x7 apply(unfold exec_push_def Let_def)
+    apply(cases "storev M64 xm1 (Vptr sp_block (xrs (IR SP) - u64_of_memory_chunk M64)) (Vlong (xrs (IR x7)))",simp_all)
+    subgoal for a apply(cases "storev M64 xm2 (Vptr sp_block (xrs (IR SP) - u64_of_memory_chunk M64)) (Vlong (xrs (IR x7)))",simp_all)
+      subgoal for aa apply(unfold sp_block_def,simp_all)
+        by (smt (z3) memory_chunk.simps(16) option.sel storev_def val.case(5) val.case(6)) 
+      done
+    done
+  subgoal for x8 apply(unfold exec_pop_def Let_def)
+    apply(cases "loadv M64 xm1 (Vptr sp_block (xrs (IR SP)))",simp_all)
+    subgoal for a apply(cases a,simp_all)
+      subgoal for x5 apply(cases "loadv M64 xm2 (Vptr sp_block (xrs (IR SP)))",simp_all)
+        subgoal for aa apply(cases aa,simp_all) 
+          subgoal for x5a apply(unfold sp_block_def,simp_all)
+            sorry
+          done
+        done
+      done
+    done
+      subgoal for x131 x132 apply(cases "eval_testcond x131 xrs",simp_all)
+        done
+      subgoal for x151 x152 x153
+        apply(unfold exec_store_def,simp_all)
+        apply(cases "storev x153 xm1 (Vlong (eval_addrmode64 x151 xrs)) (Vlong (xrs (IR x152)))",simp_all)
+        subgoal for a apply(cases "storev x153 xm2 (Vlong (eval_addrmode64 x151 xrs)) (Vlong (xrs (IR x152)))",simp_all)
+          subgoal for aa
+            by (metis JITPer_aux.match_mem_def match_mem_store_equiv) 
+          done
+        done
+      subgoal for x201 x202 x203  
+        apply(unfold exec_load_def,simp_all)
+        apply(cases "loadv x203 xm1 (Vlong (eval_addrmode64 x202 xrs))",simp_all)
+        subgoal for a apply(cases a,simp_all)
+          subgoal for x2 apply(cases "loadv x203 xm2 (Vlong (eval_addrmode64 x202 xrs))",simp_all)
+            subgoal for aa apply(cases aa,simp_all)
+              subgoal for x2a 
+                by (metis JITPer_aux.match_mem_def match_mem_load_1_equiv val.inject(1)) 
+              subgoal for x3
+                by (metis JITPer_aux.match_mem_def match_mem_load_1_equiv val.distinct(11)) 
+              subgoal for x4
+                using JITPer_aux.match_mem_def match_mem_load_1_equiv by blast 
+              subgoal for x5 
+                using JITPer_aux.match_mem_def match_mem_load_1_equiv by blast 
+              done
+            done
+          subgoal for x3 using JITPer_aux.match_mem_def match_mem_load_1_equiv
+            apply(cases "loadv x203 xm2 (Vlong (eval_addrmode64 x202 xrs))",simp_all)
+            subgoal for aa apply(cases aa,simp_all) apply(cases aa,simp_all)
+              subgoal for x2
+                by (metis val.distinct(11)) 
+              subgoal for x3a
+                by (metis val.inject(2)) 
+              subgoal for x4
+                by (metis val.distinct(19)) 
+              subgoal for x5
+                by (metis val.distinct(21)) 
+              done
+            done
+          subgoal for x4 using JITPer_aux.match_mem_def match_mem_load_1_equiv
+            apply(cases "loadv x203 xm2 (Vlong (eval_addrmode64 x202 xrs))",simp_all)
+            subgoal for aa apply(cases aa,simp_all)
+              subgoal for x2
+                by (metis val.distinct(13))                
+              subgoal for x3a
+                by (metis val.distinct(19))                
+              subgoal for x4
+                by (metis val.inject(3))                
+              subgoal for x5
+                by (metis val.distinct(25))                 
+              done
+            done
+          subgoal for x5 
+            using JITPer_aux.match_mem_def match_mem_load_1_equiv
+            apply(cases "loadv x203 xm2 (Vlong (eval_addrmode64 x202 xrs))",simp_all)
+            subgoal for aa apply(cases aa,simp_all)
+              subgoal for x2
+                by (metis val.distinct(15))                
+              subgoal for x3a
+                by (metis val.distinct(21))                
+              subgoal for x4
+                by (metis val.distinct(25))                
+              subgoal for x5
+                by (metis val.inject(4))                
+              done
+            done
+          done
+        done
+      subgoal for x21a
+        apply(unfold exec_call_def Let_def)
+            apply(cases "storev M64 xm1 (Vptr sp_block (xrs (IR SP) - u64_of_memory_chunk M64)) (Vlong (word_of_nat xpc1 + (1::64 word)))",simp_all)
+            subgoal for a apply(cases "storev M64 xm2 (Vptr sp_block (xrs (IR SP) - u64_of_memory_chunk M64)) (Vlong (word_of_nat xpc2 + (1::64 word)))",simp_all)
+              subgoal for aa apply(unfold sp_block_def,simp_all)
+                by (smt (z3) memory_chunk.simps(16) option.sel storev_def val.case(5) val.case(6)) 
+              done
+            done
+          subgoal for x22a
+            using exec_call_external_prop 
+            apply(cases "exec_call_external xpc1 sz M64 xm1 xss xrs x22a",simp_all)
+            subgoal for x11 x12 x13 x14 
+              apply(cases "exec_call_external xpc2 sz M64 xm2 xss xrs x22a",simp_all)
+              subgoal for x11a x12a x13a x14a 
+                apply(erule allE) sorry
+              done
+            done
+          using exec_ret_external_prop 
+          apply(cases "exec_ret_external xpc1 sz M64 xm1 xss xrs",simp_all)
+          subgoal for x11 x12 x13 x14
+            apply(cases "exec_ret_external xpc2 sz M64 xm2 xss xrs",simp_all)
+            subgoal for x11a x12a x13a x14a 
+              sorry
+            done
+          done
+
 
 (*
 lemma one_step_equiv_layer1:
@@ -758,16 +879,16 @@ proof-
         hence d5:"npc = ?off" using a1 b0 d5_2 init_second_layer_def a7 b3 d5_4 d5_1 flattern_jump_index_2
           by (metis add_0 list.size(3))
 
-        have d6_0:"fxst' = (let xst_temp = exec_instr (Pcall_i (of_nat(fst (l_pc!(unat ?off))))) sz xpc1 xrs xm1 xss in 
+        have d6_0:"fxst' = (let xst_temp = exec_instr (Pcall_i (of_nat(fst (l_pc!(unat ?off)))::u32)) sz xpc1 xrs xm1 xss in 
                   (case xst_temp of Stuck \<Rightarrow> (pc, Stuck) | 
                                     Next xpc' rs' m' ss' \<Rightarrow> (?off, (Next xpc' rs' m' ss'))))" using d5 d3 d5_1 d3 d5_1 by simp
         have d6_1:"exec_instr (Pcall_i (of_nat(fst (l_pc!(unat ?off))))) sz xpc1 xrs xm1 xss = (
               let nsp = (xrs (IR SP))-(u64_of_memory_chunk M64) in (
-                  case Mem.storev M64 xm (Vptr sp_block nsp)  (Vlong (of_nat xpc1+1)) of
+                  case Mem.storev M64 xm1 (Vptr sp_block nsp)  (Vlong (of_nat xpc1+1)) of
                     None \<Rightarrow> Stuck |
                     Some m' \<Rightarrow> let rs1 = xrs#(IR SP) <- nsp in
-                                Next (unat ((of_nat(fst (l_pc!(unat ?off)))))) rs1 m' xss
-            ))" sorry
+                                Next (unat ((of_nat(fst (l_pc!(unat ?off))))::u32)) rs1 m' xss
+            ))" by(unfold exec_call_def exec_instr_def,simp_all)
         have "\<exists> m''. Mem.storev M64 xm (Vptr sp_block ((xrs (IR SP))-(u64_of_memory_chunk M64))) (Vlong (of_nat xpc1+1)) = Some m''"
         using  storev_stack_some by blast 
         then obtain m'' where d6_2:"Mem.storev M64 xm (Vptr sp_block ((xrs (IR SP))-(u64_of_memory_chunk M64))) (Vlong (of_nat xpc1+1)) = Some m''" by auto
