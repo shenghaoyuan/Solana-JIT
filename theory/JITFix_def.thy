@@ -98,6 +98,7 @@ definition get_updated_l_bin::"(int\<times>u64) \<Rightarrow> x64_bin \<Rightarr
                                                       let u8_list = x64_encode (Pjcc cond (ucast offset)) in                                                     
                                                       Some (x64_bin_update (length u8_list) l loc u8_list) | 
                             _ \<Rightarrow> None ) |
+              Some _ \<Rightarrow> Some l |
               _ \<Rightarrow> None ))"
 
 value "x64_decode 0 [72::8 word, 57::8 word, 195::8 word] "
