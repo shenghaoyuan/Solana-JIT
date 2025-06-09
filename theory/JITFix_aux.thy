@@ -188,8 +188,13 @@ proof-
 
      have d1_0:"fst (l_pc!(unat pc)) = xpc" using a0 a1 a3 flat_bpf_one_step_def apply(cases xst,simp_all) subgoal for x11
          using b0_2 by fastforce done
-     have "distinct (map fst l_pc)" sorry
-     hence d1:"find_target_pc_in_l_pc2 l_pc xpc 0 = Some (unat pc)" using l_pc_index_corr b0_3 d1_0 by (metis a6 less_nat_zero_code list.size(3))
+     have d1_0_0:"\<forall> idx. idx \<ge>0 \<and> idx < length lt \<longrightarrow> snd(snd (lt!idx)) \<noteq> []" using well_formed_prog_def a5 by blast 
+     hence d1_0_1:"is_increase_list_l_pc l_pc l_bin0" 
+       using l_pc_elem_increases init_second_layer_def is_increase_list_l_pc_def by (metis a4 less_nat_zero_code list.size(3))  
+     hence d1_0_2:"distinct (map fst l_pc)" using l_pc_is_distinct init_second_layer_def a4 d1_0_0
+       by (metis distinct.simps(1) is_increase_list_l_pc_def less_nat_zero_code list.simps(8) list.size(3)) 
+     hence d1:"find_target_pc_in_l_pc2 l_pc xpc 0 = Some (unat pc)" 
+       using l_pc_index_corr b0_3 d1_0 d1_0_1 d1_0_2 by metis 
      have d1_3:"sz+xpc =xpc1"  using c2 c0_1 c5 by(unfold exec_instr_def,simp_all)
      hence d1_1:"int xpc1-3 = int xpc" using c0_2 by simp
      hence d1_2:"find_target_pc_in_l_pc2 l_pc (xpc1-3) 0 = Some (unat pc)" using d1_1 d1 c0_2 d1_3 by force 
@@ -206,29 +211,29 @@ proof-
         case True
         have b1:"xrs1 (CR ZF) = 1" using True by simp
 
-                have "\<exists> npc. find_target_pc_in_l_pc l_jump (unat pc) = Some npc" using bn by simp
-                then obtain npc where c3_1:"find_target_pc_in_l_pc l_jump (unat pc) = Some npc" by auto                                 
-                have c3:"snd fxst' = (Next (fst (l_pc!(unat npc))) xrs1 xm1 xss1)" 
-                  using True c3_0 c3_1 b1 by simp
+        have "\<exists> npc. find_target_pc_in_l_pc l_jump (unat pc) = Some npc" using bn by simp
+        then obtain npc where c3_1:"find_target_pc_in_l_pc l_jump (unat pc) = Some npc" by auto                                 
+        have c3:"snd fxst' = (Next (fst (l_pc!(unat npc))) xrs1 xm1 xss1)" 
+          using True c3_0 c3_1 b1 by simp
 
-                have "cond = Cond_e" sorry
-                hence d6:"eval_testcond cond xrs1 = (Some (xrs1 (CR ZF) = 1))" 
-                  using b1 eval_testcond_def by(cases cond,simp_all)
+        have "cond = Cond_e" sorry
+        hence d6:"eval_testcond cond xrs1 = (Some (xrs1 (CR ZF) = 1))" 
+          using b1 eval_testcond_def by(cases cond,simp_all)
 
-                have d8:"fix_bpf_sem 1 (l_bin0,l_pc,l_jump) fxst1 = (exec_instr (Pjcc cond (of_nat (fst (l_pc!(unat npc)))-(of_nat (xpc1+sz2+1)))) sz2 xpc1 xrs1 xm1 xss1)" 
-                  using True d5 c3_1 by simp
-                have "fix_bpf_sem 1 (l_bin0,l_pc,l_jump) fxst1  = (case eval_testcond cond xrs1 of Some b \<Rightarrow> 
-                          if b then Next (unat (of_nat (fst (l_pc!(unat npc)))-(of_nat (xpc1+sz2+1))::i32)+xpc1+sz2+1) xrs1 xm1 xss1
-                          else Next (xpc1+sz2) xrs1 xm1 xss1 | 
-                        None \<Rightarrow> Stuck)" using d8 True d6 apply(unfold exec_instr_def,simp_all) done
+        have d8:"fix_bpf_sem 1 (l_bin0,l_pc,l_jump) fxst1 = (exec_instr (Pjcc cond (of_nat (fst (l_pc!(unat npc)))-(of_nat (xpc1+sz2+1)))) sz2 xpc1 xrs1 xm1 xss1)" 
+          using True d5 c3_1 by simp
+        have "fix_bpf_sem 1 (l_bin0,l_pc,l_jump) fxst1  = (case eval_testcond cond xrs1 of Some b \<Rightarrow> 
+            if b then Next (unat (of_nat (fst (l_pc!(unat npc)))-(of_nat (xpc1+sz2+1))::i32)+xpc1+sz2+1) xrs1 xm1 xss1
+            else Next (xpc1+sz2) xrs1 xm1 xss1 | 
+            None \<Rightarrow> Stuck)" using d8 True d6 apply(unfold exec_instr_def,simp_all) done
                   
-                hence d9:"fix_bpf_sem 1 (l_bin0,l_pc,l_jump) fxst1 = (Next (fst (l_pc!(unat npc))) xrs1 xm1 xss1)" using d6 True apply(cases "eval_testcond cond xrs1",simp_all)
-                  subgoal for a sorry done
-                hence "fix_bpf_sem 2 (l_bin0,l_pc,l_jump) xst =  (Next (fst (l_pc!(unat npc))) xrs1 xm1 xss1)" using d2 by auto
+        hence d9:"fix_bpf_sem 1 (l_bin0,l_pc,l_jump) fxst1 = (Next (fst (l_pc!(unat npc))) xrs1 xm1 xss1)" using d6 True apply(cases "eval_testcond cond xrs1",simp_all)
+           subgoal for a sorry done
+        hence "fix_bpf_sem 2 (l_bin0,l_pc,l_jump) xst =  (Next (fst (l_pc!(unat npc))) xrs1 xm1 xss1)" using d2 by auto
 
-                hence "\<exists> num fst'. fix_bpf_sem num (l_bin0,l_pc,l_jump) xst = fst' \<and> match_state2 fst' (snd fxst')" 
-                  using match_state2_def match_mem_def c3 a1 by auto
-                thus ?thesis by simp
+        hence "\<exists> num fst'. fix_bpf_sem num (l_bin0,l_pc,l_jump) xst = fst' \<and> match_state2 fst' (snd fxst')" 
+           using match_state2_def match_mem_def c3 a1 by auto
+        thus ?thesis by simp
   
  next
    case False
@@ -295,9 +300,13 @@ next
       using b2 a3 by(unfold fix_bpf_one_step_def,simp_all)
     
     let "?imm" = "(of_nat(fst (l_pc!(unat npc))))"
-    have "distinct (map fst l_pc)" sorry
-    hence d1:"find_target_pc_in_l_pc2 l_pc xpc 0 = Some (unat pc)"
-      by (metis a6 b0_2 b0_3 l_pc_index_corr less_nat_zero_code list.size(3)) 
+    have d1_0_0:"\<forall> idx. idx \<ge>0 \<and> idx < length lt \<longrightarrow> snd(snd (lt!idx)) \<noteq> []" using well_formed_prog_def a5 by blast 
+     hence d1_0_1:"is_increase_list_l_pc l_pc l_bin0" 
+       using l_pc_elem_increases init_second_layer_def is_increase_list_l_pc_def by (metis a4 less_nat_zero_code list.size(3))  
+     hence d1_0_2:"distinct (map fst l_pc)" using l_pc_is_distinct init_second_layer_def a4 d1_0_0
+       by (metis distinct.simps(1) is_increase_list_l_pc_def less_nat_zero_code list.simps(8) list.size(3)) 
+     hence d1:"find_target_pc_in_l_pc2 l_pc xpc 0 = Some (unat pc)" 
+       using l_pc_index_corr b0_3 d1_0_1 d1_0_2 b0_2 by blast 
     hence d2:"fix_bpf_sem 1 (l_bin0,l_pc,l_jump) xst = exec_instr (Pcall_i ?imm) sz xpc xrs xm xss"
       using d1 c2 d0 by force
     hence "fix_bpf_sem 1 (l_bin0,l_pc,l_jump) xst = exec_call xpc sz M64 xm xss xrs ?imm"

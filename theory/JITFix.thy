@@ -55,11 +55,6 @@ next
 qed
 
 
-lemma l_pc_index_corr2:
-  "find_target_pc_in_l_pc2 l_pc xpc 0 = Some pc \<Longrightarrow> fst (l_pc!pc) = xpc"
-  sorry
-
-
 (*lemma hh:
   "prog = x64_bin_update (length u8_list) l_bin0 xpc u8_list \<Longrightarrow>
   u8_list = x64_encode ins \<Longrightarrow>
@@ -150,7 +145,13 @@ proof-
                             _ \<Rightarrow> None ) |
               _ \<Rightarrow> None ))"
       using get_updated_l_bin_def d1 by auto
-    have d2_1:"fst (l_pc!pc) = xpc" using l_pc_index_corr2 c1 by blast     
+    have d1_0_0:"\<forall> idx. idx \<ge>0 \<and> idx < length lt \<longrightarrow> snd(snd (lt!idx)) \<noteq> []" using well_formed_prog_def a5 by blast 
+    hence d1_0_1:"is_increase_list_l_pc l_pc l_bin0" 
+       using l_pc_elem_increases init_second_layer_def is_increase_list_l_pc_def by (metis a4 less_nat_zero_code list.size(3))  
+    hence d1_0_2:"distinct (map fst l_pc)" using l_pc_is_distinct init_second_layer_def a4 d1_0_0
+       by (metis distinct.simps(1) is_increase_list_l_pc_def less_nat_zero_code list.simps(8) list.size(3)) 
+     have d1_0_3:"pc < length l_pc" sorry
+    have d2_1:"fst (l_pc!pc) = xpc" using l_pc_index_corr2 c1 d1_0_0 d1_0_1 d1_0_2 d1_0_3 by blast 
     have d2_2:"(fst (l_pc!pc)) = xpc" using d2_1 by presburger     
     let "?target_begin_addr" = "fst(l_pc!(unat npc))"
     have "?prog = (
@@ -254,8 +255,14 @@ lemma x64_bin_update_decode_incode_consistency:
       using get_updated_l_bin_def d1 by auto
 
     have d3_1:"?prog \<noteq> None" using x64_bin_update_is_disjoint2 a2 d0 by blast
+    have d1_0_0:"\<forall> idx. idx \<ge>0 \<and> idx < length lt \<longrightarrow> snd(snd (lt!idx)) \<noteq> []" using well_formed_prog_def a5 by blast 
+    hence d1_0_1:"is_increase_list_l_pc l_pc l_bin0" 
+       using l_pc_elem_increases init_second_layer_def is_increase_list_l_pc_def by (metis a4 less_nat_zero_code list.size(3))  
+    hence d1_0_2:"distinct (map fst l_pc)" using l_pc_is_distinct init_second_layer_def a4 d1_0_0
+       by (metis distinct.simps(1) is_increase_list_l_pc_def less_nat_zero_code list.simps(8) list.size(3)) 
+    have d1_0_3:"pc < length l_pc" sorry
     have d3_0_0:"fst (l_pc!pc) = xpc-3"
-      using c1 l_pc_index_corr2 by blast 
+      using c1 l_pc_index_corr2 d1_0_1 d1_0_2 d1_0_3 by blast 
     hence d3_0_1:"fst (l_pc!pc)+3 = (xpc-3)+3" using d3_0_0 by presburger 
     moreover have d3_0_2:"xpc-3\<ge>0" by blast
     hence d3_0:"fst (l_pc!pc) +3 = xpc" using d3_0_1 d3_0_2 sorry
