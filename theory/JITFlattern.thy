@@ -564,6 +564,7 @@ proof-
     qed
   qed
 *)
+
 lemma one_step_equiv_layer1:
   assumes a0:"flat_bpf_sem 1 (l_bin,l_pc,l_jump) (pc, fxst) = fxst'" and
    a1:"jitflat_bpf lt init_second_layer = (l_bin,l_pc,l_jump)" and
@@ -889,14 +890,15 @@ proof-
                     Some m' \<Rightarrow> let rs1 = xrs#(IR SP) <- nsp in
                                 Next (unat ((of_nat(fst (l_pc!(unat ?off))))::u32)) rs1 m' xss
             ))" by(unfold exec_call_def exec_instr_def,simp_all)
-        have "\<exists> m''. Mem.storev M64 xm (Vptr sp_block ((xrs (IR SP))-(u64_of_memory_chunk M64))) (Vlong (of_nat xpc1+1)) = Some m''"
+        have "\<exists> m''. Mem.storev M64 xm1 (Vptr sp_block ((xrs (IR SP))-(u64_of_memory_chunk M64))) (Vlong (of_nat xpc1+1)) = Some m''"
         using  storev_stack_some by blast 
-        then obtain m'' where d6_2:"Mem.storev M64 xm (Vptr sp_block ((xrs (IR SP))-(u64_of_memory_chunk M64))) (Vlong (of_nat xpc1+1)) = Some m''" by auto
-        hence "exec_instr (Pcall_i (of_nat(fst (l_pc!(unat ?off))))) sz xpc1 xrs xm1 xss = Next (unat ((of_nat(fst (l_pc!(unat ?off)))))) (xrs#(IR SP) <- ((xrs (IR SP))-(u64_of_memory_chunk M64))) m'' xss" 
-          using d6_0 d6_1 by simp
-        hence d7:"fxst' = (?off, Next (unat ((of_nat(fst (l_pc!(unat ?off)))))) (xrs#(IR SP) <- ((xrs (IR SP))-(u64_of_memory_chunk M64))) m'' xss)"
-          using d6_0 by (metis outcome.simps(4)) 
-        have d6_4:"match_mem m'' m'" using match_mem_def a11 match_mem_def d6_2 b6 sp_block_def by (smt (z3) memory_chunk.simps(16) option.inject storev_def val.case(6) val.simps(40))
+        then obtain m'' where d6_2:"Mem.storev M64 xm1 (Vptr sp_block ((xrs (IR SP))-(u64_of_memory_chunk M64))) (Vlong (of_nat xpc1+1)) = Some m''" by auto
+        hence "exec_instr (Pcall_i (of_nat(fst (l_pc!(unat ?off))))) sz xpc1 xrs xm1 xss = Next (unat ((of_nat(fst (l_pc!(unat ?off))))::u32)) (xrs#(IR SP) <- ((xrs (IR SP))-(u64_of_memory_chunk M64))) m'' xss" 
+          using d6_0 d6_1 by(unfold Let_def,simp_all) 
+        hence d7:"fxst' = (?off, Next (unat ((of_nat(fst (l_pc!(unat ?off))))::u32)) (xrs#(IR SP) <- ((xrs (IR SP))-(u64_of_memory_chunk M64))) m'' xss)"
+          using d6_0 by simp
+        have d6_4:"match_mem m'' m'" using match_mem_def a11 match_mem_def d6_2 b6 sp_block_def
+          by (smt (z3) JITFlattern_def.match_mem_def memory_chunk.simps(16) option.inject storev_def val.case(6) val.simps(40)) 
         hence d6: "JITFlattern_def.match_state fxst' xxst'" 
           using b4 d5 d3 True JITFlattern_def.match_state_def match_state1_def match_mem_def a9 a6 b7 d6_4 d7
           by (smt (verit, ccfv_threshold) JITFlattern_def.match_mem_def case_prod_beta' fst_conv outcome.simps(4) snd_conv) 

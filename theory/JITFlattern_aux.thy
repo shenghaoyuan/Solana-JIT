@@ -373,7 +373,6 @@ next
       
       have "\<exists> l2' l_pc2' l_jump2'. jitflat_bpf l_bin0 init_second_layer = (l2',l_pc2',l_jump2') " by (metis surj_pair)
       then obtain l2' l_pc2' l_jump2' where b3_1:"jitflat_bpf l_bin0 init_second_layer = (l2',l_pc2',l_jump2')" by auto
-      (*have b4:"l_bin0 \<noteq> []" sorry*)
   
         have b3:"snd (l_pc2'! ?pc) = num" using Cons False using b0 b1 b2 b3_1 
         by (metis (mono_tags, lifting) order_neq_le_trans unat_gt_0 unat_minus_one) 

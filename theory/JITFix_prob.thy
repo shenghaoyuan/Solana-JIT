@@ -15,22 +15,6 @@ definition is_lt_list_nat :: "(nat list) \<Rightarrow> nat \<Rightarrow> bool" w
 "is_lt_list_nat l m = (\<forall> i j. i < j \<and> j < length l \<longrightarrow> (l!i < l!j \<and> l!j < m))"
 
 
-(*lemma jitflat_bpf_is_lt_list_nat_inv: "
-  is_lt_list_nat (map fst l_pc) (length l_bin) \<Longrightarrow>
-  jitflat_bpf l (l_bin, l_pc, l_jump) = (l_bin1, l_pc1, l_jump1) \<Longrightarrow>
-    is_lt_list_nat (map fst l_pc1) (length l_bin1)"
-  apply (induction l arbitrary: l_bin l_pc l_jump l_bin1 l_pc1 l_jump1; simp?)
-  subgoal for a l1 l_bin l_pc l_jump l_bin1 l_pc1 l_jump1
-    apply (cases a; simp)
-    subgoal for na ba ca
-      sorry
-      sorry
-      sorry
-*)
-(*
-is_lt_list_nat (map fst (l_pc @ [(length l_bin, aa)])) (length (l_bin @ c))
-      using not_change_prefix_l_pc *)
-
 definition is_increase_list_l_pc::" (nat \<times> nat) list \<Rightarrow> x64_bin \<Rightarrow> bool" where 
   "is_increase_list_l_pc lt lt2 \<equiv> (\<forall> idx1 idx2. idx1<idx2 \<and> idx1\<ge>0 \<and> idx2 < length lt \<longrightarrow> fst (lt!idx1) < fst (lt!idx2)) \<and> 
     (\<forall> idx. idx \<ge>0 \<and> idx < length lt \<longrightarrow> fst (lt!idx) <  (length lt2))"

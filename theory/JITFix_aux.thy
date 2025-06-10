@@ -19,10 +19,150 @@ lemma intermediate_step_is_ok4:
 
 
 lemma length_of_decoded_instr1:
-  "x64_decode xpc l_bin0 = Some(sz, Pcmpq_rr src dst) \<Longrightarrow> 
+  "x64_decode pc l = Some(sz, Pcmpq_rr src dst) \<Longrightarrow> 
   sz = 3"
-  sorry
+  apply(unfold x64_decode_def Let_def)
+  apply(split if_splits,simp_all)+
+   apply (cases "u32_of_u8_list [l ! Suc (Suc pc), l ! (pc + (3::nat)), l ! (pc + (4::nat)), l ! (pc + (5::nat))]",simp_all)
+  subgoal for a apply(cases "cond_of_u8 (and (15::8 word) (l ! Suc pc))",simp_all)
+    done
+  apply (cases "and (15::8 word) (l ! pc >> (4::nat)) \<noteq> (4::8 word)"; simp)
+  subgoal
+    apply (cases "and (31::8 word) (l ! pc >> (3::nat)) = (10::8 word)"; simp)
+    subgoal
+      apply (cases "ireg_of_u8 (bitfield_insert_u8 (3::nat) (Suc 0) (and (7::8 word) (l ! pc)) 0)"; simp)
+      done
 
+    apply (cases "and (31::8 word) (l ! pc >> (3::nat)) = (11::8 word)"; simp)
+    subgoal
+      apply (cases "ireg_of_u8 (bitfield_insert_u8 (3::nat) (Suc 0) (and (7::8 word) (l ! pc)) 0)"; simp)
+      done
+    apply(cases "l ! pc = (232::8 word)";simp)
+    apply(cases "u32_of_u8_list [l ! Suc pc, l ! Suc (Suc pc), l ! (pc + (3::nat)), l ! (pc + (4::nat))]";simp)
+    done
+  apply (cases "l ! pc = (15::8 word)"; simp add: Let_def)
+  apply (cases "and (31::8 word) (l ! Suc pc >> (3::nat)) = (10::8 word)"; simp)
+  subgoal
+    apply (cases "ireg_of_u8 (bitfield_insert_u8 (3::nat) (Suc 0) (and (7::8 word) (l ! Suc pc)) (and 1 (l ! pc)))"; simp)
+    subgoal for dst
+      apply (cases "\<not> bit (l ! pc) (3::nat) \<and> \<not> bit (l ! pc) (2::nat) \<and> \<not> bit (l ! pc) (Suc 0)"; simp)
+      done
+    done
+  apply (cases "and (31::8 word) (l ! Suc pc >> (3::nat)) = (11::8 word)"; simp add: Let_def)
+  subgoal
+    apply (cases "ireg_of_u8 (bitfield_insert_u8 (3::nat) (Suc 0) (and (7::8 word) (l ! Suc pc)) (and 1 (l ! pc)))"; simp)
+    subgoal for dst
+      apply (cases "\<not> bit (l ! pc) (3::nat) \<and> \<not> bit (l ! pc) (2::nat) \<and> \<not> bit (l ! pc) (Suc 0)"; simp)
+      done
+    done
+  apply (cases "l ! Suc pc = 1"; simp)
+  subgoal
+    apply (cases "and (3::8 word) (l ! Suc (Suc pc) >> (6::nat)) = (3::8 word)"; simp)
+    apply (cases "ireg_of_u8 (bitfield_insert_u8 (3::nat) (Suc 0) (and (7::8 word) (l ! Suc (Suc pc) >> (3::nat))) (and 1 (l ! pc >> (2::nat))))"; simp)
+    subgoal for dst
+      apply (cases "ireg_of_u8 (bitfield_insert_u8 (3::nat) (Suc 0) (and (7::8 word) (l ! Suc (Suc pc))) (and 1 (l ! pc)))"; simp)
+      subgoal for src
+        apply (cases "bit (l ! pc) (3::nat) \<and> \<not> bit (l ! pc) (Suc 0)"; simp)
+        done
+      done
+    done
+  apply (cases "l ! Suc pc = (247::8 word)"; simp)
+  subgoal
+    apply (cases "and (3::8 word) (l ! Suc (Suc pc) >> (6::nat)) = (3::8 word) \<and> and (7::8 word) (l ! Suc (Suc pc) >> (3::nat)) = (4::8 word)"; simp)
+    apply (cases "ireg_of_u8 (bitfield_insert_u8 (3::nat) (Suc 0) (and (7::8 word) (l ! Suc (Suc pc))) (and 1 (l ! pc)))"; simp)
+    subgoal for a apply(cases "bit (l ! pc) (3::nat) \<and> \<not> bit (l ! pc) (2::nat) \<and> \<not> bit (l ! pc) (Suc (0::nat))",simp_all)
+      done
+    done
+
+    apply (cases "l ! Suc pc = (57::8 word)"; simp)
+  subgoal
+    apply (cases "and (3::8 word) (l ! Suc (Suc pc) >> (6::nat)) = (3::8 word)"; simp)
+    apply (cases "ireg_of_u8 (bitfield_insert_u8 (3::nat) (Suc 0) (and (7::8 word) (l ! Suc (Suc pc) >> (3::nat))) (and 1 (l ! pc >> (2::nat))))"; simp)
+    apply (cases "ireg_of_u8 (bitfield_insert_u8 (3::nat) (Suc 0) (and (7::8 word) (l ! Suc (Suc pc))) (and 1 (l ! pc)))"; simp)
+    subgoal for a aa apply(cases "bit (l ! pc) (3::nat) \<and> \<not> bit (l ! pc) (Suc (0::nat))",simp_all)
+      done
+    done
+    
+  apply (cases "l ! Suc pc = (137::8 word)"; simp)
+  apply (cases "and (3::8 word) (l ! Suc (Suc pc) >> (6::nat)) = (3::8 word)"; simp)
+  apply (cases "ireg_of_u8 (bitfield_insert_u8 (3::nat) (Suc 0) (and (7::8 word) (l ! Suc (Suc pc) >> (3::nat))) (and 1 (l ! pc >> (2::nat))))"; simp)
+  apply (cases "ireg_of_u8 (bitfield_insert_u8 (3::nat) (Suc 0) (and (7::8 word) (l ! Suc (Suc pc))) (and 1 (l ! pc)))"; simp)
+  subgoal for a aa apply(cases "bit (l ! pc) (3::nat) \<and> \<not> bit (l ! pc) (Suc (0::nat))",simp_all)
+    done
+  done
+
+lemma length_of_decoded_instr2:
+  "x64_decode pc l = Some(sz, Pjcc cond d) \<Longrightarrow> 
+  sz = 6"
+  apply(unfold x64_decode_def Let_def)
+  apply(split if_splits,simp_all)+
+   apply (cases "u32_of_u8_list [l ! Suc (Suc pc), l ! (pc + (3::nat)), l ! (pc + (4::nat)), l ! (pc + (5::nat))]",simp_all)
+  subgoal for a apply(cases "cond_of_u8 (and (15::8 word) (l ! Suc pc))",simp_all)
+    done
+  apply (cases "and (15::8 word) (l ! pc >> (4::nat)) \<noteq> (4::8 word)"; simp)
+  subgoal
+    apply (cases "and (31::8 word) (l ! pc >> (3::nat)) = (10::8 word)"; simp)
+    subgoal
+      apply (cases "ireg_of_u8 (bitfield_insert_u8 (3::nat) (Suc 0) (and (7::8 word) (l ! pc)) 0)"; simp)
+      done
+
+    apply (cases "and (31::8 word) (l ! pc >> (3::nat)) = (11::8 word)"; simp)
+    subgoal
+      apply (cases "ireg_of_u8 (bitfield_insert_u8 (3::nat) (Suc 0) (and (7::8 word) (l ! pc)) 0)"; simp)
+      done
+    apply(cases "l ! pc = (232::8 word)";simp)
+    apply(cases "u32_of_u8_list [l ! Suc pc, l ! Suc (Suc pc), l ! (pc + (3::nat)), l ! (pc + (4::nat))]";simp)
+    done
+  apply (cases "l ! pc = (15::8 word)"; simp add: Let_def)
+  apply (cases "and (31::8 word) (l ! Suc pc >> (3::nat)) = (10::8 word)"; simp)
+  subgoal
+    apply (cases "ireg_of_u8 (bitfield_insert_u8 (3::nat) (Suc 0) (and (7::8 word) (l ! Suc pc)) (and 1 (l ! pc)))"; simp)
+    subgoal for dst
+      apply (cases "\<not> bit (l ! pc) (3::nat) \<and> \<not> bit (l ! pc) (2::nat) \<and> \<not> bit (l ! pc) (Suc 0)"; simp)
+      done
+    done
+  apply (cases "and (31::8 word) (l ! Suc pc >> (3::nat)) = (11::8 word)"; simp add: Let_def)
+  subgoal
+    apply (cases "ireg_of_u8 (bitfield_insert_u8 (3::nat) (Suc 0) (and (7::8 word) (l ! Suc pc)) (and 1 (l ! pc)))"; simp)
+    subgoal for dst
+      apply (cases "\<not> bit (l ! pc) (3::nat) \<and> \<not> bit (l ! pc) (2::nat) \<and> \<not> bit (l ! pc) (Suc 0)"; simp)
+      done
+    done
+  apply (cases "l ! Suc pc = 1"; simp)
+  subgoal
+    apply (cases "and (3::8 word) (l ! Suc (Suc pc) >> (6::nat)) = (3::8 word)"; simp)
+    apply (cases "ireg_of_u8 (bitfield_insert_u8 (3::nat) (Suc 0) (and (7::8 word) (l ! Suc (Suc pc) >> (3::nat))) (and 1 (l ! pc >> (2::nat))))"; simp)
+    subgoal for dst
+      apply (cases "ireg_of_u8 (bitfield_insert_u8 (3::nat) (Suc 0) (and (7::8 word) (l ! Suc (Suc pc))) (and 1 (l ! pc)))"; simp)
+      subgoal for src
+        apply (cases "bit (l ! pc) (3::nat) \<and> \<not> bit (l ! pc) (Suc 0)"; simp)
+        done
+      done
+    done
+  apply (cases "l ! Suc pc = (247::8 word)"; simp)
+  subgoal
+    apply (cases "and (3::8 word) (l ! Suc (Suc pc) >> (6::nat)) = (3::8 word) \<and> and (7::8 word) (l ! Suc (Suc pc) >> (3::nat)) = (4::8 word)"; simp)
+    apply (cases "ireg_of_u8 (bitfield_insert_u8 (3::nat) (Suc 0) (and (7::8 word) (l ! Suc (Suc pc))) (and 1 (l ! pc)))"; simp)
+    subgoal for a apply(cases "bit (l ! pc) (3::nat) \<and> \<not> bit (l ! pc) (2::nat) \<and> \<not> bit (l ! pc) (Suc (0::nat))",simp_all)
+      done
+    done
+
+    apply (cases "l ! Suc pc = (57::8 word)"; simp)
+  subgoal
+    apply (cases "and (3::8 word) (l ! Suc (Suc pc) >> (6::nat)) = (3::8 word)"; simp)
+    apply (cases "ireg_of_u8 (bitfield_insert_u8 (3::nat) (Suc 0) (and (7::8 word) (l ! Suc (Suc pc) >> (3::nat))) (and 1 (l ! pc >> (2::nat))))"; simp)
+    apply (cases "ireg_of_u8 (bitfield_insert_u8 (3::nat) (Suc 0) (and (7::8 word) (l ! Suc (Suc pc))) (and 1 (l ! pc)))"; simp)
+    subgoal for a aa apply(cases "bit (l ! pc) (3::nat) \<and> \<not> bit (l ! pc) (Suc (0::nat))",simp_all)
+      done
+    done
+    
+  apply (cases "l ! Suc pc = (137::8 word)"; simp)
+  apply (cases "and (3::8 word) (l ! Suc (Suc pc) >> (6::nat)) = (3::8 word)"; simp)
+  apply (cases "ireg_of_u8 (bitfield_insert_u8 (3::nat) (Suc 0) (and (7::8 word) (l ! Suc (Suc pc) >> (3::nat))) (and 1 (l ! pc >> (2::nat))))"; simp)
+  apply (cases "ireg_of_u8 (bitfield_insert_u8 (3::nat) (Suc 0) (and (7::8 word) (l ! Suc (Suc pc))) (and 1 (l ! pc)))"; simp)
+  subgoal for a aa apply(cases "bit (l ! pc) (3::nat) \<and> \<not> bit (l ! pc) (Suc (0::nat))",simp_all)
+    done
+  done
 
 
 lemma well_formed_decode_sequence2:
@@ -282,12 +422,13 @@ next
       by (simp add: storev_stack_some) 
     hence "\<exists> m'. storev M64 xm (Vptr sp_block ( xrs (IR SP) - u64_of_memory_chunk M64)) (Vlong (of_nat xpc + (1::64 word))) = Some m'" by auto
     then obtain m' where c3_2:"storev M64 xm (Vptr sp_block ( xrs (IR SP) - u64_of_memory_chunk M64)) (Vlong (of_nat xpc + (1::64 word))) = Some m'" by auto
-    hence c4_0:"exec_instr (Pcall_i (of_nat(fst (l_pc!(unat npc))))) sz xpc xrs xm xss = Next (unat (of_nat(fst (l_pc!(unat npc))))) (xrs#(IR SP) <- ((xrs (IR SP))-(u64_of_memory_chunk M64))) m' xss" 
-      using c3_2 apply (simp add: exec_call_def,simp_all) sorry
+    hence c4_0:"exec_instr (Pcall_i (of_nat(fst (l_pc!(unat npc)))::u32)) sz xpc xrs xm xss = Next (unat (of_nat(fst (l_pc!(unat npc)))::u32)) (xrs#(IR SP) <- ((xrs (IR SP))-(u64_of_memory_chunk M64))) m' xss" 
+      using c3_2 apply (simp add: exec_call_def,simp_all)
+      by (simp add: exec_call_def exec_instr_def) 
     have "fst (l_pc!(unat npc)) = 1000" sorry
-    hence c4_1:"fst (l_pc!(unat npc)) = (unat ((of_nat(fst (l_pc!(unat npc))))::u64))" by simp
+    hence c4_1:"fst (l_pc!(unat npc)) = (unat ((of_nat(fst (l_pc!(unat npc))))::u32))" by simp
     hence c4:"snd fxst' = Next (fst (l_pc!(unat npc))) (xrs#(IR SP) <- ((xrs (IR SP))-(u64_of_memory_chunk M64))) m' xss" 
-      using c3 by (metis c4_0 outcome.simps(4)) 
+      using c3 c4_0 by simp 
 
     have "fix_bpf_sem 1 (l_bin0,l_pc,l_jump) xst = fix_bpf_one_step (l_bin0,l_pc,l_jump) xst" by simp
     hence d0:"fix_bpf_sem 1 (l_bin0,l_pc,l_jump) xst = 
@@ -299,7 +440,7 @@ next
                       exec_instr (Pcall_i (of_nat(fst (l_pc!(unat npc))))) sz xpc xrs xm xss)))" 
       using b2 a3 by(unfold fix_bpf_one_step_def,simp_all)
     
-    let "?imm" = "(of_nat(fst (l_pc!(unat npc))))"
+    let "?imm" = "(of_nat(fst (l_pc!(unat npc)))::u32)"
     have d1_0_0:"\<forall> idx. idx \<ge>0 \<and> idx < length lt \<longrightarrow> snd(snd (lt!idx)) \<noteq> []" using well_formed_prog_def a5 by blast 
      hence d1_0_1:"is_increase_list_l_pc l_pc l_bin0" 
        using l_pc_elem_increases init_second_layer_def is_increase_list_l_pc_def by (metis a4 less_nat_zero_code list.size(3))  
@@ -315,8 +456,8 @@ next
     have "fix_bpf_sem 1 (l_bin0,l_pc,l_jump) xst = (
            (let nsp::64 word = xrs (IR SP) - u64_of_memory_chunk M64 in case storev M64 xm (Vptr sp_block nsp) (Vlong (of_nat xpc + (1::64 word))) of None \<Rightarrow> Stuck | 
                 Some (m'::nat \<Rightarrow> int \<Rightarrow> 8 word option) \<Rightarrow> let rs1::preg \<Rightarrow> 64 word = xrs(IR SP := nsp) in Next (unat ?imm) rs1 m' xss) 
-  )" using exec_call_def of_nat_def of_int_def sorry
-    hence d3:"fix_bpf_sem 1 (l_bin0,l_pc,l_jump) xst = Next (unat (of_nat (fst (l_pc ! unat npc)))) (xrs#(IR SP) <- ((xrs (IR SP))-(u64_of_memory_chunk M64))) m' xss"
+  )" using exec_call_def of_nat_def of_int_def c3_2 c4_0 d2 by force 
+    hence d3:"fix_bpf_sem 1 (l_bin0,l_pc,l_jump) xst = Next (unat (of_nat (fst (l_pc ! unat npc))::u32)) (xrs#(IR SP) <- ((xrs (IR SP))-(u64_of_memory_chunk M64))) m' xss"
       using c3_2 by auto
 
    

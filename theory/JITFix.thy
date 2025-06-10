@@ -191,7 +191,8 @@ lemma x64_bin_update_decode_incode_consistency:
     have "xpc + ?len_u8_list < length l_bin0" sorry
     hence d5:"x64_decode xpc someprog = Some (?len_u8_list,Pcall_i ?u8_list)" 
       using x64_encode_x64_decode_same d4_1 by blast
-    hence "?len_u8_list = sz" using b1 d5 sorry
+    hence "?len_u8_list = sz" using b1 d5
+      by (simp add: x64_decode_Pcall_i_x64_encode_length_eq) 
     (*exec_instr (Pcall_i (of_nat(fst (l_pc!(unat npc))))) sz xpc xrs xm xss"*)
     hence d5_2:"last_fix_sem 1 someprog xst = (exec_instr (Pcall_i ?u8_list) sz xpc xrs xm xss)"
       using d5_1 d5 by simp
@@ -306,7 +307,7 @@ lemma x64_bin_update_decode_incode_consistency:
       let "?target_begin_addr" = "fst(l_pc!(unat npc))"
 
       let "?loc" = "(fst (l_pc!pc))+sz2"
-      have "sz2 = 3" sorry
+      have "sz2 = 3" using length_of_decoded_instr1 d4 True by blast
       hence d5_1:"?loc = xpc" using d3_0 by force  
       let "?offset" = "((of_nat ?target_begin_addr)::i32) - ((of_nat (xpc+sz)+1)::i32)"
       let "?u8_list" = "Pjcc cond (ucast ?offset)"
@@ -333,7 +334,8 @@ lemma x64_bin_update_decode_incode_consistency:
          (exec_instr ins sz xpc xrs xm xss))" using a3
         by (simp add: option.case_eq_if)  
 
-      have "?len_u8_list = sz" sorry
+      have "?len_u8_list = sz"
+        using b1 d7 length_of_decoded_instr2 by blast 
                                 (* "fxst' = (exec_instr (Pjcc cond (of_nat(fst (l_pc!(unat npc)))-(of_nat (xpc+sz+1)))) sz xpc xrs xm xss)"*)
       hence dn:"last_fix_sem 1 someprog xst = ((exec_instr (Pjcc cond (ucast((of_nat ?target_begin_addr)::i32) - ((of_nat (xpc+sz)+1)::i32))) sz xpc xrs xm xss))" 
         using d7 d8_2 last_fix_sem_def by force 
