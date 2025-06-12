@@ -39,6 +39,23 @@ definition well_formed_prog::"(nat \<times> u64 \<times> x64_bin) list \<Rightar
 
 value "well_formed_prog [(1,0,[3])]"*)
 
+
+fun wf_x64_bin :: "nat \<Rightarrow> x64_bin \<Rightarrow> nat \<Rightarrow> ((nat * nat) list) option" where
+"wf_x64_bin 0 _ _ = None" |
+"wf_x64_bin (Suc n) l_bin pc = (
+  case x64_decode pc l_bin of
+  None \<Rightarrow> None |
+  Some (sz, ins) \<Rightarrow> (
+    case wf_x64_bin n l_bin (pc+sz) of
+    None \<Rightarrow> None |
+    Some l \<Rightarrow> Some ((pc, sz)#l)
+))"
+
+fun wf_pc_sz :: "(nat * nat) list \<Rightarrow> nat \<Rightarrow> nat \<Rightarrow> bool" where
+"wf_pc_sz [] _ _ = False" |
+"wf_pc_sz (x#xs) pc sz = ((fst x = pc \<and> snd x =sz) \<or> wf_pc_sz xs pc sz)"
+
+
 value "int (1::nat)"
 value "nat (1::int)"
 

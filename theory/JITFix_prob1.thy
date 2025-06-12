@@ -1,5 +1,5 @@
 theory JITFix_prob1
-  imports JITFlattern JITFix_def
+  imports JITFlattern JITFix_def Proof1
 begin
 
 lemma jit_fix_not_change:
@@ -219,17 +219,5 @@ lemma x64_encode_x64_decode_same2:
     apply (rule x64_decode_list_in_list_x64_bin_update_Pjcc_eq; simp?)
     done
   done
-
-
-lemma x64_encode_x64_decode_other:
-  "xpc + sz < length l \<Longrightarrow>
-  xpc1 + sz1 < length l \<Longrightarrow>
-  (xpc1 + sz1 \<le> xpc \<or> xpc+sz \<le> xpc1) \<Longrightarrow>
-  x64_decode xpc1 l = Some (sz1, ins1) \<Longrightarrow>
-  sz = length (x64_encode (Pjcc cond d)) \<Longrightarrow>
-  u8_list = x64_encode (Pjcc cond d) \<Longrightarrow>
-  l1 = x64_bin_update (length u8_list) l xpc u8_list \<Longrightarrow>
-    x64_decode xpc1 l1 = Some (sz1, ins)"
-  sorry
 
 end
