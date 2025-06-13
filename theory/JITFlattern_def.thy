@@ -133,18 +133,18 @@ definition flat_bpf_one_step :: "flat_bpf_prog \<Rightarrow> hybrid_state \<Righ
                                     Next xpc' rs' m' ss' \<Rightarrow> (npc, (Next xpc' rs' m' ss'))))) |
         Some(sz,Pcmpq_rr src dst) \<Rightarrow> \<comment>\<open> TODO: if the first byte is the opcode of cmp? \<close>
           \<comment>\<open> case: BPF JMP \<close>
-          (case x64_decode (xpc+sz) l_bin of Some (sz2,Pjcc _ _) \<Rightarrow>
-            (case x64_sem num l_bin (Next xpc rs m ss) of
+          (case x64_decode (xpc+sz) l_bin of Some (sz2,Pjcc cond _) \<Rightarrow>
+            (if num = 1 then case x64_sem num l_bin (Next xpc rs m ss) of
             Stuck \<Rightarrow> (pc, Stuck) | \<comment>\<open> if one step error, stop, it should be impossible \<close>
             Next xpc1 rs1 m1 ss1 \<Rightarrow> (
               case find_target_pc_in_l_pc l_jump (unat pc) of
                 None \<Rightarrow> (pc, Stuck) |
                 Some npc \<Rightarrow>
-              if rs1 (CR ZF) = 1 then \<comment>\<open> must JUMP \<close>
+              if eval_testcond cond rs1 then \<comment>\<open> must JUMP \<close>
                 ((npc, (Next (fst (l_pc!(unat npc))) rs1 m1 ss1))) \<comment>\<open> go to the target address in the jited x64 binary \<close>
               else \<comment>\<open> donot JUMP \<close>
                 (pc+1, (Next (xpc1+sz2) rs1 m1 ss1))
-            ))|
+            )else (pc, Stuck))|
             _ \<Rightarrow> (pc, Stuck)) |
         Some(sz,Pret_anchor) \<Rightarrow>
           (case x64_decode (xpc+sz) l_bin of Some (sz2,Pret) \<Rightarrow>

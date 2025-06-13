@@ -565,7 +565,13 @@ apply(subgoal_tac "x64_decode 0 l_bin0 = Some (1,Ppushl_r RCX)")
                      apply (meson list_in_list_concat list_in_list_prop)
       done
     done
-  sorry
+  subgoal for x181 x182  apply(subgoal_tac "\<exists> len. x64_decode 0 l_bin0 = Some (len,Pcall_anchor 0)")    
+     apply auto[1]
+ apply (meson list_in_list_concat list_in_list_prop)
+    subgoal for numa src dst
+      by (metis eq_Nil_appendI length_0_conv list_in_list_prop_aux2) 
+    done
+  done
 
 
 

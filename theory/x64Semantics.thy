@@ -53,7 +53,7 @@ definition compare_longs :: "u64 \<Rightarrow> u64 \<Rightarrow> regset \<Righta
                             #(CR CF) <- (of_optbool (x < y)))
                             #(CR SF) <- (if scast(x-y) <s (0::i64) then 1 else 0))
                             #(CR OF) <- (sub_overflowi64 x y 0))"
-
+(*
 definition eval_testcond :: "testcond \<Rightarrow> regset \<Rightarrow> bool option" where
 "eval_testcond c rs = (
   case c of
@@ -73,6 +73,28 @@ definition eval_testcond :: "testcond \<Rightarrow> regset \<Rightarrow> bool op
   Cond_p  \<Rightarrow> (Some (rs (CR PF) = 1)) |
   Cond_np \<Rightarrow> (Some (rs (CR PF) = 0))
 )"
+*)
+
+definition eval_testcond :: "testcond \<Rightarrow> regset \<Rightarrow> bool" where
+"eval_testcond c rs = (
+  case c of
+  Cond_e  \<Rightarrow> (rs (CR ZF) = 1) | 
+  Cond_ne \<Rightarrow> (rs (CR ZF) = 0) |
+  Cond_b  \<Rightarrow> (rs (CR CF) = 1) |
+  Cond_be \<Rightarrow> (rs (CR CF) = 1 \<or> rs (CR ZF) = 1) |
+  Cond_ae \<Rightarrow> (rs (CR CF) = 0) |      
+  Cond_a  \<Rightarrow> (rs (CR CF) = 0 \<or> rs (CR ZF) = 0) |
+  Cond_l  \<Rightarrow> (let n = rs (CR OF); s = rs (CR SF) in 
+             (xor n s) = 1) |
+  Cond_le \<Rightarrow> (let n = rs (CR OF); s = rs (CR SF); z = rs (CR ZF) in 
+             (xor n s) = 1 \<or> z = 1) |
+  Cond_ge \<Rightarrow> (let n = rs (CR OF); s = rs (CR SF) in (xor n s) = 0) |
+  Cond_g  \<Rightarrow> (let n = rs (CR OF); s = rs (CR SF); z = rs (CR ZF) in 
+              (xor n s) = 0 \<and> z = 0) |
+  Cond_p  \<Rightarrow> (rs (CR PF) = 1) |
+  Cond_np \<Rightarrow> (rs (CR PF) = 0)
+)"
+
 
 definition eval_addrmode64 :: "addrmode \<Rightarrow> regset \<Rightarrow> u64" where
 "eval_addrmode64 a rs = 
@@ -179,10 +201,9 @@ definition exec_instr :: "instruction \<Rightarrow> nat \<Rightarrow> nat \<Righ
   Pmovq_rr rd r1  \<Rightarrow> Next (pc + sz) (rs#(IR rd) <- (rs (IR r1))) m ss|
   Pimulq_r   r1    \<Rightarrow> let rs1 = rs#(IR RAX) <- ((rs (IR RAX))*(rs (IR r1))) in
                      Next (pc + sz) (rs1#(IR RDX) <-( (rs (IR RAX))*(rs (IR r1)) div (2 ^ 32))) m ss|
-  Pjcc      t d    \<Rightarrow> (case eval_testcond t rs of Some b \<Rightarrow> 
+  Pjcc      t d    \<Rightarrow> (let b = eval_testcond t rs in
                           if b then Next (unat d+pc+sz+1) rs m ss
-                          else Next (pc+sz) rs m ss | 
-                        None \<Rightarrow> Stuck) |
+                          else Next (pc+sz) rs m ss) |
   Pcmpq_rr rd r1 \<Rightarrow> Next (pc+sz)(compare_longs (rs (IR r1)) (rs (IR rd)) rs) m ss |
   Pmovq_ri rd n  \<Rightarrow> Next (pc + sz) (rs#(IR rd) <- n) m ss |
   Pmovl_ri rd n   \<Rightarrow> Next (pc + sz) (rs#(IR rd) <- ((scast (n::u32))::u64)) m ss|    \<comment> \<open> load imm32 to reg \<close>
@@ -290,7 +311,7 @@ definition perir_step:: " (nat \<times> u64 \<times> x64_bin) list \<Rightarrow>
           (pc+1, xst')))
     | Stuck \<Rightarrow> (pc,Stuck)"
 *)
-
+(*
 definition perir_step:: " (nat \<times> u64 \<times> x64_bin) list \<Rightarrow> hybrid_state\<Rightarrow> hybrid_state" where
 "perir_step lt st  \<equiv>
   let pc = fst st; xst = snd st in 
@@ -311,6 +332,34 @@ definition perir_step:: " (nat \<times> u64 \<times> x64_bin) list \<Rightarrow>
             if rs' (CR ZF) = 1 then (off+pc, xst')
             else (pc+1, xst') |
           Stuck \<Rightarrow> (pc, Stuck))|      
+      _  \<Rightarrow>
+        (let xst_temp = Next 0 rs m ss; xst' = x64_sem num l xst_temp in
+          (pc+1, xst')))
+    | Stuck \<Rightarrow> (pc,Stuck)"
+*)
+
+definition perir_step:: " (nat \<times> u64 \<times> x64_bin) list \<Rightarrow> hybrid_state\<Rightarrow> hybrid_state" where
+"perir_step lt st  \<equiv>
+  let pc = fst st; xst = snd st in 
+  let (num,off,l) = lt!(unat pc) in
+    case xst of
+    Next xpc rs m ss \<Rightarrow> (   
+      case x64_decode 0 l of 
+      Some(_, Pcall_i _) \<Rightarrow> (let xst_temp = Next 0 rs m ss in (off, x64_sem 1 l xst_temp))|
+      Some(sz, Pret_anchor) \<Rightarrow> (let (pc', ss', caller,fp) = update_stack2 ss in 
+          let rs' = restore_x64_caller rs caller fp in 
+          let xst_temp = Next sz rs' m ss' in 
+          (case x64_decode sz l of Some(_, Pret) \<Rightarrow> (pc', x64_sem 1 l xst_temp)|
+                                               _ \<Rightarrow> (pc,Stuck)))|      
+      Some(sz, Pcmpq_rr src dst) \<Rightarrow> 
+        (case x64_decode sz l of Some(_, Pjcc cond d ) \<Rightarrow> 
+          let xst_temp = Next 0 rs m ss; xst' = x64_sem 1 l xst_temp in
+          (case xst' of
+          Next xpc' rs' m' ss'\<Rightarrow>
+            if eval_testcond cond rs' then (off+pc, xst')
+            else (pc+1, xst') |
+          Stuck \<Rightarrow> (pc, Stuck))|
+        _ \<Rightarrow> (pc,Stuck))|      
       _  \<Rightarrow>
         (let xst_temp = Next 0 rs m ss; xst' = x64_sem num l xst_temp in
           (pc+1, xst')))

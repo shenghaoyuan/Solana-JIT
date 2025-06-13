@@ -165,17 +165,6 @@ lemma length_of_decoded_instr2:
   done
 
 
-lemma well_formed_decode_sequence2:
-  "jitper insns = Some lt \<Longrightarrow> 
-  well_formed_prog lt \<Longrightarrow> 
-  jitflat_bpf lt init_second_layer = (l_bin0,l_pc,l_jump) \<Longrightarrow>
-  unat pc < length lt \<and> unat pc \<ge> 0 \<Longrightarrow>
-  xpc = (fst (l_pc!(unat pc))) \<Longrightarrow>
-  num = snd (l_pc!(unat pc)) \<Longrightarrow>
-  x64_decode xpc l_bin0 = Some (sz, Pcmpq_rr src dst) \<Longrightarrow> 
-  num = 1"
-  sorry
-
 lemma " x = 100 \<Longrightarrow> of_nat(unat x) = x"
   by (metis of_nat_unat ucast_id)
 
@@ -214,18 +203,18 @@ proof-
       (*have "\<exists> l. list_in_list l xpc l_bin0 \<and> x64_decode 0 l = Some(sz, Pcmpq_rr src dst)" using c0_1 sorry
       then obtain l where c0_3:"list_in_list l xpc l_bin0 \<and> x64_decode 0 l = Some(sz, Pcmpq_rr src dst)" by auto*)
       have c0:"snd fxst' = snd (let num = snd (l_pc!(unat pc)) in 
-        (case x64_decode (xpc+sz) l_bin0 of Some (sz2,Pjcc _ _) \<Rightarrow>
-         (case x64_sem num l_bin0 (Next xpc xrs xm xss) of
+        (case x64_decode (xpc+sz) l_bin0 of Some (sz2,Pjcc cond _) \<Rightarrow>
+         (if num = 1 then case x64_sem num l_bin0 (Next xpc xrs xm xss) of
           Stuck \<Rightarrow> (pc, Stuck) | \<comment>\<open> if one step error, stop, it should be impossible \<close>
           Next xpc1 rs1 m1 ss1 \<Rightarrow> 
          (case find_target_pc_in_l_pc l_jump (unat pc) of
                       None \<Rightarrow> (pc, Stuck) |
                       Some npc \<Rightarrow>
-            if rs1 (CR ZF) = 1 then \<comment>\<open> must JUMP \<close>            
+            if eval_testcond cond rs1 then \<comment>\<open> must JUMP \<close>            
                 ((npc, (Next (fst (l_pc!(unat npc))) rs1 m1 ss1))) \<comment>\<open> go to the target address in the jited x64 binary \<close>
             else \<comment>\<open> donot JUMP \<close>
               (pc+1, (Next (xpc1+sz2) rs1 m1 ss1))
-           ))|
+           )else (pc, Stuck))|
             _ \<Rightarrow> (pc, Stuck)))" using True a0 b0_1 a3 a6 b0_3 a1 c0_1
         apply(unfold flat_bpf_one_step_def Let_def,simp_all) 
         apply(cases "x64_decode xpc l_bin0",simp_all)
@@ -241,9 +230,19 @@ proof-
           done
         done
       then obtain sz2 cond d where c0_5:"x64_decode (xpc + sz) l_bin0 = Some (sz2,Pjcc cond d)" by auto
+      have c0_6:"?num = 1" using c0 a1 using c0_4 
+        apply(cases "x64_decode (xpc + sz) l_bin0",simp_all) 
+        subgoal for a apply(cases a,simp_all)
+          subgoal for aa b apply(cases b,simp_all)
+            subgoal for x131 x132
+              using snd_conv by fastforce 
+            done
+          done
+        done
+
       have "\<exists> fxst1. fxst1 = x64_sem ?num l_bin0 (Next xpc xrs xm xss)" by fastforce
       then obtain fxst1 where c1:"fxst1 = x64_sem ?num l_bin0 (Next xpc xrs xm xss)" by auto
-      have c1_1:"fxst1 \<noteq> Stuck" using c0 a1 c1 using c0_4 
+      have c1_1:"fxst1 \<noteq> Stuck" using c0 a1 c1 using c0_4 c0_6
         apply(cases "x64_decode (xpc + sz) l_bin0",simp_all) 
         apply(cases "x64_sem ?num l_bin0 (Next xpc xrs xm xss)",simp_all) 
         subgoal for a apply(cases a,simp_all)
@@ -259,22 +258,21 @@ proof-
       have bn:"find_target_pc_in_l_pc l_jump (unat pc) \<noteq> None"
       proof(rule ccontr)
         assume assm:"\<not> (find_target_pc_in_l_pc l_jump (unat pc) \<noteq> None)"
-        hence "snd fxst' = Stuck" using c0 c0_5 c1_1 c1 assm by(cases "x64_sem ?num l_bin0 (Next xpc xrs xm xss)",simp_all) 
+        hence "snd fxst' = Stuck" using c0 c0_5 c1_1 c1 assm c0_6 by(cases "x64_sem ?num l_bin0 (Next xpc xrs xm xss)",simp_all) 
         thus "False" using a1 by auto
       qed
 
       have c3_0:"snd fxst' = snd (case find_target_pc_in_l_pc l_jump (unat pc) of
               None \<Rightarrow> (pc, Stuck) |
-              Some npc \<Rightarrow> if xrs1 (CR ZF) = 1 then \<comment>\<open> must JUMP \<close>
+              Some npc \<Rightarrow> if eval_testcond cond xrs1 then \<comment>\<open> must JUMP \<close>
               ((npc, (Next (fst (l_pc!(unat npc))) xrs1 xm1 xss1))) \<comment>\<open> go to the target address in the jited x64 binary \<close>
             else \<comment>\<open> donot JUMP \<close>
               (pc+1, (Next (xpc1+sz2) xrs1 xm1 xss1)))
-          " using c2 c1 c0 c0_5 apply(cases "x64_decode (xpc+sz) l_bin0",simp_all)
+          " using c2 c1 c0 c0_5 c0_6 apply(cases "x64_decode (xpc+sz) l_bin0",simp_all)
         by(cases "x64_sem ?num l_bin0 (Next xpc xrs xm xss)",simp_all)
 
-      have c4:"?num = 1" using well_formed_decode_sequence2 a2 a4 a5 a6 b0_2 c0_1 by blast 
       hence "fxst1 = x64_sem 0 l_bin0 (exec_instr (Pcmpq_rr src dst) sz xpc xrs xm xss)" 
-        using c0_1 c1 c4 a3 by simp
+        using c0_1 c1 c0_6 a3 by simp
       hence c5:"fxst1 = (exec_instr (Pcmpq_rr src dst) sz xpc xrs xm xss)" by simp
 
       have "fix_bpf_sem 2 (l_bin0,l_pc,l_jump) xst = (
@@ -347,28 +345,23 @@ proof-
        using c0_5 d1_2 d2_1 c5 d2 d1_3 bn by(cases "x64_decode xpc1 l_bin0",simp_all)
 
       thus ?thesis
-      proof(cases "xrs1 (CR ZF) = 1")
+      proof(cases "eval_testcond cond xrs1")
         case True
-        have b1:"xrs1 (CR ZF) = 1" using True by simp
+        have b1:"eval_testcond cond xrs1" using True by simp
 
         have "\<exists> npc. find_target_pc_in_l_pc l_jump (unat pc) = Some npc" using bn by simp
         then obtain npc where c3_1:"find_target_pc_in_l_pc l_jump (unat pc) = Some npc" by auto                                 
         have c3:"snd fxst' = (Next (fst (l_pc!(unat npc))) xrs1 xm1 xss1)" 
           using True c3_0 c3_1 b1 by simp
 
-        have "cond = Cond_e" sorry
-        hence d6:"eval_testcond cond xrs1 = (Some (xrs1 (CR ZF) = 1))" 
-          using b1 eval_testcond_def by(cases cond,simp_all)
-
         have d8:"fix_bpf_sem 1 (l_bin0,l_pc,l_jump) fxst1 = (exec_instr (Pjcc cond (of_nat (fst (l_pc!(unat npc)))-(of_nat (xpc1+sz2+1)))) sz2 xpc1 xrs1 xm1 xss1)" 
           using True d5 c3_1 by simp
-        have "fix_bpf_sem 1 (l_bin0,l_pc,l_jump) fxst1  = (case eval_testcond cond xrs1 of Some b \<Rightarrow> 
+        have "fix_bpf_sem 1 (l_bin0,l_pc,l_jump) fxst1  = (let b =  eval_testcond cond xrs1 in
             if b then Next (unat (of_nat (fst (l_pc!(unat npc)))-(of_nat (xpc1+sz2+1))::i32)+xpc1+sz2+1) xrs1 xm1 xss1
-            else Next (xpc1+sz2) xrs1 xm1 xss1 | 
-            None \<Rightarrow> Stuck)" using d8 True d6 apply(unfold exec_instr_def,simp_all) done
+            else Next (xpc1+sz2) xrs1 xm1 xss1)" using d8 True apply(unfold exec_instr_def,simp_all) done
                   
-        hence d9:"fix_bpf_sem 1 (l_bin0,l_pc,l_jump) fxst1 = (Next (fst (l_pc!(unat npc))) xrs1 xm1 xss1)" using d6 True apply(cases "eval_testcond cond xrs1",simp_all)
-           subgoal for a sorry done
+        hence d9:"fix_bpf_sem 1 (l_bin0,l_pc,l_jump) fxst1 = (Next (fst (l_pc!(unat npc))) xrs1 xm1 xss1)" using True apply(cases "eval_testcond cond xrs1",simp_all)
+          sorry
         hence "fix_bpf_sem 2 (l_bin0,l_pc,l_jump) xst =  (Next (fst (l_pc!(unat npc))) xrs1 xm1 xss1)" using d2 by auto
 
         hence "\<exists> num fst'. fix_bpf_sem num (l_bin0,l_pc,l_jump) xst = fst' \<and> match_state2 fst' (snd fxst')" 
@@ -377,15 +370,15 @@ proof-
   
  next
    case False
-   have b1:"\<not>(xrs1 (CR ZF) = 1)" using False by simp
+   have b1:"\<not>(eval_testcond cond xrs1)" using False by simp
    have b1_1:"snd fxst' = (Next (xpc1+sz2) xrs1 xm1 xss1)" using b1 c3_0 c0_5 bn by fastforce   
    hence "\<exists> npc. find_target_pc_in_l_pc l_jump (unat pc) = Some npc" using bn by simp
    then obtain npc where b2:"find_target_pc_in_l_pc l_jump (unat pc) = Some npc" by auto
-   have "cond = Cond_e" sorry
-   hence b2_1:"eval_testcond cond xrs1 = Some False" using b1 by(unfold eval_testcond_def,simp_all)
    have "fix_bpf_sem 1 (l_bin0,l_pc,l_jump) fxst1 = (exec_instr (Pjcc cond (of_nat (fst (l_pc!(unat npc)))-(of_nat (xpc1+sz2+1)))) sz2 xpc1 xrs1 xm1 xss1)" using b2 d5 by simp
    
-   hence b3:"fix_bpf_sem 1 (l_bin0,l_pc,l_jump) fxst1 = (Next (xpc1+sz2) xrs1 xm1 xss1)"  using b2_1 by(unfold exec_instr_def,simp_all) 
+   hence b3:"fix_bpf_sem 1 (l_bin0,l_pc,l_jump) fxst1 = (Next (xpc1+sz2) xrs1 xm1 xss1)"  
+     using b1_1 apply(unfold exec_instr_def,simp_all)
+     using b1 by argo 
    
    hence "fix_bpf_sem 2 (l_bin0,l_pc,l_jump) xst = Next (xpc1+sz2) xrs1 xm1 xss1" using b3 a2 d2 by simp
    hence "\<exists> num fst'. fix_bpf_sem num (l_bin0,l_pc,l_jump) xst = fst' \<and> match_state2 fst' (snd fxst')" 
