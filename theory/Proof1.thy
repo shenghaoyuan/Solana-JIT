@@ -32,10 +32,25 @@ lemma list_in_list_prop2:"list_in_list l1 0 l2 \<Longrightarrow> list_in_list l2
   using list_in_list_prop_aux1
   sorry*)
 
+lemma x64_bin_update_nth_other: "(xpc1 + sz1 \<le> xpc \<or> xpc+sz \<le> xpc1) \<Longrightarrow> xpc1 < length l \<Longrightarrow>
+  sz = (length l1) \<Longrightarrow> 0 < sz1 \<Longrightarrow> 0 < sz \<Longrightarrow> xpc + sz < length l \<Longrightarrow>
+  (x64_bin_update (length l1) l xpc l1)!xpc1 = l!xpc1"
+  apply (induction l1 arbitrary: xpc sz xpc1 sz1 l ; simp)
+  subgoal for a al xpc sz xpc1 sz1 l
+    by (smt (verit, ccfv_threshold) add.commute add_Suc_right leD length_list_update less_add_same_cancel2 list.size(3) not_less_eq_eq nth_list_update_neq x64_bin_update.simps(1) zero_less_Suc)
+  done
+
+
 axiomatization where x64_encode_decode_consistency: 
   "list_in_list l_bin pc l \<Longrightarrow>
   l_bin = x64_encode ins \<Longrightarrow>
   length l_bin = n \<Longrightarrow>
-  x64_decode pc l = Some (n, ins)"
+  x64_decode pc l = Some (n, ins)" and
+x64_encode_x64_decode_other:
+  "(xpc1 + sz1 \<le> xpc \<or> xpc+sz \<le> xpc1) \<Longrightarrow>
+  x64_decode xpc1 l = Some (sz1, ins1) \<Longrightarrow>
+  length u8_list = sz \<Longrightarrow>
+  x64_bin_update sz l xpc u8_list = l1 \<Longrightarrow>
+    x64_decode xpc1 l1 = Some (sz1, ins1)"
 
 end

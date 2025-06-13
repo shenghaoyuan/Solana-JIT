@@ -76,10 +76,6 @@ value "u8_list_of_i32 0x11110000"
 
 value "u32_of_u8_list [0,0,0,0]"
 
-fun x64_bin_update ::"nat \<Rightarrow> x64_bin \<Rightarrow> nat \<Rightarrow> u8 list \<Rightarrow> x64_bin " where
-  "x64_bin_update 0 l _ _ = l" |
-  "x64_bin_update (Suc n) l pc u8_list =  (let l' = list_update l pc (hd u8_list) in x64_bin_update n l' (pc+1) (tl u8_list))"
-
 value "x64_bin_update 4 [232::8 word, 0::8 word, 0::8 word, 0::8 word, 0::8 word] 1 [17::8 word, 17::8 word, 0::8 word, 0::8 word]"
 
 value "x64_bin_update 4 [15::8 word, 132::8 word, 0::8 word, 0::8 word, 17::8 word, 17::8 word] 2 [0::8 word, 0::8 word, 17::8 word, 17::8 word]"

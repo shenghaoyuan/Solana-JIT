@@ -199,4 +199,12 @@ type_synonym x64_bin = "u8 list"
 lemma u8_of_ireg_of_u8_iff: "(u8_of_ireg r = i) = (ireg_of_u8 i = Some r)"
   by (cases r, auto simp add: ireg_of_u8_def)
 
+fun x64_bin_update ::"nat \<Rightarrow> x64_bin \<Rightarrow> nat \<Rightarrow> u8 list \<Rightarrow> x64_bin " where
+  "x64_bin_update 0 l _ _ = l" |
+  "x64_bin_update (Suc n) l pc u8_list =  (
+  case u8_list of
+  [] \<Rightarrow> l |
+  x#xs \<Rightarrow> x64_bin_update n (l[pc := x]) (pc+1) xs
+)"
+
 end
