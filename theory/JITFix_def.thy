@@ -80,21 +80,37 @@ value "x64_bin_update 4 [232::8 word, 0::8 word, 0::8 word, 0::8 word, 0::8 word
 
 value "x64_bin_update 4 [15::8 word, 132::8 word, 0::8 word, 0::8 word, 17::8 word, 17::8 word] 2 [0::8 word, 0::8 word, 17::8 word, 17::8 word]"
 
+fun list_in :: "'a \<Rightarrow> 'a list \<Rightarrow> bool" where
+"list_in _ [] = False" |
+"list_in a (x#xs) = (a = x \<or> list_in a xs)"
 
-definition get_updated_l_bin::"(int\<times>u64) \<Rightarrow> x64_bin \<Rightarrow> (nat \<times> nat) list \<Rightarrow> x64_bin option"where
-  "get_updated_l_bin x l l_pc \<equiv> 
-    (let fix_begin_addr = fst (l_pc!(nat(fst x))); 
-        (target_begin_addr,num2) = l_pc!(unat (snd x)) in 
-        (case x64_decode fix_begin_addr l of 
-              Some(sz, Pcall_i _) \<Rightarrow> let u8_list = x64_encode (Pcall_i (of_nat target_begin_addr)) in
-                                     Some (x64_bin_update (length u8_list) l fix_begin_addr u8_list) |
-              Some(sz, Pcmpq_rr src dst) \<Rightarrow> let loc = fix_begin_addr+sz in 
-                    (case x64_decode loc l of 
-                            Some(sz2, Pjcc cond _) \<Rightarrow> let offset = ((of_nat target_begin_addr)::i32) - ((of_nat (loc+sz2)+1)::i32) in
-                                                      let u8_list = x64_encode (Pjcc cond (ucast offset)) in                                                     
-                                                      Some (x64_bin_update (length u8_list) l loc u8_list) | 
-                            _ \<Rightarrow> None ) |
-              _ \<Rightarrow> None ))"
+lemma list_in_set_in_iff: "list_in a l = (a \<in> set l)"
+  by (induction l arbitrary: a; simp)
+
+definition get_updated_l_bin::"(int\<times>u64) \<Rightarrow> x64_bin \<Rightarrow> (nat \<times> nat) list \<Rightarrow> (nat \<times> nat) list \<Rightarrow> x64_bin option"where
+  "get_updated_l_bin x l l_pc l_xpc \<equiv> (
+    if nat(fst x) = unat (snd x) then None else \<comment>\<open> runtime check the jump pair is not same \<close>
+    let fix_begin_addr = fst (l_pc!(nat(fst x))); 
+        (target_begin_addr,num2) = l_pc!(unat (snd x)) in (
+        case x64_decode fix_begin_addr l of None \<Rightarrow> None | Some (sz, ins) \<Rightarrow> 
+          if list_in (fix_begin_addr, sz) l_xpc then
+            case ins of
+            Pcall_i _         \<Rightarrow> (
+              let u8_list = x64_encode (Pcall_i (of_nat target_begin_addr)) in
+                Some (x64_bin_update (length u8_list) l fix_begin_addr u8_list)) |
+            Pcmpq_rr src dst  \<Rightarrow> 
+              let loc = fix_begin_addr+sz in (
+                case x64_decode loc l of None \<Rightarrow> None | Some (sz2, ins2) \<Rightarrow>
+                  if list_in (loc, sz2) l_xpc then
+                    case ins2 of
+                    Pjcc cond _ \<Rightarrow>
+                      let offset = ((of_nat target_begin_addr)::i32) - ((of_nat (loc+sz2)+1)::i32) in
+                      let u8_list = x64_encode (Pjcc cond (ucast offset)) in 
+                        Some (x64_bin_update (length u8_list) l loc u8_list) |
+                    _ \<Rightarrow> None
+                  else None ) |
+            _ \<Rightarrow> None
+          else None ))"
 
 value "x64_decode 0 [72::8 word, 57::8 word, 195::8 word] "
 
@@ -107,11 +123,11 @@ value "get_updated_l_bin (0,1) [72::8 word, 57::8 word, 195::8 word, 15::8 word,
 value "get_updated_l_bin (0,1) [232::8 word, 0::8 word, 0::8 word, 0::8 word, 0::8 word ,195::8 word] [(0, 1::nat), (6, 1::nat)]"
 
 (*input: l_jump x64_bin l_pc*)
-fun jitfix :: "((int\<times>u64) list) \<Rightarrow> x64_bin \<Rightarrow> (nat \<times> nat) list \<Rightarrow> x64_bin option" where
-  "jitfix [] l _  = Some l" |
-  "jitfix (x#xs) l l_pc = (if l = [] then None else 
-    let res = get_updated_l_bin x l l_pc in case res of None \<Rightarrow> None | 
-                                                        Some l' \<Rightarrow> jitfix xs l' l_pc)"
+fun jitfix :: "((int\<times>u64) list) \<Rightarrow> x64_bin \<Rightarrow> (nat \<times> nat) list \<Rightarrow> (nat \<times> nat) list \<Rightarrow> x64_bin option" where
+  "jitfix [] l _ _  = Some l" |
+  "jitfix (x#xs) l l_pc l_xpc = (if l = [] then None else 
+    let res = get_updated_l_bin x l l_pc l_xpc in case res of None \<Rightarrow> None | 
+                                                        Some l' \<Rightarrow> jitfix xs l' l_pc l_xpc)"
 
 value "x64_encode (Pcmpq_rr RAX RBX)"
 

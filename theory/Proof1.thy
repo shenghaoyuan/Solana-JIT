@@ -40,6 +40,12 @@ lemma x64_bin_update_nth_other: "(xpc1 + sz1 \<le> xpc \<or> xpc+sz \<le> xpc1) 
     by (smt (verit, ccfv_threshold) add.commute add_Suc_right leD length_list_update less_add_same_cancel2 list.size(3) not_less_eq_eq nth_list_update_neq x64_bin_update.simps(1) zero_less_Suc)
   done
 
+lemma x64_bin_update_length_eq: "x64_bin_update (length l1) l xpc l1 = l2 \<Longrightarrow> length l = length l2"
+  apply (induction l1 arbitrary: xpc l l2; simp)
+  subgoal for a al xpc l l2
+    by auto 
+  done
+
 
 axiomatization where x64_encode_decode_consistency: 
   "list_in_list l_bin pc l \<Longrightarrow>
