@@ -4,6 +4,41 @@ imports
   "Word_Lib.Signed_Words"
 begin
 
+definition nth_error :: "'a list \<Rightarrow> nat \<Rightarrow> 'a option" where
+"nth_error l a = (if length l \<le> a then None else Some (l!a))"
+
+fun list_in :: "'a \<Rightarrow> 'a list \<Rightarrow> bool" where
+"list_in _ [] = False" |
+"list_in a (x#xs) = (a = x \<or> list_in a xs)"
+     
+lemma list_in_set_in_iff: "list_in a l = (a \<in> set l)"
+  by (induction l arbitrary: a; simp)
+
+fun list_in_list :: "'a list \<Rightarrow> nat \<Rightarrow> 'a list \<Rightarrow> bool" where
+"list_in_list [] _ _ = True" |
+"list_in_list (h#t) n l = (h = l!n \<and> list_in_list t (Suc n) l)"
+
+lemma case_option_eq_E:
+  assumes c: "(case x of None \<Rightarrow> P | Some y \<Rightarrow> Q y) = Some z"
+  obtains
+    (None) "x = None" and "P = Some z"
+  | (Some) y where "x = Some y" and "Q y = Some z"
+  using c by (cases x) simp_all
+
+lemma case_option_eq_NE:
+  assumes c: "(case x of None \<Rightarrow> None | Some y \<Rightarrow> Q y) = Some z"
+  obtains
+    (None) "x = None" and "False"
+  | (Some) y where "x = Some y" and "Q y = Some z"
+  using c by (cases x) simp_all
+
+lemma ifE:
+  assumes c: "(if Q then x else y) = R"
+  obtains
+    "Q = True \<and> x = R" 
+  | "Q = False \<and> y = R"
+  using c by argo
+
 type_synonym u4 = "4 word"
 type_synonym u8 = "8 word"
 type_synonym i8 = "8 sword"

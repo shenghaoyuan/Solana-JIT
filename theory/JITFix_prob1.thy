@@ -2,9 +2,6 @@ theory JITFix_prob1
   imports JITFlattern JITFix_def Proof1
 begin
 
-definition nth_error :: "'a list \<Rightarrow> nat \<Rightarrow> 'a option" where
-"nth_error l a = (if length l \<le> a then None else Some (l!a))"
-
 definition wf_l_pc :: "(nat \<times> nat) list \<Rightarrow> (nat \<times> nat) list \<Rightarrow> nat \<Rightarrow> bool" where
 "wf_l_pc l_pc l_xpc len \<equiv> (
   (\<forall> x. x \<in> set (map fst l_pc) \<longrightarrow> x < len) \<and>
@@ -71,7 +68,7 @@ lemma wf_l_xpc_cons_leq: "
       apply (erule disjE; simp)
       by (metis add_leD1 dual_order.eq_iff)
     done
-  done    
+  done
 
 lemma x64_decode_xpc_neq_other: "
   wf_l_xpc l_xpc len \<Longrightarrow>
@@ -105,119 +102,6 @@ lemma x64_decode_xpc_neq_other: "
       by (metis list_in.elims(2) wf_l_xpc.simps(3)) 
     done
   done
-
-lemma case_option_eq_E:
-  assumes c: "(case x of None \<Rightarrow> P | Some y \<Rightarrow> Q y) = Some z"
-  obtains
-    (None) "x = None" and "P = Some z"
-  | (Some) y where "x = Some y" and "Q y = Some z"
-  using c by (cases x) simp_all
-
-
-lemma case_option_eq_NE:
-  assumes c: "(case x of None \<Rightarrow> None | Some y \<Rightarrow> Q y) = Some z"
-  obtains
-    (None) "x = None" and "False"
-  | (Some) y where "x = Some y" and "Q y = Some z"
-  using c by (cases x) simp_all
-
-lemma ifE:
-  assumes c: "(if Q then x else y) = R"
-  obtains
-    "Q = True \<and> x = R" 
-  | "Q = False \<and> y = R"
-  using c by argo
-
-lemma x64_decode_encode_length_eq_jcc: "x64_decode xpc l_bin0 = Some (szb, Pjcc x3 x4) \<Longrightarrow>
-  length (x64_encode (Pjcc x3 t)) = szb"
-  apply (simp add: x64_decode_def x64_encode_def Let_def split: if_split_asm)
-  subgoal
-    apply ((erule case_option_eq_NE | erule ifE | erule conjE)+; simp?)
-    apply ((erule case_option_eq_NE | erule ifE | erule conjE)+; simp?)
-    apply (erule conjE)
-    using length_u8_list_of_u32_eq_4 by simp
-  subgoal
-    apply ((erule case_option_eq_NE | erule conjE)+; simp?)
-    done
-  subgoal
-    apply ((erule case_option_eq_NE | erule conjE)+; simp?)
-    done
-  subgoal
-    apply ((erule case_option_eq_NE | erule conjE)+; simp?)
-    done
-  subgoal
-    apply ((erule case_option_eq_NE | erule ifE | erule conjE)+; simp?)
-    apply ((erule case_option_eq_NE | erule ifE | erule conjE)+; simp?)
-    done
-  subgoal
-    apply ((erule case_option_eq_NE | erule ifE | erule conjE)+; simp?)
-    apply ((erule case_option_eq_NE | erule ifE | erule conjE)+; simp?)
-    done
-  subgoal
-    apply ((erule case_option_eq_NE | erule ifE | erule conjE)+; simp?)
-    apply ((erule case_option_eq_NE | erule ifE | erule conjE)+; simp?)
-    apply ((erule case_option_eq_NE | erule ifE | erule conjE)+; simp?)
-    done
-  subgoal
-    apply ((erule case_option_eq_NE | erule ifE | erule conjE)+; simp?)
-    apply ((erule case_option_eq_NE | erule ifE | erule conjE)+; simp?)
-    done
-  subgoal
-    apply ((erule case_option_eq_NE | erule ifE | erule conjE)+; simp?)
-    apply ((erule case_option_eq_NE | erule ifE | erule conjE)+; simp?)
-    apply ((erule case_option_eq_NE | erule ifE | erule conjE)+; simp?)
-    done
-  subgoal
-    apply ((erule case_option_eq_NE | erule ifE | erule conjE)+; simp?)
-    apply ((erule case_option_eq_NE | erule ifE | erule conjE)+; simp?)
-    apply ((erule case_option_eq_NE | erule ifE | erule conjE)+; simp?)
-    done
-  done
-
-lemma x64_decode_encode_length_eq_call: "x64_decode xpc l_bin0 = Some (sz, Pcall_i x1) \<Longrightarrow>
-    length (x64_encode (Pcall_i t)) = sz"
-  apply (simp add: x64_decode_def x64_encode_def Let_def split: if_split_asm)
-  subgoal
-    apply ((erule case_option_eq_NE | erule ifE | erule conjE)+; simp?)
-    apply ((erule case_option_eq_NE | erule ifE | erule conjE)+; simp?)
-    done
-  subgoal
-    apply ((erule case_option_eq_NE | erule conjE)+; simp?)
-    done
-  subgoal
-    apply ((erule case_option_eq_NE | erule conjE)+; simp?)
-    done
-  subgoal
-    apply ((erule case_option_eq_NE | erule conjE)+; simp?)
-    using length_u8_list_of_u32_eq_4 by simp
-  subgoal
-    apply ((erule case_option_eq_NE | erule ifE | erule conjE)+; simp?)
-    apply ((erule case_option_eq_NE | erule ifE | erule conjE)+; simp?)
-    done
-  subgoal
-    apply ((erule case_option_eq_NE | erule ifE | erule conjE)+; simp?)
-    apply ((erule case_option_eq_NE | erule ifE | erule conjE)+; simp?)
-    done
-  subgoal
-    apply ((erule case_option_eq_NE | erule ifE | erule conjE)+; simp?)
-    apply ((erule case_option_eq_NE | erule ifE | erule conjE)+; simp?)
-    apply ((erule case_option_eq_NE | erule ifE | erule conjE)+; simp?)
-    done
-  subgoal
-    apply ((erule case_option_eq_NE | erule ifE | erule conjE)+; simp?)
-    apply ((erule case_option_eq_NE | erule ifE | erule conjE)+; simp?)
-    done
-  subgoal
-    apply ((erule case_option_eq_NE | erule ifE | erule conjE)+; simp?)
-    apply ((erule case_option_eq_NE | erule ifE | erule conjE)+; simp?)
-    apply ((erule case_option_eq_NE | erule ifE | erule conjE)+; simp?)
-    done
-  subgoal
-    apply ((erule case_option_eq_NE | erule ifE | erule conjE)+; simp?)
-    apply ((erule case_option_eq_NE | erule ifE | erule conjE)+; simp?)
-    apply ((erule case_option_eq_NE | erule ifE | erule conjE)+; simp?)
-    done
-  done
         
 lemma jit_fix_not_change: "
   wf_l_xpc l_xpc len \<Longrightarrow>
@@ -228,8 +112,9 @@ lemma jit_fix_not_change: "
   x64_decode xpc l_bin0 = Some (sz1, ins1) \<Longrightarrow>
   (\<not>(\<exists> num d. x64_decode xpc l_bin0 = Some(num, Pcall_i d))) \<and>
   (\<not> (\<exists> num cond d. x64_decode xpc l_bin0 = Some(num, Pjcc cond d))) \<Longrightarrow>
-  x64_decode xpc prog = Some (sz1, ins1)"
-  apply (induction l_jump arbitrary: l_bin0 l_xpc l_pc prog xpc sz1 ins1; simp add: get_updated_l_bin_def Let_def split: if_split_asm)
+    x64_decode xpc prog = Some (sz1, ins1)"
+  apply (induction l_jump arbitrary: l_bin0 l_xpc l_pc prog xpc sz1 ins1;
+      simp add: get_updated_l_bin_def Let_def split: if_split_asm)
   subgoal for a al l_bin0 l_xpc l_pc prog xpc sz1 ins1
     apply (cases "l_pc ! unat (snd a)"; simp)
     subgoal for addr num2
@@ -294,8 +179,8 @@ lemma jit_fix_not_change: "
   done
 
 lemma x64_bin_update_is_disjoint:
-  "jitfix [x] l_bin0 l_pc = Some prog' \<Longrightarrow>
-  jitfix l_jump l_bin0 l_pc = Some prog \<Longrightarrow>
+  "jitfix [x] l_bin0 l_pc l_xpc = Some prog' \<Longrightarrow>
+  jitfix l_jump l_bin0 l_pc l_xpc = Some prog \<Longrightarrow>
   x \<in> set l_jump \<Longrightarrow>
   Some prog' = Some (x64_bin_update (length u8_list) l_bin0 xpc u8_list) \<Longrightarrow>
   x64_decode xpc prog' = Some v \<Longrightarrow>
@@ -303,63 +188,11 @@ lemma x64_bin_update_is_disjoint:
   sorry
 
 lemma x64_bin_update_is_disjoint2:
-  "jitfix l_jump l_bin0 l_pc = Some prog \<Longrightarrow>
+  "jitfix l_jump l_bin0 l_pc l_xpc = Some prog \<Longrightarrow>
   x \<in> set l_jump \<Longrightarrow>
-  jitfix [x] l_bin0 l_pc = prog' \<Longrightarrow>
+  jitfix [x] l_bin0 l_pc l_xpc = prog' \<Longrightarrow>
   prog' \<noteq> None"
   sorry
-
-
-lemma x64_decode_Pcall_i_x64_encode_length_eq: "
-  x64_decode xpc l = Some (sz, Pcall_i i) \<Longrightarrow>
-  u8_list = x64_encode (Pcall_i i1) \<Longrightarrow> 
-  length u8_list = sz"
-  apply (simp add: x64_decode_def x64_encode_def Let_def split: if_split_asm)
-  subgoal
-    apply (cases "u32_of_u8_list [l ! Suc (Suc xpc), l ! (xpc + (3::nat)),
-  l ! (xpc + (4::nat)), l ! (xpc + (5::nat))]"; simp)
-    by (cases "cond_of_u8 (and (15::8 word) (l ! Suc xpc))"; simp)
-  subgoal by (cases "ireg_of_u8 (bitfield_insert_u8 (3::nat) (Suc (0::nat))
-  (and (7::8 word) (l ! xpc)) (0::8 word))"; simp)
-  subgoal
-    by (cases "ireg_of_u8 (bitfield_insert_u8 (3::nat) (Suc (0::nat))
-  (and (7::8 word) (l ! xpc)) (0::8 word))"; simp)
-  subgoal
-    apply (cases "u32_of_u8_list [l ! Suc xpc, l ! Suc (Suc xpc),
-  l ! (xpc + (3::nat)), l ! (xpc + (4::nat))]"; simp)
-    by (simp add: length_u8_list_of_u32_eq_4)
-  subgoal
-    by (cases "ireg_of_u8 (bitfield_insert_u8 (3::nat) (Suc (0::nat))
-  (and (7::8 word) (l ! Suc xpc)) (and (1::8 word) (l ! xpc)))"; simp add: split: if_split_asm)
-  subgoal
-    by (cases "ireg_of_u8 (bitfield_insert_u8 (3::nat) (Suc (0::nat))
-  (and (7::8 word) (l ! Suc xpc)) (and (1::8 word) (l ! xpc)))"; simp add: split: if_split_asm)
-  subgoal
-    apply (cases "ireg_of_u8
-           (bitfield_insert_u8 (3::nat) (Suc (0::nat)) (and (7::8 word) (l ! Suc (Suc xpc) >> (3::nat)))
-             (and (1::8 word) (l ! xpc >> (2::nat))))"; simp)
-    by (cases "ireg_of_u8
-              (bitfield_insert_u8 (3::nat) (Suc (0::nat)) (and (7::8 word)
-  (l ! Suc (Suc xpc))) (and (1::8 word) (l ! xpc)))"; simp add: split: if_split_asm)
-  subgoal
-    by (cases "ireg_of_u8
-           (bitfield_insert_u8 (3::nat) (Suc (0::nat)) (and (7::8 word)
-  (l ! Suc (Suc xpc))) (and (1::8 word) (l ! xpc)))"; simp add: split: if_split_asm)
-  subgoal
-    apply (cases "ireg_of_u8
-           (bitfield_insert_u8 (3::nat) (Suc (0::nat)) (and (7::8 word) (l ! Suc (Suc xpc) >> (3::nat)))
-             (and (1::8 word) (l ! xpc >> (2::nat))))"; simp)
-    by (cases "ireg_of_u8
-              (bitfield_insert_u8 (3::nat) (Suc (0::nat)) (and (7::8 word)
-  (l ! Suc (Suc xpc))) (and (1::8 word) (l ! xpc)))"; simp add: split: if_split_asm)
-  subgoal
-    apply (cases "ireg_of_u8
-           (bitfield_insert_u8 (3::nat) (Suc (0::nat)) (and (7::8 word) (l ! Suc (Suc xpc) >> (3::nat)))
-             (and (1::8 word) (l ! xpc >> (2::nat))))"; simp)
-    by (cases "ireg_of_u8
-              (bitfield_insert_u8 (3::nat) (Suc (0::nat)) (and (7::8 word)
-  (l ! Suc (Suc xpc))) (and (1::8 word) (l ! xpc)))"; simp add: split: if_split_asm)
-  done
 
 lemma x64_bin_update_nth_eq: "xpc < length l \<Longrightarrow> xpc < n \<Longrightarrow>
   x64_bin_update (length l1) (l[xpc := a]) n l1 ! xpc = a"

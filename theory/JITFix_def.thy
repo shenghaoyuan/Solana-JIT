@@ -80,16 +80,11 @@ value "x64_bin_update 4 [232::8 word, 0::8 word, 0::8 word, 0::8 word, 0::8 word
 
 value "x64_bin_update 4 [15::8 word, 132::8 word, 0::8 word, 0::8 word, 17::8 word, 17::8 word] 2 [0::8 word, 0::8 word, 17::8 word, 17::8 word]"
 
-fun list_in :: "'a \<Rightarrow> 'a list \<Rightarrow> bool" where
-"list_in _ [] = False" |
-"list_in a (x#xs) = (a = x \<or> list_in a xs)"
-
-lemma list_in_set_in_iff: "list_in a l = (a \<in> set l)"
-  by (induction l arbitrary: a; simp)
 
 definition get_updated_l_bin::"(int\<times>u64) \<Rightarrow> x64_bin \<Rightarrow> (nat \<times> nat) list \<Rightarrow> (nat \<times> nat) list \<Rightarrow> x64_bin option"where
-  "get_updated_l_bin x l l_pc l_xpc \<equiv> (
-    if nat(fst x) = unat (snd x) then None else \<comment>\<open> runtime check the jump pair is not same \<close>
+  "get_updated_l_bin x l l_pc l_xpc \<equiv> ( \<comment>\<open> 
+    if nat(fst x) = unat (snd x) then None else 
+runtime check the jump pair is not same \<close>
     let fix_begin_addr = fst (l_pc!(nat(fst x))); 
         (target_begin_addr,num2) = l_pc!(unat (snd x)) in (
         case x64_decode fix_begin_addr l of None \<Rightarrow> None | Some (sz, ins) \<Rightarrow> 

@@ -288,10 +288,6 @@ Paddq_rr rd r1 \<Rightarrow>
   Pcall_i d  \<Rightarrow>
       ([0xe8] @ (u8_list_of_u32 d))
 )"
-                              
-fun list_in_list :: "'a list \<Rightarrow> nat \<Rightarrow> 'a list \<Rightarrow> bool" where
-"list_in_list [] _ _ = True" |
-"list_in_list (h#t) n l = (h = l!n \<and> list_in_list t (Suc n) l)"
 
 value "x64_encode (Pjcc Cond_e 3)"
 

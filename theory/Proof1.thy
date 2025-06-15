@@ -59,4 +59,146 @@ x64_encode_x64_decode_other:
   x64_bin_update sz l xpc u8_list = l1 \<Longrightarrow>
     x64_decode xpc1 l1 = Some (sz1, ins1)"
 
+lemma x64_decode_encode_length_eq_jcc: "x64_decode xpc l_bin0 = Some (szb, Pjcc x3 x4) \<Longrightarrow>
+  length (x64_encode (Pjcc x3 t)) = szb"
+  apply (simp add: x64_decode_def x64_encode_def Let_def split: if_split_asm)
+  subgoal
+    apply ((erule case_option_eq_NE | erule ifE | erule conjE)+; simp?)
+    apply ((erule case_option_eq_NE | erule ifE | erule conjE)+; simp?)
+    apply (erule conjE)
+    using length_u8_list_of_u32_eq_4 by simp
+  subgoal
+    apply ((erule case_option_eq_NE | erule conjE)+; simp?)
+    done
+  subgoal
+    apply ((erule case_option_eq_NE | erule conjE)+; simp?)
+    done
+  subgoal
+    apply ((erule case_option_eq_NE | erule conjE)+; simp?)
+    done
+  subgoal
+    apply ((erule case_option_eq_NE | erule ifE | erule conjE)+; simp?)
+    apply ((erule case_option_eq_NE | erule ifE | erule conjE)+; simp?)
+    done
+  subgoal
+    apply ((erule case_option_eq_NE | erule ifE | erule conjE)+; simp?)
+    apply ((erule case_option_eq_NE | erule ifE | erule conjE)+; simp?)
+    done
+  subgoal
+    apply ((erule case_option_eq_NE | erule ifE | erule conjE)+; simp?)
+    apply ((erule case_option_eq_NE | erule ifE | erule conjE)+; simp?)
+    apply ((erule case_option_eq_NE | erule ifE | erule conjE)+; simp?)
+    done
+  subgoal
+    apply ((erule case_option_eq_NE | erule ifE | erule conjE)+; simp?)
+    apply ((erule case_option_eq_NE | erule ifE | erule conjE)+; simp?)
+    done
+  subgoal
+    apply ((erule case_option_eq_NE | erule ifE | erule conjE)+; simp?)
+    apply ((erule case_option_eq_NE | erule ifE | erule conjE)+; simp?)
+    apply ((erule case_option_eq_NE | erule ifE | erule conjE)+; simp?)
+    done
+  subgoal
+    apply ((erule case_option_eq_NE | erule ifE | erule conjE)+; simp?)
+    apply ((erule case_option_eq_NE | erule ifE | erule conjE)+; simp?)
+    apply ((erule case_option_eq_NE | erule ifE | erule conjE)+; simp?)
+    done
+  done
+
+lemma x64_decode_encode_length_eq_call: "x64_decode xpc l_bin0 = Some (sz, Pcall_i x1) \<Longrightarrow>
+    length (x64_encode (Pcall_i t)) = sz"
+  apply (simp add: x64_decode_def x64_encode_def Let_def split: if_split_asm)
+  subgoal
+    apply ((erule case_option_eq_NE | erule ifE | erule conjE)+; simp?)
+    apply ((erule case_option_eq_NE | erule ifE | erule conjE)+; simp?)
+    done
+  subgoal
+    apply ((erule case_option_eq_NE | erule conjE)+; simp?)
+    done
+  subgoal
+    apply ((erule case_option_eq_NE | erule conjE)+; simp?)
+    done
+  subgoal
+    apply ((erule case_option_eq_NE | erule conjE)+; simp?)
+    using length_u8_list_of_u32_eq_4 by simp
+  subgoal
+    apply ((erule case_option_eq_NE | erule ifE | erule conjE)+; simp?)
+    apply ((erule case_option_eq_NE | erule ifE | erule conjE)+; simp?)
+    done
+  subgoal
+    apply ((erule case_option_eq_NE | erule ifE | erule conjE)+; simp?)
+    apply ((erule case_option_eq_NE | erule ifE | erule conjE)+; simp?)
+    done
+  subgoal
+    apply ((erule case_option_eq_NE | erule ifE | erule conjE)+; simp?)
+    apply ((erule case_option_eq_NE | erule ifE | erule conjE)+; simp?)
+    apply ((erule case_option_eq_NE | erule ifE | erule conjE)+; simp?)
+    done
+  subgoal
+    apply ((erule case_option_eq_NE | erule ifE | erule conjE)+; simp?)
+    apply ((erule case_option_eq_NE | erule ifE | erule conjE)+; simp?)
+    done
+  subgoal
+    apply ((erule case_option_eq_NE | erule ifE | erule conjE)+; simp?)
+    apply ((erule case_option_eq_NE | erule ifE | erule conjE)+; simp?)
+    apply ((erule case_option_eq_NE | erule ifE | erule conjE)+; simp?)
+    done
+  subgoal
+    apply ((erule case_option_eq_NE | erule ifE | erule conjE)+; simp?)
+    apply ((erule case_option_eq_NE | erule ifE | erule conjE)+; simp?)
+    apply ((erule case_option_eq_NE | erule ifE | erule conjE)+; simp?)
+    done
+  done
+
+lemma x64_decode_Pcall_i_x64_encode_length_eq: "
+  x64_decode xpc l = Some (sz, Pcall_i i) \<Longrightarrow>
+  u8_list = x64_encode (Pcall_i i1) \<Longrightarrow> 
+  length u8_list = sz"
+  apply (simp add: x64_decode_def x64_encode_def Let_def split: if_split_asm)
+  subgoal
+    apply (cases "u32_of_u8_list [l ! Suc (Suc xpc), l ! (xpc + (3::nat)),
+  l ! (xpc + (4::nat)), l ! (xpc + (5::nat))]"; simp)
+    by (cases "cond_of_u8 (and (15::8 word) (l ! Suc xpc))"; simp)
+  subgoal by (cases "ireg_of_u8 (bitfield_insert_u8 (3::nat) (Suc (0::nat))
+  (and (7::8 word) (l ! xpc)) (0::8 word))"; simp)
+  subgoal
+    by (cases "ireg_of_u8 (bitfield_insert_u8 (3::nat) (Suc (0::nat))
+  (and (7::8 word) (l ! xpc)) (0::8 word))"; simp)
+  subgoal
+    apply (cases "u32_of_u8_list [l ! Suc xpc, l ! Suc (Suc xpc),
+  l ! (xpc + (3::nat)), l ! (xpc + (4::nat))]"; simp)
+    by (simp add: length_u8_list_of_u32_eq_4)
+  subgoal
+    by (cases "ireg_of_u8 (bitfield_insert_u8 (3::nat) (Suc (0::nat))
+  (and (7::8 word) (l ! Suc xpc)) (and (1::8 word) (l ! xpc)))"; simp add: split: if_split_asm)
+  subgoal
+    by (cases "ireg_of_u8 (bitfield_insert_u8 (3::nat) (Suc (0::nat))
+  (and (7::8 word) (l ! Suc xpc)) (and (1::8 word) (l ! xpc)))"; simp add: split: if_split_asm)
+  subgoal
+    apply (cases "ireg_of_u8
+           (bitfield_insert_u8 (3::nat) (Suc (0::nat)) (and (7::8 word) (l ! Suc (Suc xpc) >> (3::nat)))
+             (and (1::8 word) (l ! xpc >> (2::nat))))"; simp)
+    by (cases "ireg_of_u8
+              (bitfield_insert_u8 (3::nat) (Suc (0::nat)) (and (7::8 word)
+  (l ! Suc (Suc xpc))) (and (1::8 word) (l ! xpc)))"; simp add: split: if_split_asm)
+  subgoal
+    by (cases "ireg_of_u8
+           (bitfield_insert_u8 (3::nat) (Suc (0::nat)) (and (7::8 word)
+  (l ! Suc (Suc xpc))) (and (1::8 word) (l ! xpc)))"; simp add: split: if_split_asm)
+  subgoal
+    apply (cases "ireg_of_u8
+           (bitfield_insert_u8 (3::nat) (Suc (0::nat)) (and (7::8 word) (l ! Suc (Suc xpc) >> (3::nat)))
+             (and (1::8 word) (l ! xpc >> (2::nat))))"; simp)
+    by (cases "ireg_of_u8
+              (bitfield_insert_u8 (3::nat) (Suc (0::nat)) (and (7::8 word)
+  (l ! Suc (Suc xpc))) (and (1::8 word) (l ! xpc)))"; simp add: split: if_split_asm)
+  subgoal
+    apply (cases "ireg_of_u8
+           (bitfield_insert_u8 (3::nat) (Suc (0::nat)) (and (7::8 word) (l ! Suc (Suc xpc) >> (3::nat)))
+             (and (1::8 word) (l ! xpc >> (2::nat))))"; simp)
+    by (cases "ireg_of_u8
+              (bitfield_insert_u8 (3::nat) (Suc (0::nat)) (and (7::8 word)
+  (l ! Suc (Suc xpc))) (and (1::8 word) (l ! xpc)))"; simp add: split: if_split_asm)
+  done
+
 end
